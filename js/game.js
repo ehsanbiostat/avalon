@@ -218,6 +218,8 @@ class GameSystem {
         const centerX = 300;
         const centerY = 300;
         
+        console.log(`Positioning ${this.players.length} players around the table`);
+        
         this.players.forEach((player, index) => {
             const angle = (index * 360 / this.players.length - 90) * Math.PI / 180;
             const x = centerX + radius * Math.cos(angle) - 40;
@@ -233,6 +235,9 @@ class GameSystem {
                 <div class="player-avatar">${player.avatar}</div>
                 <div class="player-name">${player.name}</div>
             `;
+            
+            // Debug: Add a temporary visible indicator
+            console.log(`Created player slot for ${player.name} at position (${x}, ${y})`);
             
             // Add click event for team selection
             slot.addEventListener('click', () => this.selectPlayer(slot));
