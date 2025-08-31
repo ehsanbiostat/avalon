@@ -1,2282 +1,257 @@
-        // Generate room code
-        function generateRoomCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let code = '';
-            for (let i = 0; i < 6; i++) {
-                code += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return code;
-        }
-
-        // Show create room interface
-        function showCreateRoom() {
-            if (!gameState.isLoggedIn) {
-                showNotification('Please login to create a game room!', 'error');
-                toggleLogin();
-                return;
-            }
-            showSection('roomCreation');
-        }
-
-        // Show join room interface
-        function showJoinRoom() {
-            if (!gameState.isLoggedIn) {
-                showNotification('Please login to join a game room!', 'error');
-                toggleLogin();
-                return;
-            }
-            showSection('joinRoom');
-            displayActiveRooms();
-        }
-
-        // Load preset configuration
-        function loadPreset(presetName) {
-            const preset = presetConfigs[presetName];
-            if (!preset) return;
-            
-            // Update player count
-            document.getElementById('playerCount').value = preset.playerCount;
-            updatePlayerCount();
-            
-            // Update roles
-            document.getElementById('rolePercival').checked = preset.roles.percival;
-            document.getElementById('roleMorgana').checked = preset.roles.morgana;
-            document.getElementById('roleMordred').checked = preset.roles.mordred;
-            document.getElementById('roleOberon').checked = preset.roles.oberon;
-            
-            // Update special options
-            document.getElementById('ladyOfLake').checked = preset.ladyOfLake;
-            document.getElementById('chaosMode').checked = preset.chaosForMerlin;
-            
-            showNotification(`Loaded preset: ${preset.name}`, 'success');
-        }
-
-        // Update player count display
-        function updatePlayerCount() {
-            const count = document.getElementById('playerCount').value;
-            document.getElementById('playerCountDisplay').textContent = count;
-            updateRoleBalance();
-        }
-
-        // Update role balance display
-        function updateRoleBalance() {
-            const playerCount = parseInt(document.getElementById('playerCount').value);
-            const evilCount = Math.floor(playerCount / 3 + 0.5); // Standard evil count formula
-            const goodCount = playerCount - evilCount;
-            
-            document.getElementById('goodCount').textContent = `Good: ${goodCount} players`;
-            document.getElementById('evilCount').textContent = `Evil: ${evilCount} players`;
-        }
-
-        // Create room
-        function createRoom() {
-            const playerCount = parseInt(document.getElementById('playerCount').value);
-            const roomCode = generateRoomCode();
-            
-            const roomConfig = {
-                code: roomCode,
-                host: gameState.currentPlayer.name,
-                hostId: gameState.currentPlayer.id,
-                playerCount: playerCount,
-                maxPlayers: playerCount,
-                players: [gameState.currentPlayer],
-                roles: {
-                    merlin: true,
-                    percival: document.getElementById('rolePercival').checked,
-                    morgana: document.getElementById('roleMorgana').checked,
-                    assassin: true,
-                    mordred: document.getElementById('roleMordred').checked,
-                    oberon: document.getElementById('roleOberon').checked
-                },
-                ladyOfLake: document.getElementById('ladyOfLake').checked,
-                chaosForMerlin: document.getElementById('chaosMode').checked,
-                status: 'waiting',
-                createdAt: new Date().toISOString()
-            };
-            
-            // Validate role distribution
-            const evilCount = Math.floor(playerCount / 3 + 0.5);
-            const goodCount = playerCount - evilCount;
-            
-            let evilRoles = 1; // Assassin is always included
-            if (roomConfig.roles.morgana) evilRoles++;
-            if (roomConfig.roles.mordred) evilRoles++;
-            if (roomConfig.roles.oberon) evilRoles++;
-            
-            if (evilRoles > evilCount) {
-                showNotification(`Too many evil roles selected! Maximum ${evilCount} evil players for ${playerCount} players.`, 'error');
-                return;
-            }
-            
-            // Save room to database
-            gameRooms[roomCode] = roomConfig;
-            localStorage.setItem('avalonRooms', JSON.stringify(gameRooms));
-            
-            // Join the room as host
-            gameState.currentRoom = roomConfig;
-            gameState.isHost = true;
-            
-            showNotification(`Room created! Code: ${roomCode}`, 'success');
-            showLobby();
-        }
-
-        // Join room by code
-        function joinRoomByCode() {
-            const code = document.getElementById('roomCode').value.toUpperCase();
-            
-            if (!code) {
-                showNotification('Please enter a room code!', 'error');
-                return;
-            }
-            
-            const room = gameRooms[code];
-            
-            if (!room) {
-                showNotification('Room not found! Please check the code.', 'error');
-                return;
-            }
-            
-            if (room.status !== 'waiting') {
-                showNotification('This game has already started!', 'error');
-                return;
-            }
-            
-            if (room.players.length >= room.maxPlayers) {
-                showNotification('Room is full!', 'error');
-                return;
-            }
-            
-            // Check if already in room
-            if (room.players.some(p => p.id === gameState.currentPlayer.id)) {
-                showNotification('You are already in this room!', 'info');
-                gameState.currentRoom = room;
-                gameState.isHost = room.hostId === gameState.currentPlayer.id;
-                showLobby();
-                return;
-            }
-            
-            // Add player to room
-            room.players.push(gameState.currentPlayer);
-            gameRooms[code] = room;
-            localStorage.setItem('avalonRooms', JSON.stringify(gameRooms));
-            
-            gameState.currentRoom = room;
-            gameState.isHost = false;
-            
-            showNotification(`Joined room ${code}!`, 'success');
-            showLobby();
-        }
-
-        // Display active rooms
-        function displayActiveRooms() {
-            const container = document.getElementById('activeRoomsList');
-            container.innerHTML = '';
-            
-            const activeRooms = Object.values(gameRooms).filter(room => 
-                room.status === 'waiting' && 
-                new Date() - new Date(room.createdAt) < 3600000 // 1 hour timeout
-            );
-            
-            if (activeRooms.length === 0) {
-                container.innerHTML = '<p style="color: rgba(255,255,255,0.5);">No active rooms available. Create one!</p>';
-                return;
-            }
-            
-            activeRooms.forEach(room => {
-                const roomCard = document.createElement('div');
-                roomCard.style.cssText = 'background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 10px; border: 2px solid rgba(255,215,0,0.3); cursor: pointer; transition: all 0.3s;';
-                roomCard.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="color: #ffd700;">Room ${room.code}</strong>
-                            <p style="color: rgba(255,255,255,0.7); margin: 0.5rem 0;">Host: ${room.host}</p>
-                            <p style="color: rgba(255,255,255,0.7);">Players: ${room.players.length}/${room.maxPlayers}</p>
-                        </div>
-                        <button class="control-btn" onclick="document.getElementById('roomCode').value='${room.code}'; joinRoomByCode();">Join</button>
-                    </div>
-                `;
-                roomCard.onmouseover = () => roomCard.style.borderColor = '#ffd700';
-                roomCard.onmouseout = () => roomCard.style.borderColor = 'rgba(255,215,0,0.3)';
-                container.appendChild(roomCard);
-            });
-        }
-
-        // Show lobby
-        function showLobby() {
-            showSection('gameLobby');
-            
-            const room = gameState.currentRoom;
-            document.getElementById('lobbyRoomCode').textContent = room.code;
-            
-            updateLobbyDisplay();
-            
-            // Show start button for host
-            if (gameState.isHost) {
-                document.getElementById('startGameBtn').style.display = 'inline-block';
-                document.getElementById('waitingMessage').style.display = 'none';
-            } else {
-                document.getElementById('startGameBtn').style.display = 'none';
-                document.getElementById('waitingMessage').style.display = 'block';
-            }
-            
-            // Start polling for updates (in real app, use WebSockets)
-            if (!gameState.lobbyPolling) {
-                gameState.lobbyPolling = setInterval(updateLobbyDisplay, 2000);
-            }
-        }
-
-        // Update lobby display
-        function updateLobbyDisplay() {
-            const room = gameRooms[gameState.currentRoom.code];
-            if (!room) return;
-            
-            gameState.currentRoom = room;
-            
-            // Update player count
-            document.getElementById('playerCountLobby').textContent = room.players.length;
-            document.getElementById('maxPlayersLobby').textContent = room.maxPlayers;
-            
-            // Update players list
-            const playersList = document.getElementById('lobbyPlayersList');
-            playersList.innerHTML = '';
-            room.players.forEach((player, index) => {
-                const playerDiv = document.createElement('div');
-                playerDiv.style.cssText = 'padding: 0.5rem; margin: 0.5rem 0; background: rgba(255,215,0,0.1); border-radius: 5px; display: flex; align-items: center;';
-                playerDiv.innerHTML = `
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
-                        ${player.avatar}
-                    </div>
-                    <div>
-                        <strong>${player.name}</strong>
-                        ${player.id === room.hostId ? ' <span style="color: #ffd700;">(Host)</span>' : ''}
-                    </div>
-                `;
-                playersList.appendChild(playerDiv);
-            });
-            
-            // Update settings display
-            const settingsDiv = document.getElementById('lobbySettings');
-            settingsDiv.innerHTML = `
-                <p><strong>Players:</strong> ${room.maxPlayers}</p>
-                <p><strong>Good Roles:</strong> Merlin${room.roles.percival ? ', Percival' : ''}</p>
-                <p><strong>Evil Roles:</strong> Assassin${room.roles.morgana ? ', Morgana' : ''}${room.roles.mordred ? ', Mordred' : ''}${room.roles.oberon ? ', Oberon' : ''}</p>
-                ${room.ladyOfLake ? '<p><strong>Special:</strong> Lady of the Lake enabled</p>' : ''}
-                ${room.chaosForMerlin ? '<p><strong>Special:</strong> Chaos for Merlin enabled</p>' : ''}
-            `;
-            
-            // Check if game started
-            if (room.status === 'playing') {
-                clearInterval(gameState.lobbyPolling);
-                gameState.lobbyPolling = null;
-                startActualGame();
-            }
-        }
-
-        // Leave lobby
-        function leaveLobby() {
-            if (gameState.lobbyPolling) {
-                clearInterval(gameState.lobbyPolling);
-                gameState.lobbyPolling = null;
-            }
-            
-            const room = gameState.currentRoom;
-            if (room) {
-                // Remove player from room
-                room.players = room.players.filter(p => p.id !== gameState.currentPlayer.id);
-                
-                // If host leaves, assign new host or delete room
-                if (gameState.isHost) {
-                    if (room.players.length > 0) {
-                        room.hostId = room.players[0].id;
-                        room.host = room.players[0].name;
-                    } else {
-                        delete gameRooms[room.code];
-                    }
-                } else {
-                    gameRooms[room.code] = room;
-                }
-                
-                localStorage.setItem('avalonRooms', JSON.stringify(gameRooms));
-            }
-            
-            gameState.currentRoom = null;
-            gameState.isHost = false;
-            
-            showSection('home');
-            showNotification('Left the lobby', 'info');
-        }
-
-        // Start game from lobby
-        function startGameFromLobby() {
-            if (!gameState.isHost) {
-                showNotification('Only the host can start the game!', 'error');
-                return;
-            }
-            
-            const room = gameState.currentRoom;
-            
-            if (room.players.length < room.maxPlayers) {
-                showNotification(`Need ${room.maxPlayers - room.players.length} more players to start!`, 'warning');
-                return;
-            }
-            
-            // Update room status
-            room.status = 'playing';
-            gameRooms[room.code] = room;
-            localStorage.setItem('avalonRooms', JSON.stringify(gameRooms));
-            
-            // Start the actual game
-            startActualGame();
-        }
-
-        // Start actual game with room configuration
-        function startActualGame() {
-            const room = gameState.currentRoom;
-            
-            showSection('game');
-            
-            // Clear lobby polling
-            if (gameState.lobbyPolling) {
-                clearInterval(gameState.lobbyPolling);
-                gameState.lobbyPolling = null;
-            }
-            
-            // Initialize game with room settings
-            gameState.players = room.players;
-            gameState.currentMission = 1;
-            gameState.missionResults = [];
-            gameState.selectedPlayers = [];
-            gameState.votes = [];
-            gameState.rejectedTeams = 0;
-            gameState.gamePhase = 'team_building';
-            gameState.chaosForMerlin = room.chaosForMerlin;
-            gameState.ladyOfLake = room.ladyOfLake;
-            
-            // Assign roles based on room configuration
-            assignRolesFromConfig(room);
-            
-            // Setup Lady of the Lake if enabled
-            if (room.ladyOfLake) {
-                const randomPlayer = Math.floor(Math.random() * gameState.players.length);
-                gameState.ladyOfLakeHolder = gameState.players[randomPlayer].id;
-                showNotification(`${gameState.players[randomPlayer].name} receives the Lady of the Lake token!`, 'info');
-            }
-            
-            // Position players on table
-            positionPlayers();
-            
-            // Show role to current player
-            showPlayerRole();
-            
-            // Start first round
-            startRound();
-        }
-
-        // Assign roles based on room configuration
-        function assignRolesFromConfig(room) {
-            const playerCount = room.players.length;
-            const evilCount = Math.floor(playerCount / 3 + 0.5);
-            const goodCount = playerCount - evilCount;
-            
-            // Build role pool
-            let goodRoles = ['Merlin'];
-            let evilRoles = ['Assassin'];
-            
-            if (room.roles.percival) goodRoles.push('Percival');
-            if (room.roles.morgana) evilRoles.push('Morgana');
-            if (room.roles.mordred) evilRoles.push('Mordred');
-            if (room.roles.oberon) evilRoles.push('Oberon');
-            
-            // Fill remaining slots with generic roles
-            while (goodRoles.length < goodCount) {
-                goodRoles.push('Loyal Servant');
-            }
-            while (evilRoles.length < evilCount) {
-                evilRoles.push('Minion');
-            }
-            
-            // Combine and shuffle
-            const allRoles = [...goodRoles, ...evilRoles];
-            const shuffled = allRoles.sort(() => Math.random() - 0.5);
-            
-            // Assign roles
-            gameState.playerRoles = {};
-            room.players.forEach((player, index) => {
-                gameState.playerRoles[player.id] = shuffled[index];
-            });
-            
-            // Handle Chaos for Merlin
-            if (room.chaosForMerlin) {
-                // Select a random good player (not Merlin) to appear as fake Oberon
-                const goodPlayers = room.players.filter(p => 
-                    ['Loyal Servant', 'Percival'].includes(gameState.playerRoles[p.id])
-                );
-                if (goodPlayers.length > 0) {
-                    const fakeOberon = goodPlayers[Math.floor(Math.random() * goodPlayers.length)];
-                    gameState.fakeOberon = fakeOberon.id;
-                }
-            }
-        }<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avalon - The Resistance</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            min-height: 100vh;
-            color: #fff;
-            overflow-x: hidden;
-        }
-
-        /* Animated Background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080"><defs><filter id="fog"><feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="2"/><feColorMatrix values="0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.2 0 0 0 0.3 0"/></filter></defs><rect width="100%" height="100%" filter="url(%23fog)" opacity="0.4"/></svg>') no-repeat center;
-            background-size: cover;
-            opacity: 0.3;
-            animation: float 20s infinite ease-in-out;
-            pointer-events: none;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.05); }
-        }
-
-        /* Navigation */
-        nav {
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
-        }
-
-        .logo {
-            font-size: 2rem;
-            font-weight: bold;
-            background: linear-gradient(45deg, #ffd700, #ff6b6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: #fff;
-            text-decoration: none;
-            transition: all 0.3s;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-links a::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.4), transparent);
-            transition: left 0.5s;
-        }
-
-        .nav-links a:hover::before {
-            left: 100%;
-        }
-
-        .nav-links a:hover {
-            color: #ffd700;
-            transform: translateY(-2px);
-        }
-
-        /* Login Form */
-        .login-container {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 3rem;
-            border-radius: 20px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
-            z-index: 2000;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -60%);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%);
-            }
-        }
-
-        .login-container h2 {
-            margin-bottom: 2rem;
-            text-align: center;
-            font-size: 2rem;
-            background: linear-gradient(45deg, #ffd700, #ff6b6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #ffd700;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 0.8rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 10px;
-            color: #fff;
-            transition: all 0.3s;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-        }
-
-        .btn {
-            background: linear-gradient(45deg, #ffd700, #ff6b6b);
-            color: #000;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            width: 100%;
-            font-size: 1.1rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .btn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
-        }
-
-        /* Main Container */
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 6rem 2rem 2rem;
-        }
-
-        /* Hero Section */
-        .hero {
-            text-align: center;
-            padding: 4rem 0;
-            position: relative;
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(45deg, #ffd700, #ff6b6b, #ffd700);
-            background-size: 200% 200%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradient 3s ease infinite;
-        }
-
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .hero p {
-            font-size: 1.3rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 2rem;
-        }
-
-        /* Game Room */
-        .game-room {
-            display: none;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 30px;
-            padding: 3rem;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .game-room::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
-            animation: rotate 20s linear infinite;
-        }
-
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .game-table {
-            position: relative;
-            width: 600px;
-            height: 600px;
-            margin: 0 auto;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255, 215, 0, 0.1), rgba(0, 0, 0, 0.5));
-            border: 3px solid rgba(255, 215, 0, 0.5);
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 50px rgba(255, 215, 0, 0.1);
-        }
-
-        .player-slot {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-            border: 2px solid rgba(255, 215, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            overflow: hidden;
-        }
-
-        .player-slot::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: radial-gradient(circle, rgba(255, 215, 0, 0.5), transparent);
-            transform: translate(-50%, -50%);
-            transition: width 0.3s, height 0.3s;
-        }
-
-        .player-slot:hover::before {
-            width: 100px;
-            height: 100px;
-        }
-
-        .player-slot:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
-            border-color: #ffd700;
-        }
-
-        .player-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 1.5rem;
-        }
-
-        .player-name {
-            position: absolute;
-            bottom: -25px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.9rem;
-            white-space: nowrap;
-            color: #ffd700;
-            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-        }
-
-        /* Mission Tokens */
-        .mission-track {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-
-        .mission-token {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .mission-token.success {
-            background: linear-gradient(135deg, #00b894, #00cec9);
-            border-color: #00b894;
-            animation: pulse 2s infinite;
-        }
-
-        .mission-token.fail {
-            background: linear-gradient(135deg, #d63031, #74b9ff);
-            border-color: #d63031;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
-        }
-
-        /* Roles Section */
-        .roles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            margin: 3rem 0;
-        }
-
-        .role-card {
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 15px;
-            padding: 2rem;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .role-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, transparent, rgba(255, 215, 0, 0.1));
-            transform: translateX(-100%);
-            transition: transform 0.5s;
-        }
-
-        .role-card:hover::before {
-            transform: translateX(0);
-        }
-
-        .role-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(255, 215, 0, 0.3);
-            border-color: #ffd700;
-        }
-
-        .role-card h3 {
-            color: #ffd700;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-        }
-
-        .role-card.evil h3 {
-            color: #ff6b6b;
-        }
-
-        .role-card p {
-            color: rgba(255, 255, 255, 0.9);
-            line-height: 1.6;
-        }
-
-        /* Game Controls */
-        .game-controls {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 2rem 0;
-            flex-wrap: wrap;
-        }
-
-        .control-btn {
-            padding: 1rem 2rem;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            border: none;
-            border-radius: 10px;
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .control-btn::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.5s, height 0.5s;
-        }
-
-        .control-btn:hover::after {
-            width: 200px;
-            height: 200px;
-        }
-
-        .control-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
-        }
-
-        /* Stats Dashboard */
-        .stats-dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
-        }
-
-        .stat-card {
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 15px;
-            padding: 1.5rem;
-            text-align: center;
-            border: 2px solid rgba(255, 215, 0, 0.2);
-            transition: all 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            border-color: #ffd700;
-            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            background: linear-gradient(45deg, #ffd700, #ff6b6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .stat-label {
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: 0.5rem;
-        }
-
-        /* Chat Box */
-        .chat-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 350px;
-            background: rgba(0, 0, 0, 0.9);
-            border-radius: 15px;
-            overflow: hidden;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s;
-        }
-
-        .chat-header {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            padding: 1rem;
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .chat-messages {
-            height: 300px;
-            overflow-y: auto;
-            padding: 1rem;
-            display: none;
-        }
-
-        .chat-message {
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .chat-input {
-            display: none;
-            padding: 1rem;
-            border-top: 1px solid rgba(255, 215, 0, 0.2);
-        }
-
-        .chat-input input {
-            width: 100%;
-            padding: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            border-radius: 5px;
-            color: #fff;
-        }
-
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 3000;
-            animation: fadeIn 0.3s;
-        }
-
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: 3rem;
-            border-radius: 20px;
-            max-width: 600px;
-            width: 90%;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 2rem;
-            cursor: pointer;
-            color: #ffd700;
-            transition: transform 0.3s;
-        }
-
-        .close-modal:hover {
-            transform: rotate(90deg);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .game-table {
-                width: 400px;
-                height: 400px;
-            }
-            
-            .player-slot {
-                width: 60px;
-                height: 60px;
-            }
-            
-            .chat-container {
-                width: 280px;
-            }
-        }
-
-        /* Loading Animation */
-        .loader {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-
-        .loader div {
-            width: 20px;
-            height: 20px;
-            background: #ffd700;
-            border-radius: 50%;
-            display: inline-block;
-            margin: 0 5px;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-
-        .loader div:nth-child(1) { animation-delay: -0.32s; }
-        .loader div:nth-child(2) { animation-delay: -0.16s; }
-        .loader div:nth-child(3) { animation-delay: 0; }
-
-        @keyframes bounce {
-            0%, 80%, 100% {
-                transform: scale(0);
-            } 40% {
-                transform: scale(1);
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/game.css">
 </head>
 <body>
     <!-- Navigation -->
-    <nav>
-        <div class="logo">⚔️ AVALON</div>
-        <ul class="nav-links">
-            <li><a href="#" onclick="showSection('home')">Home</a></li>
-            <li><a href="#" onclick="showSection('rules')">Rules</a></li>
-            <li><a href="#" onclick="showSection('roles')">Roles</a></li>
-            <li><a href="#" onclick="showSection('game')">Play</a></li>
-            <li><a href="#" onclick="showSection('stats')">Stats</a></li>
-            <li><a href="#" onclick="toggleLogin()" id="loginBtn">Login</a></li>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="brand-icon">⚔️</span>
+            <span class="brand-text">AVALON</span>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="#" class="nav-link" data-section="home">Home</a></li>
+            <li><a href="#" class="nav-link" data-section="rules">Rules</a></li>
+            <li><a href="#" class="nav-link" data-section="roles">Roles</a></li>
+            <li><a href="#" class="nav-link" data-section="stats">Stats</a></li>
+            <li><a href="#" class="nav-link" id="authBtn">Login</a></li>
         </ul>
     </nav>
 
-    <!-- Login Form -->
-    <div class="login-container" id="loginForm">
-        <h2 id="authTitle">Join the Quest</h2>
-        <form onsubmit="handleAuth(event)" id="authForm">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" required minlength="3" maxlength="20">
-            </div>
-            <div class="form-group" id="emailGroup" style="display: none;">
-                <label for="email">Email</label>
-                <input type="email" id="email">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" required minlength="6">
-            </div>
-            <div class="form-group" id="confirmPasswordGroup" style="display: none;">
-                <label for="confirmPassword">Confirm Password</label>
-                <input type="password" id="confirmPassword" minlength="6">
-            </div>
-            <button type="submit" class="btn" id="authSubmitBtn">Enter Avalon</button>
-            <div style="text-align: center; margin-top: 1.5rem;">
-                <a href="#" onclick="toggleAuthMode()" style="color: #ffd700; text-decoration: none;" id="authToggleLink">
-                    New to Avalon? Create an account
-                </a>
-            </div>
-        </form>
-    </div>
-
-    <!-- Main Container -->
-    <div class="container">
-        <!-- Hero Section -->
-        <div id="home" class="section">
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Home Section -->
+        <section id="home" class="section active">
             <div class="hero">
-                <h1>The Resistance: Avalon</h1>
-                <p>A game of hidden identities, deduction, and betrayal</p>
-                <div class="game-controls" style="margin-top: 2rem;">
-                    <button class="btn" onclick="showCreateRoom()">Create Game Room</button>
-                    <button class="btn" onclick="showJoinRoom()">Join Game Room</button>
+                <h1 class="hero-title">The Resistance: Avalon</h1>
+                <p class="hero-subtitle">A game of hidden identities, deduction, and betrayal</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" id="createRoomBtn">Create Game Room</button>
+                    <button class="btn btn-secondary" id="joinRoomBtn">Join Game Room</button>
                 </div>
             </div>
-        </div>
-
-        <!-- Room Creation -->
-        <div id="roomCreation" class="section" style="display: none;">
-            <div class="game-room">
-                <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">Create Game Room</h2>
-                
-                <!-- Preset Configurations -->
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: #ffd700; margin-bottom: 1rem;">Quick Setup</h3>
-                    <div class="game-controls">
-                        <button class="control-btn" onclick="loadPreset('classic10')">Classic 10 Player</button>
-                        <button class="control-btn" onclick="loadPreset('classic10Lady')">Classic 10 + Lady</button>
-                        <button class="control-btn" onclick="loadPreset('chaos10')">Chaos for Merlin</button>
-                        <button class="control-btn" onclick="loadPreset('chaos10Lady')">Chaos + Lady</button>
-                        <button class="control-btn" onclick="loadPreset('custom')">Custom Setup</button>
-                    </div>
-                </div>
-
-                <!-- Room Settings -->
-                <div class="room-settings" style="background: rgba(0,0,0,0.5); padding: 2rem; border-radius: 15px; margin-bottom: 2rem;">
-                    <h3 style="color: #ffd700; margin-bottom: 1.5rem;">Room Settings</h3>
-                    
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label for="playerCount" style="color: #ffd700; display: block; margin-bottom: 0.5rem;">
-                            Number of Players: <span id="playerCountDisplay">5</span>
-                        </label>
-                        <input type="range" id="playerCount" min="5" max="10" value="5" 
-                               onchange="updatePlayerCount()" style="width: 100%;">
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-                        <h4 style="color: #00b894; grid-column: 1;">Good Roles</h4>
-                        <h4 style="color: #ff6b6b; grid-column: 2;">Evil Roles</h4>
-                        
-                        <div>
-                            <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                                <input type="checkbox" id="roleMerlin" checked disabled> Merlin (Required)
-                            </label>
-                            <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                                <input type="checkbox" id="rolePercival"> Percival
-                            </label>
-                        </div>
-                        
-                        <div>
-                            <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                                <input type="checkbox" id="roleAssassin" checked disabled> Assassin (Required)
-                            </label>
-                            <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                                <input type="checkbox" id="roleMorgana"> Morgana
-                            </label>
-                            <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                                <input type="checkbox" id="roleMordred"> Mordred
-                            </label>
-                            <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                                <input type="checkbox" id="roleOberon"> Oberon
-                            </label>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 1.5rem;">
-                        <h4 style="color: #ffd700; margin-bottom: 0.5rem;">Special Options</h4>
-                        <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                            <input type="checkbox" id="ladyOfLake"> Enable Lady of the Lake
-                        </label>
-                        <label style="color: #fff; display: block; margin: 0.5rem 0;">
-                            <input type="checkbox" id="chaosMode"> Chaos for Merlin (Fake Oberon)
-                        </label>
-                    </div>
-
-                    <div id="roleBalance" style="padding: 1rem; background: rgba(255,215,0,0.1); border-radius: 10px; margin-bottom: 1.5rem;">
-                        <p style="color: #ffd700;">Role Distribution:</p>
-                        <p id="goodCount" style="color: #00b894;">Good: 3 players</p>
-                        <p id="evilCount" style="color: #ff6b6b;">Evil: 2 players</p>
-                    </div>
-
-                    <button class="btn" onclick="createRoom()">Create Room</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Join Room -->
-        <div id="joinRoom" class="section" style="display: none;">
-            <div class="game-room">
-                <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">Join Game Room</h2>
-                
-                <div style="background: rgba(0,0,0,0.5); padding: 2rem; border-radius: 15px;">
-                    <div class="form-group">
-                        <label for="roomCode" style="color: #ffd700;">Enter Room Code</label>
-                        <input type="text" id="roomCode" placeholder="e.g., ABC123" 
-                               style="width: 100%; padding: 1rem; background: rgba(255,255,255,0.1); 
-                                      border: 2px solid rgba(255,215,0,0.3); border-radius: 10px; 
-                                      color: #fff; font-size: 1.5rem; text-align: center; 
-                                      text-transform: uppercase;">
-                    </div>
-                    <button class="btn" onclick="joinRoomByCode()">Join Room</button>
-                </div>
-
-                <div style="margin-top: 2rem;">
-                    <h3 style="color: #ffd700; margin-bottom: 1rem;">Active Rooms</h3>
-                    <div id="activeRoomsList" style="display: grid; gap: 1rem;">
-                        <!-- Rooms will be listed here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Game Lobby -->
-        <div id="gameLobby" class="section" style="display: none;">
-            <div class="game-room">
-                <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">
-                    Game Lobby - Room Code: <span id="lobbyRoomCode" style="font-family: monospace; background: rgba(255,215,0,0.2); padding: 0.5rem; border-radius: 5px;"></span>
-                </h2>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    <!-- Players List -->
-                    <div style="background: rgba(0,0,0,0.5); padding: 1.5rem; border-radius: 15px;">
-                        <h3 style="color: #ffd700; margin-bottom: 1rem;">Players (<span id="playerCountLobby">0</span>/<span id="maxPlayersLobby">5</span>)</h3>
-                        <div id="lobbyPlayersList">
-                            <!-- Players will be listed here -->
-                        </div>
-                    </div>
-                    
-                    <!-- Game Settings Display -->
-                    <div style="background: rgba(0,0,0,0.5); padding: 1.5rem; border-radius: 15px;">
-                        <h3 style="color: #ffd700; margin-bottom: 1rem;">Game Settings</h3>
-                        <div id="lobbySettings">
-                            <!-- Settings will be displayed here -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="game-controls" style="margin-top: 2rem;">
-                    <button class="control-btn" id="startGameBtn" onclick="startGameFromLobby()" style="display: none;">Start Game</button>
-                    <button class="control-btn" onclick="leaveLobby()">Leave Lobby</button>
-                </div>
-                
-                <div id="waitingMessage" style="text-align: center; margin-top: 2rem; color: #ffd700;">
-                    Waiting for host to start the game...
-                </div>
-            </div>
-        </div>
-
-        <!-- Game Room -->
-        <div id="game" class="section game-room">
-            <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">Quest in Progress</h2>
-            
-            <!-- Mission Track -->
-            <div class="mission-track">
-                <div class="mission-token" id="mission1">1</div>
-                <div class="mission-token" id="mission2">2</div>
-                <div class="mission-token" id="mission3">3</div>
-                <div class="mission-token" id="mission4">4</div>
-                <div class="mission-token" id="mission5">5</div>
-            </div>
-
-            <!-- Game Table -->
-            <div class="game-table" id="gameTable">
-                <!-- Players will be positioned dynamically -->
-            </div>
-
-            <!-- Game Controls -->
-            <div class="game-controls">
-                <button class="control-btn" onclick="proposeTeam()">Propose Team</button>
-                <button class="control-btn" onclick="voteTeam()">Vote</button>
-                <button class="control-btn" onclick="executeMission()">Execute Mission</button>
-                <button class="control-btn" onclick="revealRole()">Reveal Role</button>
-            </div>
-        </div>
+        </section>
 
         <!-- Rules Section -->
-        <div id="rules" class="section" style="display: none;">
-            <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">Game Rules</h2>
-            <div class="roles-grid">
-                <div class="role-card">
-                    <h3>Objective</h3>
-                    <p>Good must succeed in three quests, while Evil must fail three quests. Evil can also win if they assassinate Merlin at the end.</p>
-                </div>
-                <div class="role-card">
-                    <h3>Team Building</h3>
-                    <p>The leader proposes a team for the quest. All players vote to approve or reject. Five rejections in a row = Evil wins.</p>
-                </div>
-                <div class="role-card">
-                    <h3>Quest Phase</h3>
-                    <p>Team members secretly choose Success or Fail. Good must choose Success. Evil can choose either. One Fail card fails the mission (two required on 4th mission with 7+ players).</p>
-                </div>
-                <div class="role-card">
-                    <h3>Victory</h3>
-                    <p>First faction to win three quests wins. If Good wins, Evil can still win by correctly identifying Merlin.</p>
+        <section id="rules" class="section">
+            <div class="container">
+                <h2 class="section-title">Game Rules</h2>
+                <div class="rules-grid">
+                    <div class="rule-card">
+                        <h3>Objective</h3>
+                        <p>Good must succeed in three quests, while Evil must fail three quests. Evil can also win if they assassinate Merlin at the end.</p>
+                    </div>
+                    <div class="rule-card">
+                        <h3>Team Building</h3>
+                        <p>The leader proposes a team for the quest. All players vote to approve or reject. Five rejections in a row = Evil wins.</p>
+                    </div>
+                    <div class="rule-card">
+                        <h3>Quest Phase</h3>
+                        <p>Team members secretly choose Success or Fail. Good must choose Success. Evil can choose either. One Fail card fails the mission (two required on 4th mission with 7+ players).</p>
+                    </div>
+                    <div class="rule-card">
+                        <h3>Victory</h3>
+                        <p>First faction to win three quests wins. If Good wins, Evil can still win by correctly identifying Merlin.</p>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Roles Section -->
-        <div id="roles" class="section" style="display: none;">
-            <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">Character Roles</h2>
-            <div class="roles-grid">
-                <div class="role-card">
-                    <h3>Merlin</h3>
-                    <p>Knows who the Evil players are (except Mordred). Must remain hidden from the Assassin.</p>
-                </div>
-                <div class="role-card">
-                    <h3>Percival</h3>
-                    <p>Knows who Merlin is (also sees Morgana as Merlin). Helps protect Merlin's identity.</p>
-                </div>
-                <div class="role-card">
-                    <h3>Loyal Servants</h3>
-                    <p>Good players with no special knowledge. Must deduce who to trust.</p>
-                </div>
-                <div class="role-card evil">
-                    <h3>Assassin</h3>
-                    <p>Evil player who can win the game by correctly identifying Merlin if Good succeeds in three quests.</p>
-                </div>
-                <div class="role-card evil">
-                    <h3>Morgana</h3>
-                    <p>Appears as Merlin to Percival. Creates confusion about Merlin's true identity.</p>
-                </div>
-                <div class="role-card evil">
-                    <h3>Mordred</h3>
-                    <p>Evil player invisible to Merlin. Can infiltrate Good's plans more easily.</p>
-                </div>
-                <div class="role-card evil">
-                    <h3>Oberon</h3>
-                    <p>Evil player who doesn't know other Evil players and they don't know him. A wildcard.</p>
-                </div>
-                <div class="role-card evil">
-                    <h3>Minions</h3>
-                    <p>Regular Evil players. Know each other (except Oberon) and work together to fail quests.</p>
+        <section id="roles" class="section">
+            <div class="container">
+                <h2 class="section-title">Character Roles</h2>
+                <div class="roles-grid">
+                    <div class="role-card good">
+                        <h3>Merlin</h3>
+                        <p>Knows who the Evil players are (except Mordred). Must remain hidden from the Assassin.</p>
+                    </div>
+                    <div class="role-card good">
+                        <h3>Percival</h3>
+                        <p>Knows who Merlin is (also sees Morgana as Merlin). Helps protect Merlin's identity.</p>
+                    </div>
+                    <div class="role-card good">
+                        <h3>Loyal Servants</h3>
+                        <p>Good players with no special knowledge. Must deduce who to trust.</p>
+                    </div>
+                    <div class="role-card evil">
+                        <h3>Assassin</h3>
+                        <p>Evil player who can win the game by correctly identifying Merlin if Good succeeds in three quests.</p>
+                    </div>
+                    <div class="role-card evil">
+                        <h3>Morgana</h3>
+                        <p>Appears as Merlin to Percival. Creates confusion about Merlin's true identity.</p>
+                    </div>
+                    <div class="role-card evil">
+                        <h3>Mordred</h3>
+                        <p>Evil player invisible to Merlin. Can infiltrate Good's plans more easily.</p>
+                    </div>
+                    <div class="role-card evil">
+                        <h3>Oberon</h3>
+                        <p>Evil player who doesn't know other Evil players and they don't know him. A wildcard.</p>
+                    </div>
+                    <div class="role-card evil">
+                        <h3>Minions</h3>
+                        <p>Regular Evil players. Know each other (except Oberon) and work together to fail quests.</p>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Stats Section -->
-        <div id="stats" class="section" style="display: none;">
-            <h2 style="text-align: center; margin-bottom: 2rem; color: #ffd700;">Your Statistics</h2>
-            <div class="stats-dashboard">
-                <div class="stat-card">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Games Played</div>
+        <section id="stats" class="section">
+            <div class="container">
+                <h2 class="section-title">Your Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="gamesPlayed">0</div>
+                        <div class="stat-label">Games Played</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="winRate">0%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="questsSucceeded">0</div>
+                        <div class="stat-label">Quests Succeeded</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="timesAsMerlin">0</div>
+                        <div class="stat-label">Times as Merlin</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="successfulAssassinations">0</div>
+                        <div class="stat-label">Successful Assassinations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="perfectDeductions">0</div>
+                        <div class="stat-label">Perfect Deductions</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">0%</div>
-                    <div class="stat-label">Win Rate</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="authTitle">Join the Quest</h2>
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required minlength="3" maxlength="20">
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Quests Succeeded</div>
+                <div class="form-group" id="emailGroup" style="display: none;">
+                    <label for="email">Email</label>
+                    <input type="email" id="email">
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Times as Merlin</div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required minlength="6">
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Successful Assassinations</div>
+                <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" minlength="6">
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Perfect Deductions</div>
+                <button type="submit" class="btn btn-primary" id="authSubmitBtn">Enter Avalon</button>
+                <div class="auth-toggle">
+                    <a href="#" id="authToggleLink">New to Avalon? Create an account</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Room Creation Modal -->
+    <div id="roomModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Create Game Room</h2>
+            <div id="roomCreationContent"></div>
+        </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div id="joinModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Join Game Room</h2>
+            <div class="form-group">
+                <label for="roomCode">Enter Room Code</label>
+                <input type="text" id="roomCode" placeholder="e.g., ABC123" maxlength="6">
+            </div>
+            <button class="btn btn-primary" id="joinRoomSubmitBtn">Join Room</button>
+            <div class="active-rooms">
+                <h3>Active Rooms</h3>
+                <div id="activeRoomsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Lobby -->
+    <div id="gameLobby" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Game Lobby - Room: <span id="lobbyRoomCode"></span></h2>
+            <div class="lobby-content">
+                <div class="lobby-players">
+                    <h3>Players (<span id="playerCountLobby">0</span>/<span id="maxPlayersLobby">5</span>)</h3>
+                    <div id="lobbyPlayersList"></div>
+                </div>
+                <div class="lobby-settings">
+                    <h3>Game Settings</h3>
+                    <div id="lobbySettings"></div>
+                </div>
+            </div>
+            <div class="lobby-actions">
+                <button class="btn btn-primary" id="startGameBtn" style="display: none;">Start Game</button>
+                <button class="btn btn-secondary" id="leaveLobbyBtn">Leave Lobby</button>
+            </div>
+            <div id="waitingMessage" class="waiting-message">
+                Waiting for host to start the game...
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Interface -->
+    <div id="gameInterface" class="modal">
+        <div class="modal-content fullscreen">
+            <div class="game-header">
+                <h2>Quest in Progress</h2>
+                <button class="btn btn-secondary" id="leaveGameBtn">Leave Game</button>
+            </div>
+            <div class="game-content">
+                <div class="mission-track">
+                    <div class="mission-token" id="mission1">1</div>
+                    <div class="mission-token" id="mission2">2</div>
+                    <div class="mission-token" id="mission3">3</div>
+                    <div class="mission-token" id="mission4">4</div>
+                    <div class="mission-token" id="mission5">5</div>
+                </div>
+                <div class="game-table" id="gameTable"></div>
+                <div class="game-controls">
+                    <button class="btn btn-primary" id="proposeTeamBtn">Propose Team</button>
+                    <button class="btn btn-primary" id="voteTeamBtn">Vote</button>
+                    <button class="btn btn-primary" id="executeMissionBtn">Execute Mission</button>
+                    <button class="btn btn-secondary" id="revealRoleBtn">Reveal Role</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Chat Container -->
-    <div class="chat-container">
-        <div class="chat-header" onclick="toggleChat()">
-            💬 Game Chat
-        </div>
-        <div class="chat-messages" id="chatMessages"></div>
-        <div class="chat-input">
-            <input type="text" placeholder="Type a message..." onkeypress="sendMessage(event)">
-        </div>
-    </div>
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
 
-    <!-- Modal -->
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <div id="modalContent"></div>
-        </div>
-    </div>
-
-    <!-- Loading Animation -->
-    <div class="loader" id="loader">
-        <div></div>
-        <div></div>
-        <div></div>
-    </div>
-
-    <script>
-        // Game State
-        let gameState = {
-            players: [],
-            currentPlayer: null,
-            isLoggedIn: false,
-            currentMission: 1,
-            missionResults: [],
-            selectedPlayers: [],
-            votes: [],
-            roles: ['Merlin', 'Percival', 'Morgana', 'Assassin', 'Mordred', 'Oberon', 'Loyal Servant', 'Minion'],
-            playerRoles: {},
-            teamSize: {
-                5: [2, 3, 2, 3, 3],
-                6: [2, 3, 4, 3, 4],
-                7: [2, 3, 3, 4, 4],
-                8: [3, 4, 4, 5, 5],
-                9: [3, 4, 4, 5, 5],
-                10: [3, 4, 4, 5, 5]
-            },
-            failsRequired: {
-                5: [1, 1, 1, 1, 1],
-                6: [1, 1, 1, 1, 1],
-                7: [1, 1, 1, 2, 1],
-                8: [1, 1, 1, 2, 1],
-                9: [1, 1, 1, 2, 1],
-                10: [1, 1, 1, 2, 1]
-            },
-            currentLeader: 0,
-            rejectedTeams: 0,
-            gamePhase: 'waiting', // waiting, team_building, voting, mission, game_over
-            stats: {
-                gamesPlayed: 0,
-                wins: 0,
-                questsSucceeded: 0,
-                timesAsMerlin: 0,
-                successfulAssassinations: 0,
-                perfectDeductions: 0
-            },
-            isRegistering: false,
-            currentRoom: null,
-            isHost: false,
-            ladyOfLake: null,
-            ladyOfLakeHolder: null,
-            chaosForMerlin: false,
-            fakeOberon: null
-        };
-
-        // User database (stored in localStorage)
-        let userDatabase = JSON.parse(localStorage.getItem('avalonUsers')) || {};
-        
-        // Game rooms database
-        let gameRooms = JSON.parse(localStorage.getItem('avalonRooms')) || {};
-        
-        // Predefined game setups
-        const presetConfigs = {
-            'classic10': {
-                name: 'Classic 10 player',
-                playerCount: 10,
-                roles: {
-                    merlin: true,
-                    percival: true,
-                    morgana: true,
-                    assassin: true,
-                    mordred: true,
-                    oberon: true,
-                    loyalServants: 4,
-                    minions: 0
-                },
-                ladyOfLake: false,
-                chaosForMerlin: false
-            },
-            'classic10Lady': {
-                name: 'Classic 10 player & Lady of the Lake',
-                playerCount: 10,
-                roles: {
-                    merlin: true,
-                    percival: true,
-                    morgana: true,
-                    assassin: true,
-                    mordred: true,
-                    oberon: true,
-                    loyalServants: 4,
-                    minions: 0
-                },
-                ladyOfLake: true,
-                chaosForMerlin: false
-            },
-            'chaos10': {
-                name: 'Chaos for Merlin - 10 player',
-                playerCount: 10,
-                roles: {
-                    merlin: true,
-                    percival: true,
-                    morgana: true,
-                    assassin: true,
-                    mordred: true,
-                    oberon: true,
-                    loyalServants: 4,
-                    minions: 0
-                },
-                ladyOfLake: false,
-                chaosForMerlin: true
-            },
-            'chaos10Lady': {
-                name: 'Chaos for Merlin - 10 player & Lady of the Lake',
-                playerCount: 10,
-                roles: {
-                    merlin: true,
-                    percival: true,
-                    morgana: true,
-                    assassin: true,
-                    mordred: true,
-                    oberon: true,
-                    loyalServants: 4,
-                    minions: 0
-                },
-                ladyOfLake: true,
-                chaosForMerlin: true
-            },
-            'custom': {
-                name: 'Custom Setup',
-                playerCount: 5,
-                roles: {
-                    merlin: true,
-                    percival: false,
-                    morgana: false,
-                    assassin: true,
-                    mordred: false,
-                    oberon: false,
-                    loyalServants: 2,
-                    minions: 1
-                },
-                ladyOfLake: false,
-                chaosForMerlin: false
-            }
-        };
-
-        // Initialize game
-        function init() {
-            loadStats();
-            setupEventListeners();
-            createPlayerSlots();
-        }
-
-        // Setup event listeners
-        function setupEventListeners() {
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('player-slot')) {
-                    selectPlayer(e.target);
-                }
-            });
-        }
-
-        // Show/hide sections
-        function showSection(section) {
-            const sections = document.querySelectorAll('.section');
-            sections.forEach(s => s.style.display = 'none');
-            
-            const targetSection = document.getElementById(section);
-            if (targetSection) {
-                targetSection.style.display = section === 'game' ? 'block' : 'block';
-                if (section === 'game' && targetSection.classList.contains('game-room')) {
-                    targetSection.style.display = 'block';
-                }
-            }
-        }
-
-        // Toggle login form
-        function toggleLogin() {
-            const loginForm = document.getElementById('loginForm');
-            if (gameState.isLoggedIn) {
-                logout();
-            } else {
-                loginForm.style.display = loginForm.style.display === 'block' ? 'none' : 'block';
-            }
-        }
-
-        // Toggle between login and registration
-        function toggleAuthMode() {
-            gameState.isRegistering = !gameState.isRegistering;
-            
-            const title = document.getElementById('authTitle');
-            const submitBtn = document.getElementById('authSubmitBtn');
-            const toggleLink = document.getElementById('authToggleLink');
-            const emailGroup = document.getElementById('emailGroup');
-            const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
-            
-            if (gameState.isRegistering) {
-                title.textContent = 'Create Your Legend';
-                submitBtn.textContent = 'Join the Realm';
-                toggleLink.textContent = 'Already have an account? Sign in';
-                emailGroup.style.display = 'block';
-                confirmPasswordGroup.style.display = 'block';
-                document.getElementById('email').required = true;
-                document.getElementById('confirmPassword').required = true;
-            } else {
-                title.textContent = 'Join the Quest';
-                submitBtn.textContent = 'Enter Avalon';
-                toggleLink.textContent = 'New to Avalon? Create an account';
-                emailGroup.style.display = 'none';
-                confirmPasswordGroup.style.display = 'none';
-                document.getElementById('email').required = false;
-                document.getElementById('confirmPassword').required = false;
-            }
-        }
-
-        // Handle authentication (login or register)
-        function handleAuth(event) {
-            event.preventDefault();
-            
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const email = document.getElementById('email').value.trim();
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (gameState.isRegistering) {
-                // Registration
-                if (password !== confirmPassword) {
-                    showNotification('Passwords do not match!', 'error');
-                    return;
-                }
-                
-                if (userDatabase[username]) {
-                    showNotification('Username already exists! Please choose another.', 'error');
-                    return;
-                }
-                
-                // Create new user
-                const newUser = {
-                    username: username,
-                    password: btoa(password), // Simple encoding (use proper hashing in production)
-                    email: email,
-                    id: Math.random().toString(36).substr(2, 9),
-                    avatar: username.charAt(0).toUpperCase(),
-                    joinDate: new Date().toISOString(),
-                    stats: {
-                        gamesPlayed: 0,
-                        wins: 0,
-                        questsSucceeded: 0,
-                        timesAsMerlin: 0,
-                        successfulAssassinations: 0,
-                        perfectDeductions: 0,
-                        favoriteRole: null,
-                        winStreak: 0,
-                        bestWinStreak: 0,
-                        totalPlayTime: 0,
-                        achievements: []
-                    }
-                };
-                
-                userDatabase[username] = newUser;
-                localStorage.setItem('avalonUsers', JSON.stringify(userDatabase));
-                
-                // Auto-login after registration
-                loginUser(newUser);
-                showNotification(`Welcome to Avalon, ${username}! Your account has been created.`, 'success');
-                
-                // Show welcome modal for new users
-                showWelcomeModal();
-                
-            } else {
-                // Login
-                const user = userDatabase[username];
-                
-                if (!user) {
-                    showNotification('Username not found. Please register first.', 'error');
-                    return;
-                }
-                
-                if (atob(user.password) !== password) {
-                    showNotification('Incorrect password!', 'error');
-                    return;
-                }
-                
-                loginUser(user);
-                showNotification(`Welcome back, ${username}!`, 'success');
-            }
-        }
-
-        // Login user
-        function loginUser(user) {
-            gameState.currentPlayer = {
-                name: user.username,
-                id: user.id,
-                avatar: user.avatar,
-                email: user.email
-            };
-            gameState.isLoggedIn = true;
-            gameState.stats = user.stats;
-            
-            document.getElementById('loginBtn').textContent = 'Logout (' + user.username + ')';
-            document.getElementById('loginForm').style.display = 'none';
-            
-            // Clear form
-            document.getElementById('authForm').reset();
-            
-            // Update stats display
-            updateStatsDisplay();
-            
-            // Update last login
-            user.lastLogin = new Date().toISOString();
-            userDatabase[user.username] = user;
-            localStorage.setItem('avalonUsers', JSON.stringify(userDatabase));
-        }
-
-        // Show welcome modal for new users
-        function showWelcomeModal() {
-            const modalContent = `
-                <h2 style="color: #ffd700;">Welcome to Avalon!</h2>
-                <div style="margin: 2rem 0; line-height: 1.8;">
-                    <p>You've successfully joined the realm of Avalon! Here's what you can do:</p>
-                    <ul style="margin: 1rem 0; padding-left: 1.5rem;">
-                        <li>🎮 Play games with other knights</li>
-                        <li>📊 Track your statistics and achievements</li>
-                        <li>🏆 Climb the rankings</li>
-                        <li>🎭 Master different roles</li>
-                        <li>💬 Chat with other players</li>
-                    </ul>
-                    <p style="margin-top: 1.5rem;">Your first quest awaits! Click "Start New Quest" to begin your journey.</p>
-                </div>
-                <button class="btn" onclick="closeModal()">Begin Adventure</button>
-            `;
-            showModal(modalContent);
-        }
-
-        // Enhanced notification with types
-        function showNotification(message, type = 'info') {
-            const colors = {
-                'success': '#00b894',
-                'error': '#d63031',
-                'warning': '#fdcb6e',
-                'info': '#ffd700'
-            };
-            
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 100px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
-                color: ${colors[type]};
-                padding: 1rem 2rem;
-                border-radius: 10px;
-                border: 2px solid ${colors[type]};
-                z-index: 5000;
-                animation: slideDown 0.5s ease-out;
-                max-width: 400px;
-                text-align: center;
-            `;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'fadeOut 0.5s ease-out';
-                setTimeout(() => notification.remove(), 500);
-            }, 4000);
-        }
-
-        // Handle login (deprecated - now uses handleAuth)
-        function handleLogin(event) {
-            handleAuth(event);
-        }
-
-        // Logout
-        function logout() {
-            // Save current stats before logout
-            if (gameState.currentPlayer) {
-                const user = userDatabase[gameState.currentPlayer.name];
-                if (user) {
-                    user.stats = gameState.stats;
-                    localStorage.setItem('avalonUsers', JSON.stringify(userDatabase));
-                }
-            }
-            
-            gameState.isLoggedIn = false;
-            gameState.currentPlayer = null;
-            gameState.isRegistering = false;
-            document.getElementById('loginBtn').textContent = 'Login';
-            
-            // Reset auth form to login mode
-            if (gameState.isRegistering) {
-                toggleAuthMode();
-            }
-            
-            showNotification('You have been logged out.', 'info');
-            showSection('home');
-        }
-
-        // Start new game
-        function startNewGame() {
-            if (!gameState.isLoggedIn) {
-                showNotification('Please login to start a game!');
-                toggleLogin();
-                return;
-            }
-            
-            showSection('game');
-            initializeGame();
-        }
-
-        // Initialize game
-        function initializeGame() {
-            // Reset game state
-            gameState.currentMission = 1;
-            gameState.missionResults = [];
-            gameState.selectedPlayers = [];
-            gameState.votes = [];
-            gameState.rejectedTeams = 0;
-            gameState.gamePhase = 'team_building';
-            
-            // Add sample players (in real app, these would be real players)
-            gameState.players = [
-                gameState.currentPlayer,
-                { name: 'Arthur', id: '1', avatar: 'A' },
-                { name: 'Lancelot', id: '2', avatar: 'L' },
-                { name: 'Guinevere', id: '3', avatar: 'G' },
-                { name: 'Morgan', id: '4', avatar: 'M' }
-            ];
-            
-            // Assign roles
-            assignRoles();
-            
-            // Position players on table
-            positionPlayers();
-            
-            // Show role to current player
-            showPlayerRole();
-            
-            // Start first round
-            startRound();
-        }
-
-        // Create player slots on the table
-        function createPlayerSlots() {
-            const table = document.getElementById('gameTable');
-            if (!table) return;
-            
-            // Clear existing slots
-            table.innerHTML = '';
-            
-            // Create center display
-            const centerDisplay = document.createElement('div');
-            centerDisplay.style.position = 'absolute';
-            centerDisplay.style.top = '50%';
-            centerDisplay.style.left = '50%';
-            centerDisplay.style.transform = 'translate(-50%, -50%)';
-            centerDisplay.style.textAlign = 'center';
-            centerDisplay.innerHTML = `
-                <div style="font-size: 1.2rem; color: #ffd700; margin-bottom: 1rem;">Current Mission</div>
-                <div style="font-size: 2rem; font-weight: bold;" id="missionNumber">1</div>
-                <div style="margin-top: 1rem; color: rgba(255,255,255,0.7);" id="teamSizeDisplay">Team Size: 2</div>
-            `;
-            table.appendChild(centerDisplay);
-        }
-
-        // Position players around the table
-        function positionPlayers() {
-            const table = document.getElementById('gameTable');
-            const radius = 250;
-            const centerX = 300;
-            const centerY = 300;
-            
-            // Clear and recreate center
-            createPlayerSlots();
-            
-            gameState.players.forEach((player, index) => {
-                const angle = (index * 360 / gameState.players.length - 90) * Math.PI / 180;
-                const x = centerX + radius * Math.cos(angle) - 40;
-                const y = centerY + radius * Math.sin(angle) - 40;
-                
-                const slot = document.createElement('div');
-                slot.className = 'player-slot';
-                slot.style.left = x + 'px';
-                slot.style.top = y + 'px';
-                slot.dataset.playerId = player.id;
-                
-                slot.innerHTML = `
-                    <div class="player-avatar">${player.avatar}</div>
-                    <div class="player-name">${player.name}</div>
-                `;
-                
-                table.appendChild(slot);
-            });
-        }
-
-        // Assign roles to players
-        function assignRoles() {
-            const rolePool = ['Merlin', 'Morgana', 'Loyal Servant', 'Loyal Servant', 'Minion'];
-            const shuffled = rolePool.sort(() => Math.random() - 0.5);
-            
-            gameState.players.forEach((player, index) => {
-                gameState.playerRoles[player.id] = shuffled[index];
-            });
-        }
-
-        // Show player's role
-        function showPlayerRole() {
-            if (!gameState.currentPlayer) return;
-            
-            const role = gameState.playerRoles[gameState.currentPlayer.id];
-            const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
-            
-            const modalContent = `
-                <h2 style="color: ${isEvil ? '#ff6b6b' : '#00b894'};">Your Role</h2>
-                <div style="font-size: 2rem; margin: 2rem 0; text-align: center;">
-                    ${role}
-                </div>
-                <p>${getRoleDescription(role)}</p>
-                ${role === 'Merlin' ? '<p style="margin-top: 1rem; color: #ff6b6b;">Evil players: ' + getEvilPlayers() + '</p>' : ''}
-                ${isEvil && role !== 'Oberon' ? '<p style="margin-top: 1rem; color: #ff6b6b;">Evil teammates: ' + getEvilTeammates() + '</p>' : ''}
-            `;
-            
-            showModal(modalContent);
-        }
-
-        // Get role description
-        function getRoleDescription(role) {
-            const descriptions = {
-                'Merlin': 'You know who the evil players are (except Mordred). Keep your identity hidden from the Assassin!',
-                'Percival': 'You know who Merlin is (but Morgana also appears as Merlin to you).',
-                'Morgana': 'You are evil. You appear as Merlin to Percival. Fail missions and protect the Assassin.',
-                'Assassin': 'You are evil. If Good wins, you can still win by correctly identifying Merlin.',
-                'Mordred': 'You are evil but invisible to Merlin. Use this to infiltrate Good\'s plans.',
-                'Oberon': 'You are evil but work alone. You don\'t know other evil players and they don\'t know you.',
-                'Loyal Servant': 'You are good. Deduce who to trust and succeed in quests.',
-                'Minion': 'You are evil. Work with your evil teammates to fail quests.'
-            };
-            return descriptions[role] || 'Unknown role';
-        }
-
-        // Get evil players (for Merlin)
-        function getEvilPlayers() {
-            return gameState.players
-                .filter(p => {
-                    const role = gameState.playerRoles[p.id];
-                    return ['Morgana', 'Assassin', 'Minion', 'Oberon'].includes(role) && role !== 'Mordred';
-                })
-                .map(p => p.name)
-                .join(', ');
-        }
-
-        // Get evil teammates
-        function getEvilTeammates() {
-            return gameState.players
-                .filter(p => {
-                    const role = gameState.playerRoles[p.id];
-                    return ['Morgana', 'Assassin', 'Minion', 'Mordred'].includes(role) && 
-                           role !== 'Oberon' && 
-                           p.id !== gameState.currentPlayer.id;
-                })
-                .map(p => p.name)
-                .join(', ');
-        }
-
-        // Start round
-        function startRound() {
-            gameState.gamePhase = 'team_building';
-            gameState.selectedPlayers = [];
-            
-            const leader = gameState.players[gameState.currentLeader];
-            showNotification(`${leader.name} is the leader. Select ${gameState.teamSize[gameState.currentMission - 1]} players for the mission.`);
-            
-            // Update display
-            document.getElementById('missionNumber').textContent = gameState.currentMission;
-            document.getElementById('teamSizeDisplay').textContent = `Team Size: ${gameState.teamSize[gameState.currentMission - 1]}`;
-        }
-
-        // Select player for mission
-        function selectPlayer(element) {
-            if (gameState.gamePhase !== 'team_building') return;
-            
-            const playerId = element.dataset.playerId;
-            const teamSize = gameState.teamSize[gameState.currentMission - 1];
-            
-            if (gameState.selectedPlayers.includes(playerId)) {
-                // Deselect
-                gameState.selectedPlayers = gameState.selectedPlayers.filter(id => id !== playerId);
-                element.style.border = '2px solid rgba(255, 215, 0, 0.5)';
-            } else if (gameState.selectedPlayers.length < teamSize) {
-                // Select
-                gameState.selectedPlayers.push(playerId);
-                element.style.border = '3px solid #00b894';
-            } else {
-                showNotification(`You can only select ${teamSize} players for this mission.`);
-            }
-        }
-
-        // Propose team
-        function proposeTeam() {
-            const teamSize = gameState.teamSize[gameState.currentMission - 1];
-            if (gameState.selectedPlayers.length !== teamSize) {
-                showNotification(`Please select exactly ${teamSize} players for the mission.`);
-                return;
-            }
-            
-            gameState.gamePhase = 'voting';
-            const selectedNames = gameState.selectedPlayers.map(id => 
-                gameState.players.find(p => p.id === id).name
-            ).join(', ');
-            
-            showNotification(`Team proposed: ${selectedNames}. All players must now vote!`);
-        }
-
-        // Vote on team
-        function voteTeam() {
-            if (gameState.gamePhase !== 'voting') {
-                showNotification('No team has been proposed yet!');
-                return;
-            }
-            
-            // Simulate voting (in real app, each player would vote)
-            const votes = gameState.players.map(p => Math.random() > 0.3);
-            const approved = votes.filter(v => v).length > votes.length / 2;
-            
-            if (approved) {
-                gameState.gamePhase = 'mission';
-                showNotification('Team approved! Mission in progress...');
-                gameState.rejectedTeams = 0;
-            } else {
-                gameState.rejectedTeams++;
-                if (gameState.rejectedTeams >= 5) {
-                    endGame(false);
-                } else {
-                    gameState.currentLeader = (gameState.currentLeader + 1) % gameState.players.length;
-                    showNotification(`Team rejected! ${5 - gameState.rejectedTeams} rejections remaining before Evil wins.`);
-                    startRound();
-                }
-            }
-        }
-
-        // Execute mission
-        function executeMission() {
-            if (gameState.gamePhase !== 'mission') {
-                showNotification('No mission in progress!');
-                return;
-            }
-            
-            // Simulate mission (in real app, team members would vote)
-            const failVotes = Math.random() > 0.6 ? 1 : 0;
-            const missionSuccess = failVotes < gameState.failsRequired[gameState.currentMission - 1];
-            
-            // Update mission token
-            const token = document.getElementById(`mission${gameState.currentMission}`);
-            token.classList.add(missionSuccess ? 'success' : 'fail');
-            token.innerHTML = missionSuccess ? '✓' : '✗';
-            
-            gameState.missionResults.push(missionSuccess);
-            
-            // Check for game end
-            const successes = gameState.missionResults.filter(r => r).length;
-            const failures = gameState.missionResults.filter(r => !r).length;
-            
-            if (successes >= 3) {
-                // Good wins (unless assassin identifies Merlin)
-                assassinPhase();
-            } else if (failures >= 3) {
-                endGame(false);
-            } else {
-                gameState.currentMission++;
-                gameState.currentLeader = (gameState.currentLeader + 1) % gameState.players.length;
-                startRound();
-            }
-        }
-
-        // Assassin phase
-        function assassinPhase() {
-            const assassin = gameState.players.find(p => gameState.playerRoles[p.id] === 'Assassin');
-            if (assassin) {
-                showNotification('Good has succeeded! But the Assassin may still identify Merlin...');
-                // Simulate assassination attempt
-                setTimeout(() => {
-                    const merlinGuessed = Math.random() > 0.5;
-                    endGame(!merlinGuessed);
-                }, 3000);
-            } else {
-                endGame(true);
-            }
-        }
-
-        // Reveal role (for demonstration)
-        function revealRole() {
-            showPlayerRole();
-        }
-
-        // End game
-        function endGame(goodWins) {
-            gameState.gamePhase = 'game_over';
-            
-            // Update stats
-            gameState.stats.gamesPlayed++;
-            if (goodWins) {
-                const isGood = !['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(
-                    gameState.playerRoles[gameState.currentPlayer.id]
-                );
-                if (isGood) gameState.stats.wins++;
-            }
-            
-            saveStats();
-            
-            const modalContent = `
-                <h2 style="color: ${goodWins ? '#00b894' : '#ff6b6b'};">
-                    ${goodWins ? 'Good Wins!' : 'Evil Wins!'}
-                </h2>
-                <div style="margin: 2rem 0;">
-                    <h3>Final Roles:</h3>
-                    ${gameState.players.map(p => 
-                        `<p>${p.name}: ${gameState.playerRoles[p.id]}</p>`
-                    ).join('')}
-                </div>
-                <button class="btn" onclick="initializeGame()">Play Again</button>
-            `;
-            
-            showModal(modalContent);
-        }
-
-        // Chat functions
-        function toggleChat() {
-            const messages = document.getElementById('chatMessages');
-            const input = document.querySelector('.chat-input');
-            
-            if (messages.style.display === 'block') {
-                messages.style.display = 'none';
-                input.style.display = 'none';
-            } else {
-                messages.style.display = 'block';
-                input.style.display = 'block';
-            }
-        }
-
-        function sendMessage(event) {
-            if (event.key === 'Enter' && gameState.isLoggedIn) {
-                const input = event.target;
-                const message = input.value.trim();
-                
-                if (message) {
-                    addChatMessage(gameState.currentPlayer.name, message);
-                    input.value = '';
-                }
-            }
-        }
-
-        function addChatMessage(sender, message) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-message';
-            messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Modal functions
-        function showModal(content) {
-            document.getElementById('modalContent').innerHTML = content;
-            document.getElementById('modal').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('modal').style.display = 'none';
-        }
-
-        // Notification
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 100px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
-                color: #ffd700;
-                padding: 1rem 2rem;
-                border-radius: 10px;
-                border: 2px solid #ffd700;
-                z-index: 5000;
-                animation: slideDown 0.5s ease-out;
-            `;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'fadeOut 0.5s ease-out';
-                setTimeout(() => notification.remove(), 500);
-            }, 3000);
-        }
-
-        // Stats functions
-        function loadStats() {
-            const savedStats = localStorage.getItem('avalonStats');
-            if (savedStats) {
-                gameState.stats = JSON.parse(savedStats);
-                updateStatsDisplay();
-            }
-        }
-
-        function loadUserStats(username) {
-            const userStats = localStorage.getItem(`avalonStats_${username}`);
-            if (userStats) {
-                gameState.stats = JSON.parse(userStats);
-            } else {
-                // Initialize new user stats
-                gameState.stats = {
-                    gamesPlayed: 0,
-                    wins: 0,
-                    questsSucceeded: 0,
-                    timesAsMerlin: 0,
-                    successfulAssassinations: 0,
-                    perfectDeductions: 0
-                };
-            }
-            updateStatsDisplay();
-        }
-
-        function saveStats() {
-            if (gameState.currentPlayer) {
-                localStorage.setItem(`avalonStats_${gameState.currentPlayer.name}`, JSON.stringify(gameState.stats));
-            }
-            updateStatsDisplay();
-        }
-
-        function updateStatsDisplay() {
-            const statElements = document.querySelectorAll('.stat-value');
-            if (statElements.length >= 6) {
-                statElements[0].textContent = gameState.stats.gamesPlayed;
-                statElements[1].textContent = gameState.stats.gamesPlayed > 0 
-                    ? Math.round((gameState.stats.wins / gameState.stats.gamesPlayed) * 100) + '%'
-                    : '0%';
-                statElements[2].textContent = gameState.stats.questsSucceeded;
-                statElements[3].textContent = gameState.stats.timesAsMerlin;
-                statElements[4].textContent = gameState.stats.successfulAssassinations;
-                statElements[5].textContent = gameState.stats.perfectDeductions;
-            }
-        }
-
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideDown {
-                from { opacity: 0; transform: translate(-50%, -20px); }
-                to { opacity: 1; transform: translate(-50%, 0); }
-            }
-            @keyframes fadeOut {
-                from { opacity: 1; }
-                to { opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Initialize on load
-        window.addEventListener('load', init);
-    </script>
+    <!-- Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/room.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
