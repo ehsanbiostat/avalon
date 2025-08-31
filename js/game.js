@@ -84,6 +84,8 @@ class GameSystem {
         this.chaosForMerlin = roomConfig.chaosForMerlin;
         this.playerVotes = {}; // Track individual player votes
         this.votesReceived = 0; // Count how many votes we've received
+        this.missionVotes = {}; // Track mission votes
+        this.missionVotesReceived = 0; // Count mission votes received
         
         // Assign roles based on room configuration
         this.assignRolesFromConfig(roomConfig);
@@ -304,6 +306,32 @@ class GameSystem {
         }
     }
 
+    updateMissionButton() {
+        const executeBtn = document.getElementById('executeMissionBtn');
+        if (!executeBtn) return;
+        
+        if (this.gamePhase === 'mission') {
+            // Check if current player is in the mission team
+            const currentPlayer = this.players[0]; // For now, assume first player
+            const isInTeam = this.selectedPlayers.includes(currentPlayer.id);
+            
+            if (isInTeam) {
+                executeBtn.innerHTML = `
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-success" onclick="gameSystem.executeMission(true)" style="flex: 1; padding: 0.5rem; font-size: 0.9rem;">Success</button>
+                        <button class="btn btn-danger" onclick="gameSystem.executeMission(false)" style="flex: 1; padding: 0.5rem; font-size: 0.9rem;">Fail</button>
+                    </div>
+                `;
+            } else {
+                executeBtn.textContent = 'Waiting for team...';
+                executeBtn.disabled = true;
+            }
+        } else {
+            executeBtn.textContent = 'Execute Mission';
+            executeBtn.disabled = false;
+        }
+    }
+
     showVotingInterface() {
         if (this.gamePhase !== 'voting') {
             authSystem.showNotification('No team has been proposed yet!');
@@ -368,8 +396,10 @@ class GameSystem {
         if (teamApproved) {
             this.gamePhase = 'mission';
             this.rejectedTeams = 0;
+            this.missionVotes = {}; // Reset mission votes
+            this.missionVotesReceived = 0; // Reset mission vote counter
             this.updateGameStatusPanel();
-            this.updateVoteButton();
+            this.updateMissionButton();
             this.showMissionInterface();
         } else {
             this.rejectedTeams++;
@@ -407,11 +437,50 @@ class GameSystem {
     }
 
     executeMission(success) {
-        // Simulate mission (in real app, team members would vote)
-        const failVotes = Math.random() > 0.6 ? 1 : 0;
-        const missionSuccess = failVotes < this.failsRequired[this.players.length][this.currentMission - 1];
+        // Get current player (in a real app, this would be the logged-in user)
+        const currentPlayer = this.players[0]; // For now, assume first player
         
-        authSystem.closeModals();
+        // Check if this player already voted
+        if (this.missionVotes[currentPlayer.id] !== undefined) {
+            authSystem.showNotification('You have already voted on this mission!');
+            return;
+        }
+        
+        // Check if player is in the mission team
+        if (!this.selectedPlayers.includes(currentPlayer.id)) {
+            authSystem.showNotification('You are not part of this mission team!');
+            return;
+        }
+        
+        // Record the vote
+        this.missionVotes[currentPlayer.id] = success;
+        this.missionVotesReceived++;
+        
+        // Show vote confirmation (private)
+        const voteText = success ? 'Success' : 'Fail';
+        authSystem.showNotification(`${currentPlayer.name} voted ${voteText} (private)`, 'info');
+        
+        // Update status panel to show voting progress
+        this.updateGameStatusPanel();
+        
+        // Check if all team members have voted
+        if (this.missionVotesReceived >= this.selectedPlayers.length) {
+            this.processMissionResults();
+        }
+    }
+    
+    processMissionResults() {
+        // Count the mission votes
+        const successVotes = Object.values(this.missionVotes).filter(vote => vote).length;
+        const failVotes = Object.values(this.missionVotes).filter(vote => !vote).length;
+        const totalVotes = this.selectedPlayers.length;
+        
+        // Determine if mission succeeds (fails required depends on player count and mission)
+        const failsRequired = this.failsRequired[this.players.length][this.currentMission - 1];
+        const missionSuccess = failVotes < failsRequired;
+        
+        // Show anonymous results
+        this.showMissionResults(successVotes, failVotes, missionSuccess);
         
         // Update mission token
         const token = document.getElementById(`mission${this.currentMission}`);
@@ -439,6 +508,42 @@ class GameSystem {
         
         // Update game status panel
         this.updateGameStatusPanel();
+        this.updateMissionButton();
+    }
+    
+    showMissionResults(successVotes, failVotes, missionSuccess) {
+        // Create a temporary overlay to show results
+        const overlay = document.createElement('div');
+        overlay.className = 'mission-results-overlay';
+        overlay.innerHTML = `
+            <div class="mission-results">
+                <h2 style="color: #ffd700; margin-bottom: 1rem;">Mission ${this.currentMission} Results</h2>
+                <div class="results-display">
+                    <div class="result-item">
+                        <span class="result-label">Success Votes:</span>
+                        <span class="result-value success">${successVotes}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Fail Votes:</span>
+                        <span class="result-value fail">${failVotes}</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Mission Outcome:</span>
+                        <span class="result-value ${missionSuccess ? 'success' : 'fail'}">${missionSuccess ? 'SUCCESS' : 'FAIL'}</span>
+                    </div>
+                </div>
+                <p style="color: #ffd700; margin-top: 1rem; font-style: italic;">Results will disappear in 10 seconds...</p>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        
+        // Remove after 10 seconds
+        setTimeout(() => {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+        }, 10000);
     }
 
     assassinPhase() {
@@ -569,10 +674,15 @@ class GameSystem {
                 break;
                 
             case 'mission':
+                const teamNames = this.selectedPlayers.map(id => 
+                    this.players.find(p => p.id === id).name
+                ).join(', ');
                 statusHTML = `
                     <p><strong>Mission Phase</strong></p>
                     <div class="mission-info">
                         <p><strong>Mission ${this.currentMission}</strong></p>
+                        <p><strong>Team:</strong> ${teamNames}</p>
+                        <p>Mission votes: ${this.missionVotesReceived}/${this.selectedPlayers.length}</p>
                         <p>Team members must secretly choose Success or Fail.</p>
                         <p>Good players must choose Success.</p>
                         <p>Evil players can choose either.</p>
@@ -878,6 +988,45 @@ class GameSystem {
         // Check if all players have voted
         if (this.votesReceived >= this.players.length) {
             this.processVoteResults();
+        }
+    }
+
+    // Function to simulate AI mission votes for testing
+    simulateAIMissionVotes() {
+        if (this.gamePhase !== 'mission') {
+            authSystem.showNotification('No mission in progress!');
+            return;
+        }
+        
+        // Simulate mission votes for AI players in the team
+        this.players.forEach(player => {
+            if (player.isAI && this.selectedPlayers.includes(player.id) && this.missionVotes[player.id] === undefined) {
+                // AI players vote based on their role
+                const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(this.playerRoles[player.id]);
+                let vote;
+                
+                if (isEvil) {
+                    // Evil players can choose to fail (with some probability)
+                    vote = Math.random() > 0.3; // 70% chance to fail
+                } else {
+                    // Good players must choose success
+                    vote = true;
+                }
+                
+                this.missionVotes[player.id] = vote;
+                this.missionVotesReceived++;
+                
+                const voteText = vote ? 'Success' : 'Fail';
+                console.log(`AI ${player.name} voted ${voteText} on mission`);
+            }
+        });
+        
+        // Update status panel
+        this.updateGameStatusPanel();
+        
+        // Check if all team members have voted
+        if (this.missionVotesReceived >= this.selectedPlayers.length) {
+            this.processMissionResults();
         }
     }
 }
