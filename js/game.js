@@ -490,8 +490,8 @@ class GameSystem {
         const failsRequired = this.failsRequired[this.players.length][this.currentMission - 1];
         const missionSuccess = failVotes < failsRequired;
         
-        // Show anonymous results
-        this.showMissionResults(successVotes, failVotes, missionSuccess);
+        // Show fail count under mission token
+        this.showMissionFailCount(failVotes);
         
         // Update mission token
         const token = document.getElementById(`mission${this.currentMission}`);
@@ -522,39 +522,44 @@ class GameSystem {
         this.updateMissionButton();
     }
     
-    showMissionResults(successVotes, failVotes, missionSuccess) {
-        // Create a temporary overlay to show results
-        const overlay = document.createElement('div');
-        overlay.className = 'mission-results-overlay';
-        overlay.innerHTML = `
-            <div class="mission-results">
-                <h2 style="color: #ffd700; margin-bottom: 1rem;">Mission ${this.currentMission} Results</h2>
-                <div class="results-display">
-                    <div class="result-item">
-                        <span class="result-label">Success Votes:</span>
-                        <span class="result-value success">${successVotes}</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="result-label">Fail Votes:</span>
-                        <span class="result-value fail">${failVotes}</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="result-label">Mission Outcome:</span>
-                        <span class="result-value ${missionSuccess ? 'success' : 'fail'}">${missionSuccess ? 'SUCCESS' : 'FAIL'}</span>
-                    </div>
-                </div>
-                <p style="color: #ffd700; margin-top: 1rem; font-style: italic;">Results will disappear in 10 seconds...</p>
-            </div>
+    showMissionFailCount(failVotes) {
+        // Find the mission token
+        const token = document.getElementById(`mission${this.currentMission}`);
+        if (!token) return;
+        
+        // Create a fail count display under the token
+        const failDisplay = document.createElement('div');
+        failDisplay.className = 'mission-fail-count';
+        failDisplay.textContent = `${failVotes} fail${failVotes !== 1 ? 's' : ''}`;
+        failDisplay.style.cssText = `
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(214, 48, 49, 0.9);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            z-index: 100;
+            border: 1px solid #d63031;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         `;
         
-        document.body.appendChild(overlay);
+        // Add to the token container
+        token.appendChild(failDisplay);
         
         // Remove after 10 seconds
         setTimeout(() => {
-            if (overlay.parentNode) {
-                overlay.parentNode.removeChild(overlay);
+            if (failDisplay.parentNode) {
+                failDisplay.parentNode.removeChild(failDisplay);
             }
         }, 10000);
+        
+        // Show notification
+        const missionResult = failVotes < this.failsRequired[this.players.length][this.currentMission - 1] ? 'SUCCESS' : 'FAIL';
+        authSystem.showNotification(`Mission ${this.currentMission}: ${missionResult} (${failVotes} fail${failVotes !== 1 ? 's' : ''})`, 'info');
     }
 
     assassinPhase() {
@@ -608,7 +613,7 @@ class GameSystem {
 
     startRound() {
         this.gamePhase = 'team_building';
-        this.selectedPlayers = [];
+        this.selectedPlayers = []; // Clear previous selections
         
         const leader = this.players[this.currentLeader];
         authSystem.showNotification(`${leader.name} is the leader. Select ${this.teamSize[this.players.length][this.currentMission - 1]} players for the mission.`);
@@ -619,6 +624,9 @@ class GameSystem {
         
         if (missionNumber) missionNumber.textContent = this.currentMission;
         if (teamSizeDisplay) teamSizeDisplay.textContent = `Team Size: ${this.teamSize[this.players.length][this.currentMission - 1]}`;
+        
+        // Clear any previous selections from UI
+        this.clearPlayerSelections();
         
         // Highlight current leader
         this.highlightLeader();
@@ -637,6 +645,17 @@ class GameSystem {
         if (leaderSlot) {
             leaderSlot.classList.add('leader');
         }
+    }
+
+    clearPlayerSelections() {
+        // Remove selected class from all player slots
+        const playerSlots = document.querySelectorAll('.player-slot');
+        playerSlots.forEach(slot => slot.classList.remove('selected'));
+        
+        // Clear the selected players array
+        this.selectedPlayers = [];
+        
+        console.log('Cleared all player selections');
     }
 
     updateGameStatusPanel() {
