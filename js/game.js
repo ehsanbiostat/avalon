@@ -110,9 +110,11 @@ class GameSystem {
     }
 
     assignRolesFromConfig(roomConfig) {
-        const playerCount = roomConfig.players.length;
+        const playerCount = this.players.length; // Use this.players instead of roomConfig.players
         const evilCount = Math.ceil(playerCount / 3);
         const goodCount = playerCount - evilCount;
+        
+        console.log(`Debug: Assigning roles for ${playerCount} players - ${goodCount} good, ${evilCount} evil`);
         
         // Build role pool
         let goodRoles = ['Merlin'];
@@ -123,6 +125,8 @@ class GameSystem {
         if (roomConfig.roles.mordred) evilRoles.push('Mordred');
         if (roomConfig.roles.oberon) evilRoles.push('Oberon');
         
+        console.log(`Debug: Initial roles - Good: ${goodRoles.join(', ')}, Evil: ${evilRoles.join(', ')}`);
+        
         // Fill remaining slots with generic roles
         while (goodRoles.length < goodCount) {
             goodRoles.push('Loyal Servant');
@@ -131,15 +135,31 @@ class GameSystem {
             evilRoles.push('Minion');
         }
         
+        console.log(`Debug: After filling - Good: ${goodRoles.join(', ')}, Evil: ${evilRoles.join(', ')}`);
+        
         // Combine and shuffle
         const allRoles = [...goodRoles, ...evilRoles];
         const shuffled = allRoles.sort(() => Math.random() - 0.5);
         
+        console.log(`Debug: Final shuffled roles: ${shuffled.join(', ')}`);
+        
         // Assign roles
         this.playerRoles = {};
-        roomConfig.players.forEach((player, index) => {
+        this.players.forEach((player, index) => {
             this.playerRoles[player.id] = shuffled[index];
         });
+        
+        // Verify role distribution
+        const finalEvilCount = this.players.filter(p => 
+            ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(this.playerRoles[p.id])
+        ).length;
+        const finalGoodCount = this.players.length - finalEvilCount;
+        
+        console.log(`Debug: Final verification - ${finalGoodCount} Good, ${finalEvilCount} Evil`);
+        
+        if (finalEvilCount !== evilCount || finalGoodCount !== goodCount) {
+            console.error(`ERROR: Role distribution mismatch! Expected ${goodCount} Good, ${evilCount} Evil but got ${finalGoodCount} Good, ${finalEvilCount} Evil`);
+        }
         
         // Handle Chaos for Merlin
         if (roomConfig.chaosForMerlin) {
