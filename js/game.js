@@ -1,0 +1,571 @@
+// Game System
+class GameSystem {
+    constructor() {
+        this.currentGame = null;
+        this.players = [];
+        this.playerRoles = {};
+        this.currentMission = 1;
+        this.missionResults = [];
+        this.selectedPlayers = [];
+        this.votes = [];
+        this.rejectedTeams = 0;
+        this.gamePhase = 'waiting';
+        this.currentLeader = 0;
+        this.ladyOfLakeHolder = null;
+        this.chaosForMerlin = false;
+        this.fakeOberon = null;
+        
+        // Game configuration
+        this.teamSize = {
+            5: [2, 3, 2, 3, 3],
+            6: [2, 3, 4, 3, 4],
+            7: [2, 3, 3, 4, 4],
+            8: [3, 4, 4, 5, 5],
+            9: [3, 4, 4, 5, 5],
+            10: [3, 4, 4, 5, 5]
+        };
+        
+        this.failsRequired = {
+            5: [1, 1, 1, 1, 1],
+            6: [1, 1, 1, 1, 1],
+            7: [1, 1, 1, 2, 1],
+            8: [1, 1, 1, 2, 1],
+            9: [1, 1, 1, 2, 1],
+            10: [1, 1, 1, 2, 1]
+        };
+        
+        this.initializeGameSystem();
+    }
+
+    initializeGameSystem() {
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Game control buttons
+        const proposeTeamBtn = document.getElementById('proposeTeamBtn');
+        if (proposeTeamBtn) {
+            proposeTeamBtn.addEventListener('click', () => this.proposeTeam());
+        }
+
+        const voteTeamBtn = document.getElementById('voteTeamBtn');
+        if (voteTeamBtn) {
+            voteTeamBtn.addEventListener('click', () => this.showVotingInterface());
+        }
+
+        const executeMissionBtn = document.getElementById('executeMissionBtn');
+        if (executeMissionBtn) {
+            executeMissionBtn.addEventListener('click', () => this.showMissionInterface());
+        }
+
+        const revealRoleBtn = document.getElementById('revealRoleBtn');
+        if (revealRoleBtn) {
+            revealRoleBtn.addEventListener('click', () => this.showPlayerRole());
+        }
+    }
+
+    startGame(roomConfig) {
+        this.currentGame = roomConfig;
+        this.players = roomConfig.players;
+        this.currentMission = 1;
+        this.missionResults = [];
+        this.selectedPlayers = [];
+        this.votes = [];
+        this.rejectedTeams = 0;
+        this.gamePhase = 'team_building';
+        this.chaosForMerlin = roomConfig.chaosForMerlin;
+        
+        // Assign roles based on room configuration
+        this.assignRolesFromConfig(roomConfig);
+        
+        // Setup Lady of the Lake if enabled
+        if (roomConfig.ladyOfLake) {
+            const randomPlayer = Math.floor(Math.random() * this.players.length);
+            this.ladyOfLakeHolder = this.players[randomPlayer].id;
+            authSystem.showNotification(`${this.players[randomPlayer].name} receives the Lady of the Lake token!`, 'info');
+        }
+        
+        // Show game interface
+        this.showGameInterface();
+        
+        // Position players on table
+        this.positionPlayers();
+        
+        // Show role to current player
+        this.showPlayerRole();
+        
+        // Start first round
+        this.startRound();
+    }
+
+    assignRolesFromConfig(roomConfig) {
+        const playerCount = roomConfig.players.length;
+        const evilCount = Math.floor(playerCount / 3 + 0.5);
+        const goodCount = playerCount - evilCount;
+        
+        // Build role pool
+        let goodRoles = ['Merlin'];
+        let evilRoles = ['Assassin'];
+        
+        if (roomConfig.roles.percival) goodRoles.push('Percival');
+        if (roomConfig.roles.morgana) evilRoles.push('Morgana');
+        if (roomConfig.roles.mordred) evilRoles.push('Mordred');
+        if (roomConfig.roles.oberon) evilRoles.push('Oberon');
+        
+        // Fill remaining slots with generic roles
+        while (goodRoles.length < goodCount) {
+            goodRoles.push('Loyal Servant');
+        }
+        while (evilRoles.length < evilCount) {
+            evilRoles.push('Minion');
+        }
+        
+        // Combine and shuffle
+        const allRoles = [...goodRoles, ...evilRoles];
+        const shuffled = allRoles.sort(() => Math.random() - 0.5);
+        
+        // Assign roles
+        this.playerRoles = {};
+        roomConfig.players.forEach((player, index) => {
+            this.playerRoles[player.id] = shuffled[index];
+        });
+        
+        // Handle Chaos for Merlin
+        if (roomConfig.chaosForMerlin) {
+            // Select a random good player (not Merlin) to appear as fake Oberon
+            const goodPlayers = roomConfig.players.filter(p => 
+                ['Loyal Servant', 'Percival'].includes(this.playerRoles[p.id])
+            );
+            if (goodPlayers.length > 0) {
+                const fakeOberon = goodPlayers[Math.floor(Math.random() * goodPlayers.length)];
+                this.fakeOberon = fakeOberon.id;
+            }
+        }
+    }
+
+    showGameInterface() {
+        // Close lobby
+        const gameLobby = document.getElementById('gameLobby');
+        if (gameLobby) {
+            gameLobby.style.display = 'none';
+        }
+        
+        // Show game interface
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            gameInterface.style.display = 'block';
+        }
+    }
+
+    positionPlayers() {
+        const table = document.getElementById('gameTable');
+        if (!table) return;
+        
+        // Clear existing content
+        table.innerHTML = '';
+        
+        // Create center display
+        const centerDisplay = document.createElement('div');
+        centerDisplay.className = 'center-display';
+        centerDisplay.innerHTML = `
+            <div style="font-size: 1.2rem; color: #ffd700; margin-bottom: 1rem;">Current Mission</div>
+            <div class="mission-number" id="missionNumber">1</div>
+            <div class="team-size-display" id="teamSizeDisplay">Team Size: 2</div>
+        `;
+        table.appendChild(centerDisplay);
+        
+        // Position players around the table
+        const radius = 250;
+        const centerX = 300;
+        const centerY = 300;
+        
+        this.players.forEach((player, index) => {
+            const angle = (index * 360 / this.players.length - 90) * Math.PI / 180;
+            const x = centerX + radius * Math.cos(angle) - 40;
+            const y = centerY + radius * Math.sin(angle) - 40;
+            
+            const slot = document.createElement('div');
+            slot.className = 'player-slot';
+            slot.style.left = x + 'px';
+            slot.style.top = y + 'px';
+            slot.dataset.playerId = player.id;
+            
+            slot.innerHTML = `
+                <div class="player-avatar">${player.avatar}</div>
+                <div class="player-name">${player.name}</div>
+            `;
+            
+            // Add click event for team selection
+            slot.addEventListener('click', () => this.selectPlayer(slot));
+            
+            table.appendChild(slot);
+        });
+    }
+
+    selectPlayer(element) {
+        if (this.gamePhase !== 'team_building') return;
+        
+        const playerId = element.dataset.playerId;
+        const teamSize = this.teamSize[this.players.length][this.currentMission - 1];
+        
+        if (this.selectedPlayers.includes(playerId)) {
+            // Deselect
+            this.selectedPlayers = this.selectedPlayers.filter(id => id !== playerId);
+            element.classList.remove('selected');
+        } else if (this.selectedPlayers.length < teamSize) {
+            // Select
+            this.selectedPlayers.push(playerId);
+            element.classList.add('selected');
+        } else {
+            authSystem.showNotification(`You can only select ${teamSize} players for this mission.`);
+        }
+    }
+
+    proposeTeam() {
+        const teamSize = this.teamSize[this.players.length][this.currentMission - 1];
+        if (this.selectedPlayers.length !== teamSize) {
+            authSystem.showNotification(`Please select exactly ${teamSize} players for the mission.`);
+            return;
+        }
+        
+        this.gamePhase = 'voting';
+        const selectedNames = this.selectedPlayers.map(id => 
+            this.players.find(p => p.id === id).name
+        ).join(', ');
+        
+        authSystem.showNotification(`Team proposed: ${selectedNames}. All players must now vote!`);
+        this.showVotingInterface();
+    }
+
+    showVotingInterface() {
+        if (this.gamePhase !== 'voting') {
+            authSystem.showNotification('No team has been proposed yet!');
+            return;
+        }
+        
+        const modalContent = `
+            <div class="voting-interface">
+                <h2 style="color: #ffd700;">Vote on Team</h2>
+                <p>Team members: ${this.selectedPlayers.map(id => 
+                    this.players.find(p => p.id === id).name
+                ).join(', ')}</p>
+                <div class="vote-buttons">
+                    <button class="vote-btn vote-approve" onclick="gameSystem.vote(true)">Approve</button>
+                    <button class="vote-btn vote-reject" onclick="gameSystem.vote(false)">Reject</button>
+                </div>
+            </div>
+        `;
+        
+        authSystem.showModal(modalContent);
+    }
+
+    vote(approved) {
+        // Simulate voting (in real app, each player would vote)
+        const votes = this.players.map(p => Math.random() > 0.3);
+        const approvedCount = votes.filter(v => v).length;
+        const teamApproved = approvedCount > votes.length / 2;
+        
+        authSystem.closeModals();
+        
+        if (teamApproved) {
+            this.gamePhase = 'mission';
+            authSystem.showNotification('Team approved! Mission in progress...');
+            this.rejectedTeams = 0;
+            this.showMissionInterface();
+        } else {
+            this.rejectedTeams++;
+            if (this.rejectedTeams >= 5) {
+                this.endGame(false);
+            } else {
+                this.currentLeader = (this.currentLeader + 1) % this.players.length;
+                authSystem.showNotification(`Team rejected! ${5 - this.rejectedTeams} rejections remaining before Evil wins.`);
+                this.startRound();
+            }
+        }
+    }
+
+    showMissionInterface() {
+        if (this.gamePhase !== 'mission') {
+            authSystem.showNotification('No mission in progress!');
+            return;
+        }
+        
+        const modalContent = `
+            <div class="mission-interface">
+                <h2 style="color: #ffd700;">Execute Mission</h2>
+                <p>Team members must secretly choose Success or Fail.</p>
+                <p>Good players must choose Success. Evil players can choose either.</p>
+                <div class="mission-buttons">
+                    <button class="mission-btn mission-success" onclick="gameSystem.executeMission(true)">Success</button>
+                    <button class="mission-btn mission-fail" onclick="gameSystem.executeMission(false)">Fail</button>
+                </div>
+            </div>
+        `;
+        
+        authSystem.showModal(modalContent);
+    }
+
+    executeMission(success) {
+        // Simulate mission (in real app, team members would vote)
+        const failVotes = Math.random() > 0.6 ? 1 : 0;
+        const missionSuccess = failVotes < this.failsRequired[this.players.length][this.currentMission - 1];
+        
+        authSystem.closeModals();
+        
+        // Update mission token
+        const token = document.getElementById(`mission${this.currentMission}`);
+        if (token) {
+            token.classList.add(missionSuccess ? 'success' : 'fail');
+            token.innerHTML = missionSuccess ? '✓' : '✗';
+        }
+        
+        this.missionResults.push(missionSuccess);
+        
+        // Check for game end
+        const successes = this.missionResults.filter(r => r).length;
+        const failures = this.missionResults.filter(r => !r).length;
+        
+        if (successes >= 3) {
+            // Good wins (unless assassin identifies Merlin)
+            this.assassinPhase();
+        } else if (failures >= 3) {
+            this.endGame(false);
+        } else {
+            this.currentMission++;
+            this.currentLeader = (this.currentLeader + 1) % this.players.length;
+            this.startRound();
+        }
+    }
+
+    assassinPhase() {
+        const assassin = this.players.find(p => this.playerRoles[p.id] === 'Assassin');
+        if (assassin) {
+            authSystem.showNotification('Good has succeeded! But the Assassin may still identify Merlin...');
+            
+            // Show assassin interface
+            setTimeout(() => {
+                this.showAssassinInterface();
+            }, 2000);
+        } else {
+            this.endGame(true);
+        }
+    }
+
+    showAssassinInterface() {
+        const modalContent = `
+            <div class="assassin-interface">
+                <h2 style="color: #ff6b6b;">Assassin Phase</h2>
+                <p>Good has won three quests! The Assassin must identify Merlin to win.</p>
+                <div class="player-selection">
+                    <h3>Select who you think is Merlin:</h3>
+                    ${this.players.map(player => `
+                        <button class="btn btn-secondary" onclick="gameSystem.assassinateMerlin('${player.id}')" 
+                                style="margin: 0.5rem; display: block; width: 100%;">
+                            ${player.name}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        authSystem.showModal(modalContent);
+    }
+
+    assassinateMerlin(playerId) {
+        const merlin = this.players.find(p => this.playerRoles[p.id] === 'Merlin');
+        const assassinatedPlayer = this.players.find(p => p.id === playerId);
+        
+        authSystem.closeModals();
+        
+        if (merlin && merlin.id === playerId) {
+            authSystem.showNotification(`The Assassin correctly identified Merlin! Evil wins!`, 'error');
+            this.endGame(false);
+        } else {
+            authSystem.showNotification(`The Assassin failed! Good wins!`, 'success');
+            this.endGame(true);
+        }
+    }
+
+    startRound() {
+        this.gamePhase = 'team_building';
+        this.selectedPlayers = [];
+        
+        const leader = this.players[this.currentLeader];
+        authSystem.showNotification(`${leader.name} is the leader. Select ${this.teamSize[this.players.length][this.currentMission - 1]} players for the mission.`);
+        
+        // Update display
+        const missionNumber = document.getElementById('missionNumber');
+        const teamSizeDisplay = document.getElementById('teamSizeDisplay');
+        
+        if (missionNumber) missionNumber.textContent = this.currentMission;
+        if (teamSizeDisplay) teamSizeDisplay.textContent = `Team Size: ${this.teamSize[this.players.length][this.currentMission - 1]}`;
+        
+        // Highlight current leader
+        this.highlightLeader();
+    }
+
+    highlightLeader() {
+        // Remove previous leader highlighting
+        const playerSlots = document.querySelectorAll('.player-slot');
+        playerSlots.forEach(slot => slot.classList.remove('leader'));
+        
+        // Highlight current leader
+        const leaderSlot = document.querySelector(`[data-player-id="${this.players[this.currentLeader].id}"]`);
+        if (leaderSlot) {
+            leaderSlot.classList.add('leader');
+        }
+    }
+
+    showPlayerRole() {
+        if (!authSystem.getCurrentUser()) return;
+        
+        const role = this.playerRoles[authSystem.getCurrentUser().id];
+        const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
+        
+        let roleInfo = '';
+        if (role === 'Merlin') {
+            const evilPlayers = this.players.filter(p => {
+                const playerRole = this.playerRoles[p.id];
+                return ['Morgana', 'Assassin', 'Minion', 'Oberon'].includes(playerRole) && playerRole !== 'Mordred';
+            });
+            roleInfo = `<div class="role-info">
+                <h4>Evil players you can see:</h4>
+                <p>${evilPlayers.map(p => p.name).join(', ')}</p>
+            </div>`;
+        } else if (isEvil && role !== 'Oberon') {
+            const evilTeammates = this.players.filter(p => {
+                const playerRole = this.playerRoles[p.id];
+                return ['Morgana', 'Assassin', 'Minion', 'Mordred'].includes(playerRole) && 
+                       playerRole !== 'Oberon' && 
+                       p.id !== authSystem.getCurrentUser().id;
+            });
+            roleInfo = `<div class="role-info">
+                <h4>Your evil teammates:</h4>
+                <p>${evilTeammates.map(p => p.name).join(', ')}</p>
+            </div>`;
+        }
+        
+        const modalContent = `
+            <div class="role-modal">
+                <h2 style="color: ${isEvil ? '#ff6b6b' : '#00b894'};">Your Role</h2>
+                <div class="role-name ${isEvil ? 'evil' : 'good'}">${role}</div>
+                <div class="role-description">${this.getRoleDescription(role)}</div>
+                ${roleInfo}
+                <button class="btn btn-primary" onclick="authSystem.closeModals()">Continue</button>
+            </div>
+        `;
+        
+        authSystem.showModal(modalContent);
+    }
+
+    getRoleDescription(role) {
+        const descriptions = {
+            'Merlin': 'You know who the evil players are (except Mordred). Keep your identity hidden from the Assassin!',
+            'Percival': 'You know who Merlin is (but Morgana also appears as Merlin to you).',
+            'Morgana': 'You are evil. You appear as Merlin to Percival. Fail missions and protect the Assassin.',
+            'Assassin': 'You are evil. If Good wins, you can still win by correctly identifying Merlin.',
+            'Mordred': 'You are evil but invisible to Merlin. Use this to infiltrate Good\'s plans.',
+            'Oberon': 'You are evil but work alone. You don\'t know other evil players and they don\'t know you.',
+            'Loyal Servant': 'You are good. Deduce who to trust and succeed in quests.',
+            'Minion': 'You are evil. Work with your evil teammates to fail quests.'
+        };
+        return descriptions[role] || 'Unknown role';
+    }
+
+    endGame(goodWins) {
+        this.gamePhase = 'game_over';
+        
+        // Update stats
+        this.updateGameStats(goodWins);
+        
+        const modalContent = `
+            <h2 style="color: ${goodWins ? '#00b894' : '#ff6b6b'};">
+                ${goodWins ? 'Good Wins!' : 'Evil Wins!'}
+            </h2>
+            <div style="margin: 2rem 0;">
+                <h3>Final Roles:</h3>
+                ${this.players.map(p => 
+                    `<p>${p.name}: ${this.playerRoles[p.id]}</p>`
+                ).join('')}
+            </div>
+            <button class="btn btn-primary" onclick="gameSystem.resetGame()">Play Again</button>
+            <button class="btn btn-secondary" onclick="gameSystem.leaveGame()">Leave Game</button>
+        `;
+        
+        authSystem.showModal(modalContent);
+    }
+
+    updateGameStats(goodWins) {
+        const currentUser = authSystem.getCurrentUser();
+        if (!currentUser) return;
+        
+        const userRole = this.playerRoles[currentUser.id];
+        const isGood = !['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(userRole);
+        
+        const stats = authSystem.getUserStats() || {};
+        stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
+        
+        if (goodWins && isGood) {
+            stats.wins = (stats.wins || 0) + 1;
+        } else if (!goodWins && !isGood) {
+            stats.wins = (stats.wins || 0) + 1;
+        }
+        
+        if (userRole === 'Merlin') {
+            stats.timesAsMerlin = (stats.timesAsMerlin || 0) + 1;
+        }
+        
+        if (userRole === 'Assassin' && !goodWins) {
+            stats.successfulAssassinations = (stats.successfulAssassinations || 0) + 1;
+        }
+        
+        authSystem.updateUserStats(stats);
+    }
+
+    resetGame() {
+        authSystem.closeModals();
+        this.startGame(this.currentGame);
+    }
+
+    leaveGame() {
+        authSystem.closeModals();
+        
+        // Close game interface
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            gameInterface.style.display = 'none';
+        }
+        
+        // Reset game state
+        this.currentGame = null;
+        this.players = [];
+        this.playerRoles = {};
+        this.currentMission = 1;
+        this.missionResults = [];
+        this.selectedPlayers = [];
+        this.votes = [];
+        this.rejectedTeams = 0;
+        this.gamePhase = 'waiting';
+        this.currentLeader = 0;
+        this.ladyOfLakeHolder = null;
+        this.chaosForMerlin = false;
+        this.fakeOberon = null;
+        
+        authSystem.showNotification('Game ended', 'info');
+    }
+
+    getCurrentGame() {
+        return this.currentGame;
+    }
+
+    getPlayerRole(playerId) {
+        return this.playerRoles[playerId];
+    }
+
+    isGameActive() {
+        return this.gamePhase !== 'waiting' && this.gamePhase !== 'game_over';
+    }
+}
+
+// Initialize game system
+const gameSystem = new GameSystem();
