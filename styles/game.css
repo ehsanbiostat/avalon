@@ -1,0 +1,448 @@
+/* Game Interface Styles */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.game-header h2 {
+    color: #ffd700;
+    margin: 0;
+}
+
+.game-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
+    gap: 2rem;
+}
+
+/* Mission Track */
+.mission-track {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.mission-token {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.mission-token::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.3), transparent);
+    transform: scale(0);
+    transition: transform 0.3s;
+}
+
+.mission-token:hover::before {
+    transform: scale(1);
+}
+
+.mission-token.success {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    border-color: #00b894;
+    animation: pulse 2s infinite;
+}
+
+.mission-token.fail {
+    background: linear-gradient(135deg, #d63031, #74b9ff);
+    border-color: #d63031;
+    animation: pulse 2s infinite;
+}
+
+.mission-token.current {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+    70% { box-shadow: 0 0 0 20px rgba(255, 215, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+}
+
+/* Game Table */
+.game-table {
+    position: relative;
+    width: 600px;
+    height: 600px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1), rgba(0, 0, 0, 0.5));
+    border: 3px solid rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 50px rgba(255, 215, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.game-table::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Player Slots */
+.player-slot {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+
+.player-slot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.5), transparent);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.player-slot:hover::before {
+    width: 100px;
+    height: 100px;
+}
+
+.player-slot:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    border-color: #ffd700;
+}
+
+.player-slot.selected {
+    border-color: #00b894;
+    border-width: 3px;
+    box-shadow: 0 0 20px rgba(0, 184, 148, 0.5);
+}
+
+.player-slot.leader {
+    border-color: #ffd700;
+    border-width: 3px;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.player-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: #fff;
+    z-index: 1;
+}
+
+.player-name {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+    z-index: 1;
+}
+
+/* Center Display */
+.center-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 1;
+}
+
+.mission-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 0.5rem;
+}
+
+.team-size-display {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+}
+
+/* Game Controls */
+.game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.game-controls .btn {
+    min-width: 150px;
+}
+
+/* Role Reveal Modal */
+.role-modal {
+    text-align: center;
+}
+
+.role-name {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 2rem 0;
+    padding: 1rem;
+    border-radius: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid;
+}
+
+.role-name.good {
+    color: #00b894;
+    border-color: #00b894;
+}
+
+.role-name.evil {
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+}
+
+.role-description {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.role-info {
+    background: rgba(255, 215, 0, 0.1);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.role-info h4 {
+    color: #ffd700;
+    margin-bottom: 0.5rem;
+}
+
+.role-info p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+/* Voting Interface */
+.voting-interface {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.vote-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.vote-btn {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    font-size: 1.2rem;
+}
+
+.vote-approve {
+    background: linear-gradient(45deg, #00b894, #00cec9);
+    color: #fff;
+}
+
+.vote-reject {
+    background: linear-gradient(45deg, #d63031, #74b9ff);
+    color: #fff;
+}
+
+.vote-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Mission Interface */
+.mission-interface {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.mission-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.mission-btn {
+    padding: 1rem 2rem;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    font-size: 1.2rem;
+}
+
+.mission-success {
+    background: linear-gradient(45deg, #00b894, #00cec9);
+    color: #fff;
+}
+
+.mission-fail {
+    background: linear-gradient(45deg, #d63031, #74b9ff);
+    color: #fff;
+}
+
+.mission-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Game Status */
+.game-status {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 1rem;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    min-width: 200px;
+}
+
+.game-status h3 {
+    color: #ffd700;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.game-status p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+/* Responsive Game Design */
+@media (max-width: 768px) {
+    .game-table {
+        width: 400px;
+        height: 400px;
+    }
+    
+    .player-slot {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .player-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+    }
+    
+    .player-name {
+        font-size: 0.8rem;
+        bottom: -20px;
+    }
+    
+    .game-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .game-controls .btn {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .vote-buttons, .mission-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .vote-btn, .mission-btn {
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-table {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .player-slot {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .player-avatar {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+    
+    .mission-track {
+        gap: 0.5rem;
+    }
+    
+    .mission-token {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+}
