@@ -602,8 +602,8 @@ class GameSystem {
         // Set game phase to transition
         this.gamePhase = 'transition';
         
-        // Show transition message
-        authSystem.showNotification(`Mission ${this.currentMission} completed! Next mission starting in 15 seconds...`, 'info');
+        // Show transition message (removed the 15-second notification)
+        authSystem.showNotification(`Mission ${this.currentMission} completed!`, 'info');
         
         // Create a countdown display
         const countdownDisplay = document.createElement('div');

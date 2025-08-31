@@ -112,9 +112,9 @@
 /* Player Slots */
 .player-slot {
     position: absolute;
-    width: 100px;
-    height: 140px; /* Increased height to accommodate name */
-    border-radius: 20px;
+    width: 80px;
+    height: 110px; /* Reduced height */
+    border-radius: 15px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
     border: 2px solid rgba(255, 215, 0, 0.5);
     display: flex;
@@ -214,33 +214,33 @@
 }
 
 .player-avatar {
-    width: 70px;
-    height: 70px;
+    width: 55px;
+    height: 55px;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     color: #fff;
     z-index: 1;
     transition: all 0.3s ease;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .player-slot:hover .player-avatar {
-    width: 75px;
-    height: 75px;
-    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    font-size: 1.7rem;
     box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
 }
 
 .player-slot.selected .player-avatar {
-    width: 80px;
-    height: 80px;
-    font-size: 2.2rem;
+    width: 65px;
+    height: 65px;
+    font-size: 1.9rem;
     background: linear-gradient(135deg, #00b894, #00cec9);
     box-shadow: 0 8px 25px rgba(0, 184, 148, 0.6);
     animation: avatarPulse 2s ease-in-out infinite;
@@ -560,8 +560,8 @@
     }
     
     .player-slot {
-        width: 80px;
-        height: 110px;
+        width: 70px;
+        height: 100px;
     }
     
     .player-avatar {
@@ -603,8 +603,8 @@
     }
     
     .player-slot {
-        width: 70px;
-        height: 100px;
+        width: 60px;
+        height: 90px;
     }
     
     .player-avatar {
