@@ -66,7 +66,15 @@ class GameSystem {
 
     startGame(roomConfig) {
         this.currentGame = roomConfig;
-        this.players = roomConfig.players;
+        
+        // Check if we need to add AI players for testing
+        if (roomConfig.players.length === 1) {
+            this.players = this.addAIPlayers(roomConfig);
+            authSystem.showNotification('Debug mode: Added AI players for testing', 'info');
+        } else {
+            this.players = roomConfig.players;
+        }
+        
         this.currentMission = 1;
         this.missionResults = [];
         this.selectedPlayers = [];
@@ -575,6 +583,30 @@ class GameSystem {
         return this.gamePhase !== 'waiting' && this.gamePhase !== 'game_over';
     }
 
+    // Add AI players for testing
+    addAIPlayers(roomConfig) {
+        const aiNames = [
+            'Arthur', 'Lancelot', 'Guinevere', 'Morgan', 'Gawain', 
+            'Tristan', 'Isolde', 'Percival', 'Galahad', 'Bedivere'
+        ];
+        
+        const players = [...roomConfig.players]; // Start with the real player
+        const neededPlayers = roomConfig.maxPlayers - players.length;
+        
+        for (let i = 0; i < neededPlayers; i++) {
+            const aiName = aiNames[i];
+            const aiPlayer = {
+                name: aiName,
+                id: `ai_${i + 1}`,
+                avatar: aiName.charAt(0),
+                isAI: true
+            };
+            players.push(aiPlayer);
+        }
+        
+        return players;
+    }
+
     // Debug functions for testing
     debugShowAllRoles() {
         console.log('🎭 === AVALON GAME DEBUG === 🎭');
@@ -583,7 +615,8 @@ class GameSystem {
         this.players.forEach(player => {
             const role = this.playerRoles[player.id];
             const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
-            console.log(`  ${player.name}: ${role} (${isEvil ? 'Evil' : 'Good'})`);
+            const aiIndicator = player.isAI ? ' (AI)' : '';
+            console.log(`  ${player.name}${aiIndicator}: ${role} (${isEvil ? 'Evil' : 'Good'})`);
         });
         
         const evilCount = this.players.filter(p => 

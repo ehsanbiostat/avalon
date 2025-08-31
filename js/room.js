@@ -123,6 +123,12 @@ class RoomSystem {
             startGameBtn.addEventListener('click', () => this.startGameFromLobby());
         }
 
+        // Debug start button
+        const debugStartBtn = document.getElementById('debugStartBtn');
+        if (debugStartBtn) {
+            debugStartBtn.addEventListener('click', () => this.startGameFromLobby());
+        }
+
         // Leave lobby button
         const leaveLobbyBtn = document.getElementById('leaveLobbyBtn');
         if (leaveLobbyBtn) {
@@ -479,13 +485,16 @@ class RoomSystem {
         
         // Show start button for host
         const startGameBtn = document.getElementById('startGameBtn');
+        const debugStartBtn = document.getElementById('debugStartBtn');
         const waitingMessage = document.getElementById('waitingMessage');
         
         if (this.isHost) {
             if (startGameBtn) startGameBtn.style.display = 'inline-block';
+            if (debugStartBtn) debugStartBtn.style.display = 'inline-block';
             if (waitingMessage) waitingMessage.style.display = 'none';
         } else {
             if (startGameBtn) startGameBtn.style.display = 'none';
+            if (debugStartBtn) debugStartBtn.style.display = 'none';
             if (waitingMessage) waitingMessage.style.display = 'block';
         }
         
@@ -570,7 +579,10 @@ class RoomSystem {
         
         const room = this.currentRoom;
         
-        if (room.players.length < room.maxPlayers) {
+        // Check if we're in debug mode (single player testing)
+        const isDebugMode = room.players.length === 1;
+        
+        if (!isDebugMode && room.players.length < room.maxPlayers) {
             authSystem.showNotification(`Need ${room.maxPlayers - room.players.length} more players to start!`, 'warning');
             return;
         }
