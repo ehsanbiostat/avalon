@@ -100,7 +100,7 @@ class GameSystem {
 
     assignRolesFromConfig(roomConfig) {
         const playerCount = roomConfig.players.length;
-        const evilCount = Math.floor(playerCount / 3 + 0.5);
+        const evilCount = Math.floor(playerCount / 3);
         const goodCount = playerCount - evilCount;
         
         // Build role pool

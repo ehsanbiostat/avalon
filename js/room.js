@@ -317,7 +317,7 @@ class RoomSystem {
 
     updateRoleBalance() {
         const playerCount = parseInt(document.getElementById('playerCount')?.value || 5);
-        const evilCount = Math.floor(playerCount / 3 + 0.5);
+        const evilCount = Math.floor(playerCount / 3);
         const goodCount = playerCount - evilCount;
         
         const goodCountElement = document.querySelector('.good-count');
@@ -366,7 +366,7 @@ class RoomSystem {
         };
         
         // Validate role distribution
-        const evilCount = Math.floor(playerCount / 3 + 0.5);
+        const evilCount = Math.floor(playerCount / 3);
         const goodCount = playerCount - evilCount;
         
         let evilRoles = 1; // Assassin is always included
