@@ -448,8 +448,15 @@ class GameSystem {
     }
 
     executeMission(success) {
+        console.log('=== EXECUTE MISSION ===');
+        console.log(`Success: ${success}`);
+        
         // Get current player (in a real app, this would be the logged-in user)
         const currentPlayer = this.players[0]; // For now, assume first player
+        
+        console.log(`Current player: ${currentPlayer.name} (${currentPlayer.id})`);
+        console.log(`Selected players: ${this.selectedPlayers.join(', ')}`);
+        console.log(`Player in team: ${this.selectedPlayers.includes(currentPlayer.id)}`);
         
         // Check if this player already voted
         if (this.missionVotes[currentPlayer.id] !== undefined) {
@@ -467,6 +474,9 @@ class GameSystem {
         this.missionVotes[currentPlayer.id] = success;
         this.missionVotesReceived++;
         
+        console.log(`Mission votes received: ${this.missionVotesReceived}/${this.selectedPlayers.length}`);
+        console.log(`Mission votes:`, this.missionVotes);
+        
         // Show vote confirmation (private)
         const voteText = success ? 'Success' : 'Fail';
         authSystem.showNotification(`${currentPlayer.name} voted ${voteText} (private)`, 'info');
@@ -476,7 +486,10 @@ class GameSystem {
         
         // Check if all team members have voted
         if (this.missionVotesReceived >= this.selectedPlayers.length) {
+            console.log('All team members voted, calling processMissionResults()');
             this.processMissionResults();
+        } else {
+            console.log('Not all team members voted yet');
         }
     }
     
@@ -496,15 +509,17 @@ class GameSystem {
         
         console.log(`Mission ${this.currentMission} - Fails required: ${failsRequired}, Mission success: ${missionSuccess}`);
         
-        // Show fail count under mission token
-        this.showMissionFailCount(failVotes);
-        
-        // Update mission token
+        // Update mission token FIRST
         const token = document.getElementById(`mission${this.currentMission}`);
         if (token) {
             token.classList.add(missionSuccess ? 'success' : 'fail');
             token.innerHTML = missionSuccess ? '✓' : '✗';
         }
+        
+        // Show fail count under mission token AFTER updating the token
+        setTimeout(() => {
+            this.showMissionFailCount(failVotes);
+        }, 100);
         
         this.missionResults.push(missionSuccess);
         
@@ -1133,6 +1148,10 @@ class GameSystem {
 
     // Function to simulate AI mission votes for testing
     simulateAIMissionVotes() {
+        console.log('=== SIMULATE AI MISSION VOTES ===');
+        console.log(`Game phase: ${this.gamePhase}`);
+        console.log(`Selected players: ${this.selectedPlayers.join(', ')}`);
+        
         if (this.gamePhase !== 'mission') {
             authSystem.showNotification('No mission in progress!');
             return;
@@ -1161,12 +1180,18 @@ class GameSystem {
             }
         });
         
+        console.log(`Mission votes received: ${this.missionVotesReceived}/${this.selectedPlayers.length}`);
+        console.log(`Mission votes:`, this.missionVotes);
+        
         // Update status panel
         this.updateGameStatusPanel();
         
         // Check if all team members have voted
         if (this.missionVotesReceived >= this.selectedPlayers.length) {
+            console.log('All team members voted, calling processMissionResults()');
             this.processMissionResults();
+        } else {
+            console.log('Not all team members voted yet');
         }
     }
 }
