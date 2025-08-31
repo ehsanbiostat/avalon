@@ -518,9 +518,8 @@ class GameSystem {
         } else if (failures >= 3) {
             this.endGame(false);
         } else {
-            this.currentMission++;
-            this.currentLeader = (this.currentLeader + 1) % this.players.length;
-            this.startRound();
+            // Add 15-second delay before starting next mission
+            this.showMissionTransition();
         }
         
         // Update game status panel
@@ -594,6 +593,70 @@ class GameSystem {
         // Show notification
         const missionResult = failVotes < this.failsRequired[this.players.length][this.currentMission - 1] ? 'SUCCESS' : 'FAIL';
         authSystem.showNotification(`Mission ${this.currentMission}: ${missionResult} (${failVotes} fail${failVotes !== 1 ? 's' : ''})`, 'info');
+    }
+
+    showMissionTransition() {
+        const nextMission = this.currentMission + 1;
+        const nextLeader = this.players[(this.currentLeader + 1) % this.players.length];
+        
+        // Set game phase to transition
+        this.gamePhase = 'transition';
+        
+        // Show transition message
+        authSystem.showNotification(`Mission ${this.currentMission} completed! Next mission starting in 15 seconds...`, 'info');
+        
+        // Create a countdown display
+        const countdownDisplay = document.createElement('div');
+        countdownDisplay.className = 'mission-countdown';
+        countdownDisplay.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffd700;
+            padding: 2rem;
+            border-radius: 15px;
+            border: 2px solid #ffd700;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 2000;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        `;
+        
+        document.body.appendChild(countdownDisplay);
+        
+        // Update status panel
+        this.updateGameStatusPanel();
+        
+        let countdown = 15;
+        const updateCountdown = () => {
+            if (countdown > 0) {
+                countdownDisplay.innerHTML = `
+                    <div style="margin-bottom: 1rem;">Mission ${this.currentMission} Complete!</div>
+                    <div style="font-size: 2rem; margin-bottom: 1rem;">${countdown}</div>
+                    <div>Next mission starting...</div>
+                    <div style="font-size: 1rem; margin-top: 1rem; color: #ffffff;">
+                        ${nextLeader.name} will be the next leader
+                    </div>
+                `;
+                countdown--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                // Remove countdown display
+                if (countdownDisplay.parentNode) {
+                    countdownDisplay.parentNode.removeChild(countdownDisplay);
+                }
+                
+                // Start next mission
+                this.currentMission++;
+                this.currentLeader = (this.currentLeader + 1) % this.players.length;
+                this.startRound();
+            }
+        };
+        
+        updateCountdown();
     }
 
     assassinPhase() {
@@ -750,6 +813,19 @@ class GameSystem {
                         <p>Team members must secretly choose Success or Fail.</p>
                         <p>Good players must choose Success.</p>
                         <p>Evil players can choose either.</p>
+                    </div>
+                `;
+                break;
+                
+            case 'transition':
+                const nextLeader = this.players[(this.currentLeader + 1) % this.players.length];
+                statusHTML = `
+                    <p><strong>Mission Transition</strong></p>
+                    <div class="mission-info">
+                        <p><strong>Mission ${this.currentMission} Complete!</strong></p>
+                        <p>Next mission starting in 15 seconds...</p>
+                        <p><strong>Next Leader:</strong> ${nextLeader.name}</p>
+                        <p>Check mission results below!</p>
                     </div>
                 `;
                 break;
