@@ -481,14 +481,20 @@ class GameSystem {
     }
     
     processMissionResults() {
+        console.log('Processing mission results...');
+        
         // Count the mission votes
         const successVotes = Object.values(this.missionVotes).filter(vote => vote).length;
         const failVotes = Object.values(this.missionVotes).filter(vote => !vote).length;
         const totalVotes = this.selectedPlayers.length;
         
+        console.log(`Mission votes - Success: ${successVotes}, Fail: ${failVotes}, Total: ${totalVotes}`);
+        
         // Determine if mission succeeds (fails required depends on player count and mission)
         const failsRequired = this.failsRequired[this.players.length][this.currentMission - 1];
         const missionSuccess = failVotes < failsRequired;
+        
+        console.log(`Mission ${this.currentMission} - Fails required: ${failsRequired}, Mission success: ${missionSuccess}`);
         
         // Show fail count under mission token
         this.showMissionFailCount(failVotes);
@@ -525,7 +531,12 @@ class GameSystem {
     showMissionFailCount(failVotes) {
         // Find the mission token
         const token = document.getElementById(`mission${this.currentMission}`);
-        if (!token) return;
+        if (!token) {
+            console.log(`Mission token ${this.currentMission} not found!`);
+            return;
+        }
+        
+        console.log(`Showing fail count: ${failVotes} fails for mission ${this.currentMission}`);
         
         // Create a fail count display under the token
         const failDisplay = document.createElement('div');
@@ -533,27 +544,33 @@ class GameSystem {
         failDisplay.textContent = `${failVotes} fail${failVotes !== 1 ? 's' : ''}`;
         failDisplay.style.cssText = `
             position: absolute;
-            bottom: -25px;
+            bottom: -30px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(214, 48, 49, 0.9);
+            background: rgba(214, 48, 49, 0.95);
             color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
             font-weight: bold;
-            z-index: 100;
-            border: 1px solid #d63031;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            border: 2px solid #d63031;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+            white-space: nowrap;
+            min-width: 40px;
+            text-align: center;
         `;
         
         // Add to the token container
         token.appendChild(failDisplay);
         
+        console.log(`Fail count display added to mission ${this.currentMission}`);
+        
         // Remove after 10 seconds
         setTimeout(() => {
             if (failDisplay.parentNode) {
                 failDisplay.parentNode.removeChild(failDisplay);
+                console.log(`Fail count display removed from mission ${this.currentMission}`);
             }
         }, 10000);
         
