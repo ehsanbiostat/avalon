@@ -529,27 +529,33 @@ class GameSystem {
             case 'team_building':
                 const leader = this.players[this.currentLeader];
                 const teamSize = this.teamSize[this.players.length][this.currentMission - 1];
+                const selectedNames = this.selectedPlayers.map(id => 
+                    this.players.find(p => p.id === id).name
+                ).join(', ');
+                
                 statusHTML = `
-                    <p><strong>Current Leader:</strong> <span class="current-leader">${leader.name}</span></p>
+                    <p><strong>Current Leader:</strong> <span class="current-leader">${leader.name}</span> 👑</p>
                     <div class="team-info">
                         <p><strong>Team Building Phase</strong></p>
                         <p>Select ${teamSize} players for Mission ${this.currentMission}</p>
                         <p>Selected: ${this.selectedPlayers.length}/${teamSize}</p>
+                        ${this.selectedPlayers.length > 0 ? `<p><strong>Selected Players:</strong></p><p>${selectedNames}</p>` : ''}
                     </div>
                     <p><strong>Mission ${this.currentMission}</strong> of 5</p>
                     <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
+                    <p style="color: #ffd700; font-style: italic;">💡 Click on player circles to select/deselect them</p>
                 `;
                 break;
                 
             case 'voting':
-                const selectedNames = this.selectedPlayers.map(id => 
+                const proposedTeamNames = this.selectedPlayers.map(id => 
                     this.players.find(p => p.id === id).name
                 ).join(', ');
                 statusHTML = `
                     <p><strong>Voting Phase</strong></p>
                     <div class="vote-info">
                         <p><strong>Proposed Team:</strong></p>
-                        <p>${selectedNames}</p>
+                        <p>${proposedTeamNames}</p>
                     </div>
                     <p>Votes received: ${this.votesReceived}/${this.players.length}</p>
                     <p>All players must vote to approve or reject this team.</p>
