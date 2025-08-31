@@ -82,6 +82,8 @@ class GameSystem {
         this.rejectedTeams = 0;
         this.gamePhase = 'team_building';
         this.chaosForMerlin = roomConfig.chaosForMerlin;
+        this.playerVotes = {}; // Track individual player votes
+        this.votesReceived = 0; // Count how many votes we've received
         
         // Assign roles based on room configuration
         this.assignRolesFromConfig(roomConfig);
@@ -237,6 +239,9 @@ class GameSystem {
             
             table.appendChild(slot);
         });
+        
+        // Update game status panel
+        this.updateGameStatusPanel();
     }
 
     selectPlayer(element) {
@@ -266,12 +271,32 @@ class GameSystem {
         }
         
         this.gamePhase = 'voting';
+        this.playerVotes = {}; // Reset votes for new team
+        this.votesReceived = 0; // Reset vote counter
+        
         const selectedNames = this.selectedPlayers.map(id => 
             this.players.find(p => p.id === id).name
         ).join(', ');
         
         authSystem.showNotification(`Team proposed: ${selectedNames}. All players must now vote!`);
-        this.showVotingInterface();
+        this.updateGameStatusPanel();
+        this.updateVoteButton();
+    }
+
+    updateVoteButton() {
+        const voteBtn = document.getElementById('voteTeamBtn');
+        if (!voteBtn) return;
+        
+        if (this.gamePhase === 'voting') {
+            voteBtn.innerHTML = `
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-success" onclick="gameSystem.vote(true)" style="flex: 1; padding: 0.5rem; font-size: 0.9rem;">Approve</button>
+                    <button class="btn btn-danger" onclick="gameSystem.vote(false)" style="flex: 1; padding: 0.5rem; font-size: 0.9rem;">Reject</button>
+                </div>
+            `;
+        } else {
+            voteBtn.textContent = 'Vote';
+        }
     }
 
     showVotingInterface() {
@@ -297,25 +322,59 @@ class GameSystem {
     }
 
     vote(approved) {
-        // Simulate voting (in real app, each player would vote)
-        const votes = this.players.map(p => Math.random() > 0.3);
-        const approvedCount = votes.filter(v => v).length;
-        const teamApproved = approvedCount > votes.length / 2;
+        // Get current player (in a real app, this would be the logged-in user)
+        const currentPlayer = this.players[0]; // For now, assume first player is voting
         
-        authSystem.closeModals();
+        // Check if this player already voted
+        if (this.playerVotes[currentPlayer.id] !== undefined) {
+            authSystem.showNotification('You have already voted!');
+            return;
+        }
+        
+        // Record the vote
+        this.playerVotes[currentPlayer.id] = approved;
+        this.votesReceived++;
+        
+        // Show vote confirmation
+        const voteText = approved ? 'approved' : 'rejected';
+        authSystem.showNotification(`${currentPlayer.name} ${voteText} the team.`);
+        
+        // Update status panel to show voting progress
+        this.updateGameStatusPanel();
+        
+        // Check if all players have voted
+        if (this.votesReceived >= this.players.length) {
+            this.processVoteResults();
+        }
+    }
+    
+    processVoteResults() {
+        // Count the votes
+        const approvedVotes = Object.values(this.playerVotes).filter(vote => vote).length;
+        const totalVotes = this.players.length;
+        const teamApproved = approvedVotes > totalVotes / 2;
+        
+        // Show vote results
+        const approveText = teamApproved ? 'APPROVED' : 'REJECTED';
+        const color = teamApproved ? '#00b894' : '#d63031';
+        
+        authSystem.showNotification(`Team ${approveText}! (${approvedVotes}/${totalVotes} votes)`, 'info');
         
         if (teamApproved) {
             this.gamePhase = 'mission';
-            authSystem.showNotification('Team approved! Mission in progress...');
             this.rejectedTeams = 0;
+            this.updateGameStatusPanel();
+            this.updateVoteButton();
             this.showMissionInterface();
         } else {
             this.rejectedTeams++;
             if (this.rejectedTeams >= 5) {
                 this.endGame(false);
             } else {
+                // Pass leadership to next player
                 this.currentLeader = (this.currentLeader + 1) % this.players.length;
-                authSystem.showNotification(`Team rejected! ${5 - this.rejectedTeams} rejections remaining before Evil wins.`);
+                const nextLeader = this.players[this.currentLeader];
+                authSystem.showNotification(`Team rejected! ${5 - this.rejectedTeams} rejections remaining. ${nextLeader.name} is now the leader.`);
                 this.startRound();
             }
         }
@@ -372,6 +431,9 @@ class GameSystem {
             this.currentLeader = (this.currentLeader + 1) % this.players.length;
             this.startRound();
         }
+        
+        // Update game status panel
+        this.updateGameStatusPanel();
     }
 
     assassinPhase() {
@@ -439,6 +501,9 @@ class GameSystem {
         
         // Highlight current leader
         this.highlightLeader();
+        
+        // Update game status panel
+        this.updateGameStatusPanel();
     }
 
     highlightLeader() {
@@ -451,6 +516,67 @@ class GameSystem {
         if (leaderSlot) {
             leaderSlot.classList.add('leader');
         }
+    }
+
+    updateGameStatusPanel() {
+        const statusPanel = document.getElementById('gameStatusPanel');
+        const statusContent = document.getElementById('gameStatusContent');
+        if (!statusPanel || !statusContent) return;
+        
+        let statusHTML = '';
+        
+        switch (this.gamePhase) {
+            case 'team_building':
+                const leader = this.players[this.currentLeader];
+                const teamSize = this.teamSize[this.players.length][this.currentMission - 1];
+                statusHTML = `
+                    <p><strong>Current Leader:</strong> <span class="current-leader">${leader.name}</span></p>
+                    <div class="team-info">
+                        <p><strong>Team Building Phase</strong></p>
+                        <p>Select ${teamSize} players for Mission ${this.currentMission}</p>
+                        <p>Selected: ${this.selectedPlayers.length}/${teamSize}</p>
+                    </div>
+                    <p><strong>Mission ${this.currentMission}</strong> of 5</p>
+                    <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
+                `;
+                break;
+                
+            case 'voting':
+                const selectedNames = this.selectedPlayers.map(id => 
+                    this.players.find(p => p.id === id).name
+                ).join(', ');
+                statusHTML = `
+                    <p><strong>Voting Phase</strong></p>
+                    <div class="vote-info">
+                        <p><strong>Proposed Team:</strong></p>
+                        <p>${selectedNames}</p>
+                    </div>
+                    <p>Votes received: ${this.votesReceived}/${this.players.length}</p>
+                    <p>All players must vote to approve or reject this team.</p>
+                    <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
+                `;
+                break;
+                
+            case 'mission':
+                statusHTML = `
+                    <p><strong>Mission Phase</strong></p>
+                    <div class="mission-info">
+                        <p><strong>Mission ${this.currentMission}</strong></p>
+                        <p>Team members must secretly choose Success or Fail.</p>
+                        <p>Good players must choose Success.</p>
+                        <p>Evil players can choose either.</p>
+                    </div>
+                `;
+                break;
+                
+            default:
+                statusHTML = `
+                    <p>Game is ready to begin!</p>
+                    <p>Click "Propose Team" to start building your team.</p>
+                `;
+        }
+        
+        statusContent.innerHTML = statusHTML;
     }
 
     showPlayerRole() {
@@ -703,6 +829,45 @@ class GameSystem {
         }
         
         console.log('\nFinal mission results:', this.missionResults);
+    }
+
+    // Function to simulate AI votes for testing
+    simulateAIVotes() {
+        if (this.gamePhase !== 'voting') {
+            authSystem.showNotification('No voting in progress!');
+            return;
+        }
+        
+        // Simulate votes for all AI players
+        this.players.forEach(player => {
+            if (player.isAI && this.playerVotes[player.id] === undefined) {
+                // AI players vote randomly but with some strategy
+                const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(this.playerRoles[player.id]);
+                let vote;
+                
+                if (isEvil) {
+                    // Evil players are more likely to reject teams
+                    vote = Math.random() > 0.4;
+                } else {
+                    // Good players are more likely to approve teams
+                    vote = Math.random() > 0.3;
+                }
+                
+                this.playerVotes[player.id] = vote;
+                this.votesReceived++;
+                
+                const voteText = vote ? 'approved' : 'rejected';
+                console.log(`AI ${player.name} ${voteText} the team`);
+            }
+        });
+        
+        // Update status panel
+        this.updateGameStatusPanel();
+        
+        // Check if all players have voted
+        if (this.votesReceived >= this.players.length) {
+            this.processVoteResults();
+        }
     }
 }
 
