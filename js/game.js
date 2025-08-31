@@ -612,6 +612,12 @@ class GameSystem {
         console.log('🎭 === AVALON GAME DEBUG === 🎭');
         console.log(`Players: ${this.players.length}`);
         console.log('Role Distribution:');
+        
+        if (!this.players || this.players.length === 0) {
+            console.log('No players found!');
+            return;
+        }
+        
         this.players.forEach(player => {
             const role = this.playerRoles[player.id];
             const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
@@ -625,7 +631,12 @@ class GameSystem {
         const goodCount = this.players.length - evilCount;
         
         console.log(`\nTotal: ${goodCount} Good, ${evilCount} Evil`);
+        console.log('Current Mission:', this.currentMission);
+        console.log('Game Phase:', this.gamePhase);
         console.log('===============================');
+        
+        // Also show in a notification
+        authSystem.showNotification(`Debug: ${goodCount} Good, ${evilCount} Evil players`, 'info');
     }
 
     // Simulate a full game for testing

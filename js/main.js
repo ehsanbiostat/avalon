@@ -312,6 +312,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    // Make debug functions globally accessible
+    window.debugShowAllRoles = function() {
+        console.log('Debug button clicked: Show All Roles');
+        if (window.gameSystem && window.gameSystem.debugShowAllRoles) {
+            window.gameSystem.debugShowAllRoles();
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
+    window.debugSimulateGame = function() {
+        console.log('Debug button clicked: Simulate Game');
+        if (window.gameSystem && window.gameSystem.debugSimulateGame) {
+            window.gameSystem.debugSimulateGame();
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 
