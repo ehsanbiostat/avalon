@@ -333,6 +333,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    // Make AI simulation functions globally accessible
+    window.simulateAIVotes = function() {
+        console.log('Debug button clicked: Simulate AI Votes');
+        if (window.gameSystem && window.gameSystem.simulateAIVotes) {
+            window.gameSystem.simulateAIVotes();
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
+    window.simulateAIMissionVotes = function() {
+        console.log('Debug button clicked: Simulate AI Mission Votes');
+        if (window.gameSystem && window.gameSystem.simulateAIMissionVotes) {
+            window.gameSystem.simulateAIMissionVotes();
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 

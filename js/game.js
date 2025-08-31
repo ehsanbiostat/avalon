@@ -308,14 +308,22 @@ class GameSystem {
 
     updateMissionButton() {
         const executeBtn = document.getElementById('executeMissionBtn');
-        if (!executeBtn) return;
+        if (!executeBtn) {
+            console.log('Execute mission button not found!');
+            return;
+        }
+        
+        console.log(`Updating mission button. Game phase: ${this.gamePhase}, Selected players: ${this.selectedPlayers.join(', ')}`);
         
         if (this.gamePhase === 'mission') {
             // Check if current player is in the mission team
             const currentPlayer = this.players[0]; // For now, assume first player
             const isInTeam = this.selectedPlayers.includes(currentPlayer.id);
             
+            console.log(`Current player: ${currentPlayer.name} (${currentPlayer.id}), Is in team: ${isInTeam}`);
+            
             if (isInTeam) {
+                console.log('Setting Success/Fail buttons for team member');
                 executeBtn.innerHTML = `
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn btn-success" onclick="gameSystem.executeMission(true)" style="flex: 1; padding: 0.5rem; font-size: 0.9rem;">Success</button>
@@ -323,10 +331,12 @@ class GameSystem {
                     </div>
                 `;
             } else {
+                console.log('Setting waiting message for non-team member');
                 executeBtn.textContent = 'Waiting for team...';
                 executeBtn.disabled = true;
             }
         } else {
+            console.log('Setting default execute mission button');
             executeBtn.textContent = 'Execute Mission';
             executeBtn.disabled = false;
         }
@@ -394,6 +404,7 @@ class GameSystem {
         authSystem.showNotification(`Team ${approveText}! (${approvedVotes}/${totalVotes} votes)`, 'info');
         
         if (teamApproved) {
+            console.log('Team approved! Switching to mission phase');
             this.gamePhase = 'mission';
             this.rejectedTeams = 0;
             this.missionVotes = {}; // Reset mission votes
