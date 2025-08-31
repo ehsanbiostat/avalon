@@ -304,6 +304,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    // Debug functions
+    window.toggleDebugPanel = function() {
+        const debugPanel = document.getElementById('debugPanel');
+        if (debugPanel) {
+            debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 

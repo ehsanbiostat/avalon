@@ -96,6 +96,9 @@ class GameSystem {
         
         // Start first round
         this.startRound();
+        
+        // Debug: Show all roles in console
+        this.debugShowAllRoles();
     }
 
     assignRolesFromConfig(roomConfig) {
@@ -154,6 +157,12 @@ class GameSystem {
         const gameInterface = document.getElementById('gameInterface');
         if (gameInterface) {
             gameInterface.style.display = 'block';
+        }
+        
+        // Show debug panel in development
+        const debugPanel = document.getElementById('debugPanel');
+        if (debugPanel) {
+            debugPanel.style.display = 'block';
         }
     }
 
@@ -564,6 +573,72 @@ class GameSystem {
 
     isGameActive() {
         return this.gamePhase !== 'waiting' && this.gamePhase !== 'game_over';
+    }
+
+    // Debug functions for testing
+    debugShowAllRoles() {
+        console.log('🎭 === AVALON GAME DEBUG === 🎭');
+        console.log(`Players: ${this.players.length}`);
+        console.log('Role Distribution:');
+        this.players.forEach(player => {
+            const role = this.playerRoles[player.id];
+            const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
+            console.log(`  ${player.name}: ${role} (${isEvil ? 'Evil' : 'Good'})`);
+        });
+        
+        const evilCount = this.players.filter(p => 
+            ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(this.playerRoles[p.id])
+        ).length;
+        const goodCount = this.players.length - evilCount;
+        
+        console.log(`\nTotal: ${goodCount} Good, ${evilCount} Evil`);
+        console.log('===============================');
+    }
+
+    // Simulate a full game for testing
+    debugSimulateGame() {
+        console.log('🎮 Starting game simulation...');
+        
+        // Simulate through all 5 missions
+        for (let mission = 1; mission <= 5; mission++) {
+            console.log(`\n--- Mission ${mission} ---`);
+            
+            // Simulate team building
+            const teamSize = this.teamSize[this.players.length][mission - 1];
+            console.log(`Team size: ${teamSize}`);
+            
+            // Simulate voting (random)
+            const votePassed = Math.random() > 0.3;
+            console.log(`Vote: ${votePassed ? 'PASSED' : 'FAILED'}`);
+            
+            if (votePassed) {
+                // Simulate mission (random)
+                const missionSuccess = Math.random() > 0.4;
+                console.log(`Mission: ${missionSuccess ? 'SUCCESS' : 'FAIL'}`);
+                
+                if (missionSuccess) {
+                    this.missionResults.push(true);
+                } else {
+                    this.missionResults.push(false);
+                }
+                
+                // Check for game end
+                const successes = this.missionResults.filter(r => r).length;
+                const failures = this.missionResults.filter(r => !r).length;
+                
+                if (successes >= 3) {
+                    console.log('🎉 Good wins! (3 successes)');
+                    break;
+                } else if (failures >= 3) {
+                    console.log('💀 Evil wins! (3 failures)');
+                    break;
+                }
+            } else {
+                console.log('Vote failed, moving to next leader');
+            }
+        }
+        
+        console.log('\nFinal mission results:', this.missionResults);
     }
 }
 
