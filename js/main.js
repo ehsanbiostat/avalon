@@ -354,6 +354,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    window.testFailCount = function() {
+        console.log('Debug button clicked: Test Fail Count');
+        if (window.gameSystem && window.gameSystem.showMissionFailCount) {
+            window.gameSystem.showMissionFailCount(2);
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 

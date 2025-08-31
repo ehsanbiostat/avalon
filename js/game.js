@@ -529,10 +529,23 @@ class GameSystem {
     }
     
     showMissionFailCount(failVotes) {
+        console.log(`=== SHOW MISSION FAIL COUNT ===`);
+        console.log(`Current mission: ${this.currentMission}`);
+        console.log(`Fail votes: ${failVotes}`);
+        
         // Find the mission token
         const token = document.getElementById(`mission${this.currentMission}`);
+        console.log(`Looking for token with ID: mission${this.currentMission}`);
+        console.log(`Token found:`, token);
+        
         if (!token) {
             console.log(`Mission token ${this.currentMission} not found!`);
+            // Let's check what mission tokens exist
+            const allTokens = document.querySelectorAll('.mission-token');
+            console.log(`All mission tokens found:`, allTokens);
+            allTokens.forEach((t, i) => {
+                console.log(`Token ${i}: id="${t.id}", text="${t.textContent}"`);
+            });
             return;
         }
         
@@ -561,10 +574,14 @@ class GameSystem {
             text-align: center;
         `;
         
+        console.log(`Created fail display element:`, failDisplay);
+        console.log(`Fail display text: "${failDisplay.textContent}"`);
+        
         // Add to the token container
         token.appendChild(failDisplay);
         
         console.log(`Fail count display added to mission ${this.currentMission}`);
+        console.log(`Token now has ${token.children.length} children`);
         
         // Remove after 10 seconds
         setTimeout(() => {
