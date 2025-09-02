@@ -100,6 +100,12 @@ class GameSystem {
         this.assignRolesFromConfig(roomConfig);
         
         // Setup Lady of the Lake if enabled
+        console.log('=== LADY OF LAKE INITIALIZATION ===');
+        console.log('Room config ladyOfLake:', roomConfig.ladyOfLake);
+        console.log('this.ladyOfLake.enabled:', this.ladyOfLake.enabled);
+        console.log('Current leader index:', this.currentLeader);
+        console.log('Total players:', this.players.length);
+        
         if (this.ladyOfLake.enabled) {
             // Give Lady of the Lake token to the player on the Leader's right
             const leaderIndex = this.currentLeader;
@@ -110,6 +116,9 @@ class GameSystem {
             authSystem.showNotification(`${ladyOfLakePlayer.name} receives the Lady of the Lake token!`, 'info');
             
             console.log(`Lady of the Lake: ${ladyOfLakePlayer.name} (${ladyOfLakePlayer.id}) receives the token`);
+            console.log('Lady of Lake object after setup:', this.ladyOfLake);
+        } else {
+            console.log('Lady of Lake not enabled in this game');
         }
         
         // Show game interface
@@ -286,7 +295,7 @@ class GameSystem {
             if (this.ladyOfLake.enabled && this.ladyOfLake.currentHolder === player.id) {
                 const ladyToken = document.createElement('div');
                 ladyToken.className = 'lady-of-lake-token';
-                ladyToken.innerHTML = '👑';
+                ladyToken.innerHTML = '🕵️';
                 ladyToken.title = 'Lady of the Lake';
                 slot.appendChild(ladyToken);
                 console.log(`Added Lady of the Lake token to ${player.name}`);
@@ -598,10 +607,22 @@ class GameSystem {
         const failures = this.missionResults.filter(r => !r).length;
         
         // Check if Lady of the Lake can be used after this mission
+        console.log('=== LADY OF LAKE CHECK ===');
+        console.log('Mission completed:', this.currentMission);
+        console.log('Lady of Lake enabled:', this.ladyOfLake.enabled);
+        console.log('Uses remaining:', this.ladyOfLake.usesRemaining);
+        console.log('Can use after missions:', this.ladyOfLake.canUseAfterMission);
+        console.log('Current mission in allowed list:', this.ladyOfLake.canUseAfterMission.includes(this.currentMission));
+        
         if (this.ladyOfLake.enabled && this.ladyOfLake.usesRemaining > 0 && 
             this.ladyOfLake.canUseAfterMission.includes(this.currentMission)) {
             console.log(`Mission ${this.currentMission} completed - Lady of the Lake can be used`);
             this.triggerLadyOfLake();
+        } else {
+            console.log('Lady of Lake NOT triggered because:');
+            if (!this.ladyOfLake.enabled) console.log('- Lady of Lake not enabled');
+            if (this.ladyOfLake.usesRemaining <= 0) console.log('- No uses remaining');
+            if (!this.ladyOfLake.canUseAfterMission.includes(this.currentMission)) console.log('- Mission not in allowed list');
         }
         
         if (successes >= 3) {
@@ -952,7 +973,7 @@ class GameSystem {
                     </div>
                     <p><strong>Mission ${this.currentMission}</strong> of 5</p>
                     <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
-                    ${this.ladyOfLake.enabled ? `<p><strong>👑 Lady of the Lake:</strong> ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name || 'None'} (${this.ladyOfLake.usesRemaining}/3 uses remaining)</p>` : ''}
+                    ${this.ladyOfLake.enabled ? `<p><strong>🕵️ Lady of the Lake:</strong> ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name || 'None'} (${this.ladyOfLake.usesRemaining}/3 uses remaining)</p>` : ''}
                     <p style="color: #ffd700; font-style: italic;">💡 Click on player circles to select/deselect them</p>
                 `;
                 break;
@@ -970,7 +991,7 @@ class GameSystem {
                     <p>Votes received: ${this.votesReceived}/${this.players.length}</p>
                     <p>All players must vote to approve or reject this team.</p>
                     <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
-                    ${this.ladyOfLake.enabled ? `<p><strong>👑 Lady of the Lake:</strong> ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name || 'None'} (${this.ladyOfLake.usesRemaining}/3 uses remaining)</p>` : ''}
+                    ${this.ladyOfLake.enabled ? `<p><strong>🕵️ Lady of the Lake:</strong> ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name || 'None'} (${this.ladyOfLake.usesRemaining}/3 uses remaining)</p>` : ''}
                 `;
                 break;
                 
@@ -1069,27 +1090,40 @@ class GameSystem {
     }
 
     triggerLadyOfLake() {
-        if (!this.ladyOfLake.enabled || this.ladyOfLake.usesRemaining <= 0) {
-            console.log('Lady of the Lake not available');
+        console.log('=== TRIGGER LADY OF LAKE ===');
+        console.log('Function called successfully');
+        
+        if (!this.ladyOfLake.enabled) {
+            console.log('Lady of the Lake not enabled');
+            return;
+        }
+        
+        if (this.ladyOfLake.usesRemaining <= 0) {
+            console.log('No uses remaining');
             return;
         }
         
         const currentHolder = this.players.find(p => p.id === this.ladyOfLake.currentHolder);
         if (!currentHolder) {
             console.error('Lady of the Lake holder not found');
+            console.log('Current holder ID:', this.ladyOfLake.currentHolder);
+            console.log('Available players:', this.players.map(p => ({id: p.id, name: p.name})));
             return;
         }
         
         console.log(`Triggering Lady of the Lake for ${currentHolder.name}`);
+        console.log('About to call showLadyOfLakeInterface...');
         
         // Show Lady of the Lake interface
         this.showLadyOfLakeInterface(currentHolder);
+        
+        console.log('showLadyOfLakeInterface called');
     }
 
     showLadyOfLakeInterface(ladyOfLakePlayer) {
         const modalContent = `
             <div class="lady-of-lake-interface">
-                <h2 style="color: #ffd700;">👑 Lady of the Lake</h2>
+                <h2 style="color: #ffd700;">🕵️ Lady of the Lake</h2>
                 <p><strong>${ladyOfLakePlayer.name}</strong>, you have the Lady of the Lake token.</p>
                 <p>Choose a player to examine their loyalty (Good or Evil).</p>
                 <p><em>Note: You cannot choose someone who has already used the Lady of the Lake.</em></p>
@@ -1210,7 +1244,7 @@ class GameSystem {
             if (playerSlot) {
                 const ladyToken = document.createElement('div');
                 ladyToken.className = 'lady-of-lake-token';
-                ladyToken.innerHTML = '👑';
+                ladyToken.innerHTML = '🕵️';
                 ladyToken.title = 'Lady of the Lake';
                 playerSlot.appendChild(ladyToken);
                 console.log(`Updated Lady of the Lake token display for ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name}`);

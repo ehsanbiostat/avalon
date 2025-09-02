@@ -447,9 +447,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Uses remaining:', window.gameSystem.ladyOfLake?.usesRemaining);
         
         if (window.gameSystem.ladyOfLake?.enabled) {
+            console.log('Lady of Lake is enabled, triggering...');
             window.gameSystem.triggerLadyOfLake();
             authSystem.showNotification('Lady of Lake interface should appear!', 'info');
         } else {
+            console.log('Lady of Lake not enabled. Room config:', window.gameSystem.currentGame);
             authSystem.showNotification('Lady of Lake is not enabled in this game', 'warning');
         }
     };
