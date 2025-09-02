@@ -109,6 +109,9 @@ class GameSystem {
         // Start first round
         this.startRound();
         
+        // Initialize rejection counter
+        this.updateRejectionCounter();
+        
         // Debug: Show all roles in console
         this.debugShowAllRoles();
     }
@@ -212,6 +215,17 @@ class GameSystem {
             <div style="font-size: 1.2rem; color: #ffd700; margin-bottom: 1rem;">Current Mission</div>
             <div class="mission-number" id="missionNumber">1</div>
             <div class="team-size-display" id="teamSizeDisplay">Team Size: 2</div>
+            
+            <!-- Rejection Counter -->
+            <div class="rejection-counter" style="margin-top: 1.5rem;">
+                <div style="font-size: 1rem; color: #ffd700; margin-bottom: 0.5rem;">Team Rejections</div>
+                <div class="rejection-bar">
+                    <div class="rejection-fill" id="rejectionFill" style="width: 0%;"></div>
+                </div>
+                <div class="rejection-text" id="rejectionText" style="color: #ffffff; font-size: 0.9rem; margin-top: 0.25rem;">
+                    0 / 5 rejections
+                </div>
+            </div>
         `;
         table.appendChild(centerDisplay);
         
@@ -425,6 +439,11 @@ class GameSystem {
             this.showMissionInterface();
         } else {
             this.rejectedTeams++;
+            console.log(`Team rejected! Rejection count: ${this.rejectedTeams}/5`);
+            
+            // Update rejection counter immediately
+            this.updateRejectionCounter();
+            
             if (this.rejectedTeams >= 5) {
                 this.endGame(false);
             } else {
@@ -944,6 +963,40 @@ class GameSystem {
         }
         
         statusContent.innerHTML = statusHTML;
+        
+        // Update rejection counter
+        this.updateRejectionCounter();
+    }
+
+    updateRejectionCounter() {
+        const rejectionFill = document.getElementById('rejectionFill');
+        const rejectionText = document.getElementById('rejectionText');
+        
+        if (!rejectionFill || !rejectionText) return;
+        
+        const maxRejections = 5;
+        const currentRejections = this.rejectedTeams || 0;
+        const percentage = (currentRejections / maxRejections) * 100;
+        
+        // Update the progress bar
+        rejectionFill.style.width = `${percentage}%`;
+        
+        // Update the text
+        rejectionText.textContent = `${currentRejections} / ${maxRejections} rejections`;
+        
+        // Change color based on rejection count
+        if (currentRejections >= 4) {
+            rejectionFill.style.background = '#d63031'; // Red - danger
+            rejectionText.style.color = '#d63031';
+        } else if (currentRejections >= 2) {
+            rejectionFill.style.background = '#f39c12'; // Orange - warning
+            rejectionText.style.color = '#f39c12';
+        } else {
+            rejectionFill.style.background = '#00b894'; // Green - safe
+            rejectionText.style.color = '#00b894';
+        }
+        
+        console.log(`Updated rejection counter: ${currentRejections}/${maxRejections} (${percentage}%)`);
     }
 
     showPlayerRole() {

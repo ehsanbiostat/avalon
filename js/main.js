@@ -384,6 +384,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    window.testRejectionCounter = function() {
+        console.log('Debug button clicked: Test Rejection Counter');
+        if (window.gameSystem && window.gameSystem.updateRejectionCounter) {
+            // Test different rejection counts
+            const testCounts = [0, 1, 2, 3, 4, 5];
+            let currentIndex = 0;
+            
+            const testInterval = setInterval(() => {
+                if (currentIndex < testCounts.length) {
+                    window.gameSystem.rejectedTeams = testCounts[currentIndex];
+                    console.log(`Testing rejection count: ${testCounts[currentIndex]}/5`);
+                    window.gameSystem.updateRejectionCounter();
+                    currentIndex++;
+                } else {
+                    clearInterval(testInterval);
+                    // Reset to 0
+                    window.gameSystem.rejectedTeams = 0;
+                    window.gameSystem.updateRejectionCounter();
+                    console.log('Rejection counter test completed, reset to 0');
+                }
+            }, 1000);
+            
+            authSystem.showNotification('Testing rejection counter - watch the center bar!', 'info');
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 
