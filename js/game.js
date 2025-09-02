@@ -392,12 +392,20 @@ class GameSystem {
     }
     
     processVoteResults() {
+        console.log('=== PROCESS VOTE RESULTS ===');
+        console.log('Player votes:', this.playerVotes);
+        console.log('Votes received:', this.votesReceived);
+        console.log('Total players:', this.players.length);
+        
         // Count the votes
         const approvedVotes = Object.values(this.playerVotes).filter(vote => vote).length;
         const totalVotes = this.players.length;
         const teamApproved = approvedVotes > totalVotes / 2;
         
+        console.log(`Approved votes: ${approvedVotes}, Total: ${totalVotes}, Team approved: ${teamApproved}`);
+        
         // Show detailed vote results
+        console.log('Calling showVoteResults()...');
         this.showVoteResults();
         
         // Show vote results
@@ -546,6 +554,9 @@ class GameSystem {
     }
 
     showVoteResults() {
+        console.log('=== SHOW VOTE RESULTS ===');
+        console.log('Creating vote results overlay...');
+        
         // Create a voting results overlay
         const overlay = document.createElement('div');
         overlay.className = 'vote-results-overlay';
@@ -564,10 +575,16 @@ class GameSystem {
         `;
         
         // Count votes
+        console.log('Counting votes in showVoteResults...');
+        console.log('this.playerVotes:', this.playerVotes);
+        console.log('this.players:', this.players);
+        
         const approvedVotes = Object.values(this.playerVotes).filter(vote => vote).length;
         const rejectedVotes = Object.values(this.playerVotes).filter(vote => !vote).length;
         const totalVotes = this.players.length;
         const teamApproved = approvedVotes > totalVotes / 2;
+        
+        console.log(`Vote counts - Approved: ${approvedVotes}, Rejected: ${rejectedVotes}, Total: ${totalVotes}, Team approved: ${teamApproved}`);
         
         // Create vote results content
         const resultsContent = document.createElement('div');

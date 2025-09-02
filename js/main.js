@@ -364,6 +364,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    window.testVoteResults = function() {
+        console.log('Debug button clicked: Test Vote Results');
+        if (window.gameSystem && window.gameSystem.showVoteResults) {
+            window.gameSystem.showVoteResults();
+        } else {
+            console.log('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 
