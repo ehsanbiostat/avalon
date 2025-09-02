@@ -693,13 +693,40 @@ class GameSystem {
         resultsContent.appendChild(voteList);
         resultsContent.appendChild(closeButton);
         
+        console.log('Content assembled, adding to overlay...');
         overlay.appendChild(resultsContent);
+        
+        console.log('Adding overlay to document body...');
         document.body.appendChild(overlay);
+        
+        console.log('Overlay added to DOM. Checking if it exists...');
+        console.log('Overlay in DOM:', document.querySelector('.vote-results-overlay'));
+        console.log('Overlay styles:', overlay.style.cssText);
+        console.log('Overlay dimensions:', overlay.offsetWidth, 'x', overlay.offsetHeight);
+        
+        // Add a temporary test element to see if anything is visible
+        const testElement = document.createElement('div');
+        testElement.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: red;
+            color: white;
+            padding: 20px;
+            z-index: 10000;
+            font-size: 24px;
+            font-weight: bold;
+        `;
+        testElement.textContent = 'VOTE RESULTS TEST - CLICK TO REMOVE';
+        testElement.onclick = () => testElement.remove();
+        document.body.appendChild(testElement);
+        console.log('Test element added:', testElement);
         
         // Auto-close after 10 seconds
         setTimeout(() => {
             if (overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
+                console.log('Overlay auto-closed after 10 seconds');
             }
         }, 10000);
     }
