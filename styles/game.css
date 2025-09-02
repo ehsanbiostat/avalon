@@ -708,6 +708,11 @@
 /* Rejection Counter */
 .rejection-counter {
     text-align: center;
+    /* Temporary high visibility for debugging */
+    border: 3px solid red;
+    background: rgba(255, 0, 0, 0.1);
+    padding: 10px;
+    margin: 10px;
 }
 
 .rejection-bar {
@@ -718,6 +723,8 @@
     margin: 0 auto;
     overflow: hidden;
     border: 1px solid rgba(255, 215, 0, 0.3);
+    /* Temporary high visibility for debugging */
+    border: 2px solid blue;
 }
 
 .rejection-fill {
@@ -726,9 +733,15 @@
     border-radius: 6px;
     transition: all 0.5s ease;
     box-shadow: 0 0 10px rgba(0, 184, 148, 0.5);
+    /* Temporary high visibility for debugging */
+    border: 1px solid yellow;
 }
 
 .rejection-text {
     font-weight: bold;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    /* Temporary high visibility for debugging */
+    background: rgba(0, 255, 0, 0.3);
+    padding: 5px;
+    border: 1px solid green;
 }

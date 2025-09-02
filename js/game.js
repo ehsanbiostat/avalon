@@ -229,6 +229,21 @@ class GameSystem {
         `;
         table.appendChild(centerDisplay);
         
+        // Debug: Check if rejection counter elements were created
+        console.log('=== REJECTION COUNTER CREATION DEBUG ===');
+        console.log('Center display created:', centerDisplay);
+        console.log('Looking for rejection counter elements...');
+        const debugRejectionFill = document.getElementById('rejectionFill');
+        const debugRejectionText = document.getElementById('rejectionText');
+        console.log('rejectionFill found:', debugRejectionFill);
+        console.log('rejectionText found:', debugRejectionText);
+        if (debugRejectionFill) {
+            console.log('rejectionFill styles:', debugRejectionFill.style.cssText);
+        }
+        if (debugRejectionText) {
+            console.log('rejectionText content:', debugRejectionText.textContent);
+        }
+        
         // Position players around the table
         const radius = 250;
         const centerX = 300;
@@ -969,34 +984,54 @@ class GameSystem {
     }
 
     updateRejectionCounter() {
+        console.log('=== UPDATE REJECTION COUNTER ===');
+        console.log('Looking for rejection counter elements...');
+        
         const rejectionFill = document.getElementById('rejectionFill');
         const rejectionText = document.getElementById('rejectionText');
         
-        if (!rejectionFill || !rejectionText) return;
+        console.log('rejectionFill element:', rejectionFill);
+        console.log('rejectionText element:', rejectionText);
+        
+        if (!rejectionFill || !rejectionText) {
+            console.error('Rejection counter elements not found!');
+            console.log('Available elements with "rejection" in ID:');
+            document.querySelectorAll('[id*="rejection"]').forEach(el => {
+                console.log('Found element:', el.id, el);
+            });
+            return;
+        }
         
         const maxRejections = 5;
         const currentRejections = this.rejectedTeams || 0;
         const percentage = (currentRejections / maxRejections) * 100;
         
+        console.log(`Current rejections: ${currentRejections}, Percentage: ${percentage}%`);
+        
         // Update the progress bar
         rejectionFill.style.width = `${percentage}%`;
+        console.log('Updated progress bar width to:', rejectionFill.style.width);
         
         // Update the text
         rejectionText.textContent = `${currentRejections} / ${maxRejections} rejections`;
+        console.log('Updated text to:', rejectionText.textContent);
         
         // Change color based on rejection count
         if (currentRejections >= 4) {
             rejectionFill.style.background = '#d63031'; // Red - danger
             rejectionText.style.color = '#d63031';
+            console.log('Set colors to RED (danger)');
         } else if (currentRejections >= 2) {
             rejectionFill.style.background = '#f39c12'; // Orange - warning
             rejectionText.style.color = '#f39c12';
+            console.log('Set colors to ORANGE (warning)');
         } else {
             rejectionFill.style.background = '#00b894'; // Green - safe
             rejectionText.style.color = '#00b894';
+            console.log('Set colors to GREEN (safe)');
         }
         
-        console.log(`Updated rejection counter: ${currentRejections}/${maxRejections} (${percentage}%)`);
+        console.log(`Successfully updated rejection counter: ${currentRejections}/${maxRejections} (${percentage}%)`);
     }
 
     showPlayerRole() {
