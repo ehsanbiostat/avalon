@@ -367,6 +367,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.testVoteResults = function() {
         console.log('Debug button clicked: Test Vote Results');
         if (window.gameSystem && window.gameSystem.showVoteResults) {
+            // Create sample vote data for testing
+            if (!window.gameSystem.playerVotes || Object.keys(window.gameSystem.playerVotes).length === 0) {
+                console.log('Creating sample vote data for testing...');
+                window.gameSystem.playerVotes = {};
+                window.gameSystem.players.forEach(player => {
+                    // Randomly assign votes for testing
+                    window.gameSystem.playerVotes[player.id] = Math.random() > 0.5;
+                });
+                console.log('Sample votes created:', window.gameSystem.playerVotes);
+            }
             window.gameSystem.showVoteResults();
         } else {
             console.log('Game system not available');

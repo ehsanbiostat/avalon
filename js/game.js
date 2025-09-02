@@ -555,30 +555,9 @@ class GameSystem {
 
     showVoteResults() {
         console.log('=== SHOW VOTE RESULTS ===');
-        console.log('Creating vote results overlay...');
-        
-        // Create a voting results overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'vote-results-overlay';
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1500;
-            backdrop-filter: blur(5px);
-        `;
+        console.log('Showing vote results inline on player slots...');
         
         // Count votes
-        console.log('Counting votes in showVoteResults...');
-        console.log('this.playerVotes:', this.playerVotes);
-        console.log('this.players:', this.players);
-        
         const approvedVotes = Object.values(this.playerVotes).filter(vote => vote).length;
         const rejectedVotes = Object.values(this.playerVotes).filter(vote => !vote).length;
         const totalVotes = this.players.length;
@@ -586,148 +565,71 @@ class GameSystem {
         
         console.log(`Vote counts - Approved: ${approvedVotes}, Rejected: ${rejectedVotes}, Total: ${totalVotes}, Team approved: ${teamApproved}`);
         
-        // Create vote results content
-        const resultsContent = document.createElement('div');
-        resultsContent.className = 'vote-results-content';
-        resultsContent.style.cssText = `
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.8));
-            border: 2px solid ${teamApproved ? '#00b894' : '#d63031'};
-            border-radius: 15px;
-            padding: 2rem;
-            text-align: center;
-            min-width: 500px;
-            max-width: 600px;
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
-        `;
-        
-        // Create header
-        const header = document.createElement('h2');
-        header.style.cssText = `
-            color: #ffd700;
-            margin-bottom: 1.5rem;
-            font-size: 1.8rem;
-        `;
-        header.textContent = 'Team Vote Results';
-        
-        // Create vote summary
-        const summary = document.createElement('div');
-        summary.style.cssText = `
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 10px;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-        `;
-        
+        // Show team result notification
         const resultText = teamApproved ? 'APPROVED' : 'REJECTED';
         const resultColor = teamApproved ? '#00b894' : '#d63031';
+        authSystem.showNotification(`Team ${resultText}! (${approvedVotes}/${totalVotes} votes)`, 'info');
         
-        summary.innerHTML = `
-            <div style="font-size: 1.5rem; font-weight: bold; color: ${resultColor}; margin-bottom: 0.5rem;">
-                Team ${resultText}
-            </div>
-            <div style="color: #ffffff; font-size: 1.1rem;">
-                ${approvedVotes} Approve • ${rejectedVotes} Reject
-            </div>
-        `;
-        
-        // Create individual vote display
-        const voteList = document.createElement('div');
-        voteList.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-        `;
-        
+        // Add vote indicators to each player slot
         this.players.forEach(player => {
             const vote = this.playerVotes[player.id];
-            const voteDisplay = document.createElement('div');
-            voteDisplay.style.cssText = `
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.75rem 1rem;
-                background: rgba(255, 255, 255, 0.05);
-                border-radius: 8px;
-                border-left: 4px solid ${vote ? '#00b894' : '#d63031'};
-            `;
+            const playerSlot = document.querySelector(`[data-player-id="${player.id}"]`);
             
-            voteDisplay.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 1.2rem;">${player.avatar}</span>
-                    <span style="color: #ffffff; font-weight: bold;">${player.name}</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="color: ${vote ? '#00b894' : '#d63031'}; font-weight: bold; font-size: 1.1rem;">
-                        ${vote ? '✓ Approve' : '✗ Reject'}
-                    </span>
-                </div>
-            `;
-            
-            voteList.appendChild(voteDisplay);
+            if (playerSlot) {
+                // Remove any existing vote indicator
+                const existingIndicator = playerSlot.querySelector('.vote-indicator');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+                
+                // Create vote indicator
+                const voteIndicator = document.createElement('div');
+                voteIndicator.className = 'vote-indicator';
+                voteIndicator.style.cssText = `
+                    position: absolute;
+                    top: -10px;
+                    right: -10px;
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: white;
+                    border: 2px solid white;
+                    z-index: 10;
+                    animation: voteIndicatorAppear 0.5s ease-out;
+                `;
+                
+                if (vote) {
+                    voteIndicator.style.background = '#00b894';
+                    voteIndicator.textContent = '✓';
+                    voteIndicator.title = 'Approved';
+                } else {
+                    voteIndicator.style.background = '#d63031';
+                    voteIndicator.textContent = '✗';
+                    voteIndicator.title = 'Rejected';
+                }
+                
+                playerSlot.appendChild(voteIndicator);
+                console.log(`Added vote indicator for ${player.name}: ${vote ? 'Approve' : 'Reject'}`);
+            }
         });
         
-        // Create close button
-        const closeButton = document.createElement('button');
-        closeButton.style.cssText = `
-            background: linear-gradient(45deg, #ffd700, #ffed4e);
-            color: #000;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        `;
-        closeButton.textContent = 'Continue';
-        closeButton.onclick = () => {
-            if (overlay.parentNode) {
-                overlay.parentNode.removeChild(overlay);
-            }
-        };
-        
-        // Assemble the content
-        resultsContent.appendChild(header);
-        resultsContent.appendChild(summary);
-        resultsContent.appendChild(voteList);
-        resultsContent.appendChild(closeButton);
-        
-        console.log('Content assembled, adding to overlay...');
-        overlay.appendChild(resultsContent);
-        
-        console.log('Adding overlay to document body...');
-        document.body.appendChild(overlay);
-        
-        console.log('Overlay added to DOM. Checking if it exists...');
-        console.log('Overlay in DOM:', document.querySelector('.vote-results-overlay'));
-        console.log('Overlay styles:', overlay.style.cssText);
-        console.log('Overlay dimensions:', overlay.offsetWidth, 'x', overlay.offsetHeight);
-        
-        // Add a temporary test element to see if anything is visible
-        const testElement = document.createElement('div');
-        testElement.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: red;
-            color: white;
-            padding: 20px;
-            z-index: 10000;
-            font-size: 24px;
-            font-weight: bold;
-        `;
-        testElement.textContent = 'VOTE RESULTS TEST - CLICK TO REMOVE';
-        testElement.onclick = () => testElement.remove();
-        document.body.appendChild(testElement);
-        console.log('Test element added:', testElement);
-        
-        // Auto-close after 10 seconds
+        // Auto-remove vote indicators after 10 seconds
         setTimeout(() => {
-            if (overlay.parentNode) {
-                overlay.parentNode.removeChild(overlay);
-                console.log('Overlay auto-closed after 10 seconds');
-            }
+            this.players.forEach(player => {
+                const playerSlot = document.querySelector(`[data-player-id="${player.id}"]`);
+                if (playerSlot) {
+                    const voteIndicator = playerSlot.querySelector('.vote-indicator');
+                    if (voteIndicator) {
+                        voteIndicator.remove();
+                        console.log(`Removed vote indicator for ${player.name}`);
+                    }
+                }
+            });
         }, 10000);
     }
     
