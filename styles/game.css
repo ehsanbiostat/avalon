@@ -745,3 +745,169 @@
     padding: 5px;
     border: 1px solid green;
 }
+
+/* Lady of the Lake Token */
+.lady-of-lake-token {
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    width: 30px;
+    height: 30px;
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    z-index: 15;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+    animation: ladyTokenGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes ladyTokenGlow {
+    from {
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        transform: scale(1);
+    }
+    to {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        transform: scale(1.1);
+    }
+}
+
+/* Lady of the Lake Interface */
+.lady-of-lake-interface {
+    text-align: center;
+    color: #ffffff;
+}
+
+.lady-of-lake-interface h2 {
+    margin-bottom: 1.5rem;
+}
+
+.lady-of-lake-interface p {
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.player-selection {
+    margin: 2rem 0;
+}
+
+.player-selection h3 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+}
+
+.player-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.player-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.player-option:hover {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700;
+    transform: translateX(5px);
+}
+
+.player-option .player-avatar {
+    font-size: 1.5rem;
+}
+
+.player-option .player-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.lady-info {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.lady-info p {
+    margin-bottom: 0.5rem;
+}
+
+/* Loyalty Result Display */
+.loyalty-result {
+    text-align: center;
+    color: #ffffff;
+}
+
+.loyalty-result h3 {
+    margin-bottom: 2rem;
+}
+
+.result-display {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 10px;
+    margin: 2rem 0;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.player-info .player-avatar {
+    font-size: 2rem;
+}
+
+.player-info .player-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.loyalty-result-text {
+    margin-bottom: 1.5rem;
+}
+
+.loyalty-label, .role-label {
+    font-weight: bold;
+    color: #ffd700;
+    margin-right: 0.5rem;
+}
+
+.loyalty-value.good {
+    color: #00b894;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.loyalty-value.evil {
+    color: #d63031;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.role-value {
+    color: #ffffff;
+    font-weight: bold;
+}

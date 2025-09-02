@@ -425,6 +425,35 @@ document.addEventListener('DOMContentLoaded', () => {
         authSystem.showNotification('Testing rejection counter - watch the center bar!', 'info');
     };
     
+    window.testLadyOfLake = function() {
+        console.log('=== TEST LADY OF LAKE ===');
+        console.log('Debug button clicked: Test Lady of Lake');
+        
+        if (!window.gameSystem) {
+            console.error('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+            return;
+        }
+        
+        if (!window.gameSystem.triggerLadyOfLake) {
+            console.error('triggerLadyOfLake function not found');
+            authSystem.showNotification('triggerLadyOfLake function not found', 'error');
+            return;
+        }
+        
+        console.log('Game system available, testing Lady of Lake...');
+        console.log('Lady of Lake enabled:', window.gameSystem.ladyOfLake?.enabled);
+        console.log('Current holder:', window.gameSystem.ladyOfLake?.currentHolder);
+        console.log('Uses remaining:', window.gameSystem.ladyOfLake?.usesRemaining);
+        
+        if (window.gameSystem.ladyOfLake?.enabled) {
+            window.gameSystem.triggerLadyOfLake();
+            authSystem.showNotification('Lady of Lake interface should appear!', 'info');
+        } else {
+            authSystem.showNotification('Lady of Lake is not enabled in this game', 'warning');
+        }
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
 });
 

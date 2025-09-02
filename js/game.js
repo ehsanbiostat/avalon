@@ -87,14 +87,29 @@ class GameSystem {
         this.missionVotes = {}; // Track mission votes
         this.missionVotesReceived = 0; // Count mission votes received
         
+        // Lady of the Lake system
+        this.ladyOfLake = {
+            enabled: roomConfig.ladyOfLake || false,
+            currentHolder: null,
+            previousHolders: [], // Track who has used it
+            usesRemaining: 3,
+            canUseAfterMission: [2, 3, 4] // Missions where it can be used
+        };
+        
         // Assign roles based on room configuration
         this.assignRolesFromConfig(roomConfig);
         
         // Setup Lady of the Lake if enabled
-        if (roomConfig.ladyOfLake) {
-            const randomPlayer = Math.floor(Math.random() * this.players.length);
-            this.ladyOfLakeHolder = this.players[randomPlayer].id;
-            authSystem.showNotification(`${this.players[randomPlayer].name} receives the Lady of the Lake token!`, 'info');
+        if (this.ladyOfLake.enabled) {
+            // Give Lady of the Lake token to the player on the Leader's right
+            const leaderIndex = this.currentLeader;
+            const ladyOfLakeIndex = (leaderIndex + 1) % this.players.length;
+            this.ladyOfLake.currentHolder = this.players[ladyOfLakeIndex].id;
+            
+            const ladyOfLakePlayer = this.players[ladyOfLakeIndex];
+            authSystem.showNotification(`${ladyOfLakePlayer.name} receives the Lady of the Lake token!`, 'info');
+            
+            console.log(`Lady of the Lake: ${ladyOfLakePlayer.name} (${ladyOfLakePlayer.id}) receives the token`);
         }
         
         // Show game interface
@@ -266,6 +281,16 @@ class GameSystem {
                 <div class="player-avatar">${player.avatar}</div>
                 <div class="player-name">${player.name}</div>
             `;
+            
+            // Add Lady of the Lake token if this player has it
+            if (this.ladyOfLake.enabled && this.ladyOfLake.currentHolder === player.id) {
+                const ladyToken = document.createElement('div');
+                ladyToken.className = 'lady-of-lake-token';
+                ladyToken.innerHTML = '👑';
+                ladyToken.title = 'Lady of the Lake';
+                slot.appendChild(ladyToken);
+                console.log(`Added Lady of the Lake token to ${player.name}`);
+            }
             
             // Debug: Add a temporary visible indicator
             console.log(`Created player slot for ${player.name} at position (${x}, ${y})`);
@@ -571,6 +596,13 @@ class GameSystem {
         // Check for game end
         const successes = this.missionResults.filter(r => r).length;
         const failures = this.missionResults.filter(r => !r).length;
+        
+        // Check if Lady of the Lake can be used after this mission
+        if (this.ladyOfLake.enabled && this.ladyOfLake.usesRemaining > 0 && 
+            this.ladyOfLake.canUseAfterMission.includes(this.currentMission)) {
+            console.log(`Mission ${this.currentMission} completed - Lady of the Lake can be used`);
+            this.triggerLadyOfLake();
+        }
         
         if (successes >= 3) {
             // Good wins (unless assassin identifies Merlin)
@@ -920,6 +952,7 @@ class GameSystem {
                     </div>
                     <p><strong>Mission ${this.currentMission}</strong> of 5</p>
                     <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
+                    ${this.ladyOfLake.enabled ? `<p><strong>👑 Lady of the Lake:</strong> ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name || 'None'} (${this.ladyOfLake.usesRemaining}/3 uses remaining)</p>` : ''}
                     <p style="color: #ffd700; font-style: italic;">💡 Click on player circles to select/deselect them</p>
                 `;
                 break;
@@ -937,6 +970,7 @@ class GameSystem {
                     <p>Votes received: ${this.votesReceived}/${this.players.length}</p>
                     <p>All players must vote to approve or reject this team.</p>
                     <p><strong>Rejected Teams:</strong> ${this.rejectedTeams}/5</p>
+                    ${this.ladyOfLake.enabled ? `<p><strong>👑 Lady of the Lake:</strong> ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name || 'None'} (${this.ladyOfLake.usesRemaining}/3 uses remaining)</p>` : ''}
                 `;
                 break;
                 
@@ -1032,6 +1066,156 @@ class GameSystem {
         }
         
         console.log(`Successfully updated rejection counter: ${currentRejections}/${maxRejections} (${percentage}%)`);
+    }
+
+    triggerLadyOfLake() {
+        if (!this.ladyOfLake.enabled || this.ladyOfLake.usesRemaining <= 0) {
+            console.log('Lady of the Lake not available');
+            return;
+        }
+        
+        const currentHolder = this.players.find(p => p.id === this.ladyOfLake.currentHolder);
+        if (!currentHolder) {
+            console.error('Lady of the Lake holder not found');
+            return;
+        }
+        
+        console.log(`Triggering Lady of the Lake for ${currentHolder.name}`);
+        
+        // Show Lady of the Lake interface
+        this.showLadyOfLakeInterface(currentHolder);
+    }
+
+    showLadyOfLakeInterface(ladyOfLakePlayer) {
+        const modalContent = `
+            <div class="lady-of-lake-interface">
+                <h2 style="color: #ffd700;">👑 Lady of the Lake</h2>
+                <p><strong>${ladyOfLakePlayer.name}</strong>, you have the Lady of the Lake token.</p>
+                <p>Choose a player to examine their loyalty (Good or Evil).</p>
+                <p><em>Note: You cannot choose someone who has already used the Lady of the Lake.</em></p>
+                
+                <div class="player-selection">
+                    <h3>Select Player to Examine:</h3>
+                    <div class="player-options">
+                        ${this.players
+                            .filter(player => 
+                                player.id !== ladyOfLakePlayer.id && 
+                                !this.ladyOfLake.previousHolders.includes(player.id)
+                            )
+                            .map(player => `
+                                <button class="player-option" onclick="gameSystem.examinePlayerLoyalty('${player.id}')">
+                                    <span class="player-avatar">${player.avatar}</span>
+                                    <span class="player-name">${player.name}</span>
+                                </button>
+                            `).join('')}
+                    </div>
+                </div>
+                
+                <div class="lady-info">
+                    <p><strong>Uses Remaining:</strong> ${this.ladyOfLake.usesRemaining}/3</p>
+                    <p><strong>Previous Holders:</strong> ${this.ladyOfLake.previousHolders.length > 0 ? 
+                        this.ladyOfLake.previousHolders.map(id => this.players.find(p => p.id === id)?.name).join(', ') : 'None'}</p>
+                </div>
+            </div>
+        `;
+        
+        authSystem.showModal(modalContent);
+    }
+
+    examinePlayerLoyalty(targetPlayerId) {
+        const targetPlayer = this.players.find(p => p.id === targetPlayerId);
+        const currentHolder = this.players.find(p => p.id === this.ladyOfLake.currentHolder);
+        
+        if (!targetPlayer || !currentHolder) {
+            console.error('Player not found for loyalty examination');
+            return;
+        }
+        
+        // Get the target player's role and determine if they're good or evil
+        const targetRole = this.playerRoles[targetPlayerId];
+        const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(targetRole);
+        const loyalty = isEvil ? 'Evil' : 'Good';
+        
+        console.log(`Lady of the Lake: ${currentHolder.name} examines ${targetPlayer.name} - ${loyalty} (${targetRole})`);
+        
+        // Show loyalty result to the current holder
+        const resultContent = `
+            <div class="loyalty-result">
+                <h3 style="color: #ffd700;">Loyalty Examination Result</h3>
+                <div class="result-display">
+                    <div class="player-info">
+                        <span class="player-avatar">${targetPlayer.avatar}</span>
+                        <span class="player-name">${targetPlayer.name}</span>
+                    </div>
+                    <div class="loyalty-result-text">
+                        <span class="loyalty-label">Loyalty:</span>
+                        <span class="loyalty-value ${isEvil ? 'evil' : 'good'}">${loyalty}</span>
+                    </div>
+                    <div class="role-info">
+                        <span class="role-label">Role:</span>
+                        <span class="role-value">${targetRole}</span>
+                    </div>
+                </div>
+                <p style="margin-top: 1rem; font-style: italic; color: #ffd700;">
+                    The Lady of the Lake token will now be passed to ${targetPlayer.name}.
+                </p>
+                <button class="btn btn-primary" onclick="gameSystem.passLadyOfLakeToken('${targetPlayerId}')">
+                    Pass Token to ${targetPlayer.name}
+                </button>
+            </div>
+        `;
+        
+        authSystem.showModal(resultContent);
+    }
+
+    passLadyOfLakeToken(newHolderId) {
+        const oldHolder = this.players.find(p => p.id === this.ladyOfLake.currentHolder);
+        const newHolder = this.players.find(p => p.id === newHolderId);
+        
+        if (!oldHolder || !newHolder) {
+            console.error('Player not found for token passing');
+            return;
+        }
+        
+        // Add old holder to previous holders list
+        this.ladyOfLake.previousHolders.push(this.ladyOfLake.currentHolder);
+        
+        // Update current holder
+        this.ladyOfLake.currentHolder = newHolderId;
+        
+        // Decrease uses remaining
+        this.ladyOfLake.usesRemaining--;
+        
+        console.log(`Lady of the Lake token passed from ${oldHolder.name} to ${newHolder.name}`);
+        console.log(`Uses remaining: ${this.ladyOfLake.usesRemaining}`);
+        console.log(`Previous holders: ${this.ladyOfLake.previousHolders.map(id => this.players.find(p => p.id === id)?.name).join(', ')}`);
+        
+        // Show notification
+        authSystem.showNotification(`Lady of the Lake token passed to ${newHolder.name}!`, 'info');
+        
+        // Close modal and update display
+        authSystem.closeModal();
+        
+        // Update player display to show new token holder
+        this.updateLadyOfLakeDisplay();
+    }
+
+    updateLadyOfLakeDisplay() {
+        // Remove old tokens
+        document.querySelectorAll('.lady-of-lake-token').forEach(token => token.remove());
+        
+        // Add new token to current holder
+        if (this.ladyOfLake.enabled && this.ladyOfLake.currentHolder) {
+            const playerSlot = document.querySelector(`[data-player-id="${this.ladyOfLake.currentHolder}"]`);
+            if (playerSlot) {
+                const ladyToken = document.createElement('div');
+                ladyToken.className = 'lady-of-lake-token';
+                ladyToken.innerHTML = '👑';
+                ladyToken.title = 'Lady of the Lake';
+                playerSlot.appendChild(ladyToken);
+                console.log(`Updated Lady of the Lake token display for ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name}`);
+            }
+        }
     }
 
     showPlayerRole() {
