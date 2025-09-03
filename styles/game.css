@@ -889,7 +889,7 @@
     margin-bottom: 1.5rem;
 }
 
-.loyalty-label, .role-label {
+.loyalty-label {
     font-weight: bold;
     color: #ffd700;
     margin-right: 0.5rem;
@@ -905,9 +905,4 @@
     color: #d63031;
     font-weight: bold;
     font-size: 1.2rem;
-}
-
-.role-value {
-    color: #ffffff;
-    font-weight: bold;
 }

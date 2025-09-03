@@ -1193,12 +1193,11 @@ class GameSystem {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(5px);
         `;
         
         const modalContentDiv = document.createElement('div');
@@ -1256,7 +1255,7 @@ class GameSystem {
         const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(targetRole);
         const loyalty = isEvil ? 'Evil' : 'Good';
         
-        console.log(`Lady of the Lake: ${currentHolder.name} examines ${targetPlayer.name} - ${loyalty} (${targetRole})`);
+        console.log(`Lady of the Lake: ${currentHolder.name} examines ${targetPlayer.name} - ${loyalty}`);
         
         // Show loyalty result to the current holder
         const resultContent = `
@@ -1270,10 +1269,6 @@ class GameSystem {
                     <div class="loyalty-result-text">
                         <span class="loyalty-label">Loyalty:</span>
                         <span class="loyalty-value ${isEvil ? 'evil' : 'good'}">${loyalty}</span>
-                    </div>
-                    <div class="role-info">
-                        <span class="role-label">Role:</span>
-                        <span class="role-value">${targetRole}</span>
                     </div>
                 </div>
                 <p style="margin-top: 1rem; font-style: italic; color: #ffd700;">
@@ -1304,12 +1299,11 @@ class GameSystem {
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(5px);
         `;
         
         const modalContentDiv = document.createElement('div');
