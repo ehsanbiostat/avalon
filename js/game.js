@@ -1376,27 +1376,42 @@ class GameSystem {
         authSystem.showNotification(`Lady of the Lake token passed to ${newHolder.name}!`, 'info');
         
         // Close modal and update display
-        authSystem.closeModal();
+        authSystem.closeModals();
         
         // Update player display to show new token holder
         this.updateLadyOfLakeDisplay();
     }
 
     updateLadyOfLakeDisplay() {
+        console.log('=== UPDATE LADY OF LAKE DISPLAY ===');
+        console.log('Removing old tokens...');
+        
         // Remove old tokens
-        document.querySelectorAll('.lady-of-lake-token').forEach(token => token.remove());
+        const oldTokens = document.querySelectorAll('.lady-of-lake-token');
+        console.log('Found old tokens:', oldTokens.length);
+        oldTokens.forEach(token => {
+            console.log('Removing token:', token);
+            token.remove();
+        });
         
         // Add new token to current holder
         if (this.ladyOfLake.enabled && this.ladyOfLake.currentHolder) {
+            console.log('Adding new token to holder:', this.ladyOfLake.currentHolder);
             const playerSlot = document.querySelector(`[data-player-id="${this.ladyOfLake.currentHolder}"]`);
             if (playerSlot) {
+                console.log('Found player slot:', playerSlot);
                 const ladyToken = document.createElement('div');
                 ladyToken.className = 'lady-of-lake-token';
                 ladyToken.innerHTML = '🕵️';
                 ladyToken.title = 'Lady of the Lake';
                 playerSlot.appendChild(ladyToken);
                 console.log(`Updated Lady of the Lake token display for ${this.players.find(p => p.id === this.ladyOfLake.currentHolder)?.name}`);
+            } else {
+                console.error('Player slot not found for ID:', this.ladyOfLake.currentHolder);
+                console.log('Available player slots:', document.querySelectorAll('[data-player-id]').length);
             }
+        } else {
+            console.log('Lady of Lake not enabled or no current holder');
         }
     }
 
