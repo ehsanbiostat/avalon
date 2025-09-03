@@ -448,8 +448,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (window.gameSystem.ladyOfLake?.enabled) {
             console.log('Lady of Lake is enabled, triggering...');
-            window.gameSystem.triggerLadyOfLake();
-            authSystem.showNotification('Lady of Lake interface should appear!', 'info');
+            
+            // Force trigger Lady of Lake interface for testing
+            if (window.gameSystem.ladyOfLake.currentHolder) {
+                const currentHolder = window.gameSystem.players.find(p => p.id === window.gameSystem.ladyOfLake.currentHolder);
+                if (currentHolder) {
+                    console.log('Forcing Lady of Lake interface for:', currentHolder.name);
+                    window.gameSystem.showLadyOfLakeInterface(currentHolder);
+                    authSystem.showNotification(`Lady of Lake interface triggered for ${currentHolder.name}!`, 'info');
+                } else {
+                    console.log('Current holder not found');
+                    authSystem.showNotification('Lady of Lake holder not found', 'error');
+                }
+            } else {
+                console.log('No current Lady of Lake holder');
+                authSystem.showNotification('No Lady of Lake holder assigned', 'warning');
+            }
         } else {
             console.log('Lady of Lake not enabled. Room config:', window.gameSystem.currentGame);
             authSystem.showNotification('Lady of Lake is not enabled in this game', 'warning');

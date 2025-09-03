@@ -1114,6 +1114,13 @@ class GameSystem {
         console.log(`Triggering Lady of the Lake for ${currentHolder.name}`);
         console.log('About to call showLadyOfLakeInterface...');
         
+        // Show notification to human player
+        if (currentHolder.isAI) {
+            authSystem.showNotification(`🕵️ ${currentHolder.name} has the Lady of Lake token and can examine a player's loyalty!`, 'info');
+        } else {
+            authSystem.showNotification(`🕵️ ${currentHolder.name}, you can now use the Lady of Lake token to examine a player's loyalty!`, 'info');
+        }
+        
         // Show Lady of the Lake interface
         this.showLadyOfLakeInterface(currentHolder);
         
@@ -1137,8 +1144,11 @@ class GameSystem {
         const modalContent = `
             <div class="lady-of-lake-interface">
                 <h2 style="color: #ffd700;">🕵️ Lady of the Lake</h2>
-                <p><strong>${ladyOfLakePlayer.name}</strong>, you have the Lady of the Lake token.</p>
-                <p>Choose a player to examine their loyalty (Good or Evil).</p>
+                <p><strong>${ladyOfLakePlayer.name}</strong> has the Lady of the Lake token.</p>
+                ${ladyOfLakePlayer.isAI ? 
+                    `<p style="color: #ffd700; font-style: italic;">💡 Since ${ladyOfLakePlayer.name} is an AI player, you will make this decision for them.</p>` : 
+                    `<p>Choose a player to examine their loyalty (Good or Evil).</p>`
+                }
                 <p><em>Note: You cannot choose someone who has already used the Lady of the Lake.</em></p>
                 
                 <div class="player-selection">
