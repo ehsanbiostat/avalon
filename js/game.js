@@ -1351,11 +1351,27 @@ class GameSystem {
     }
 
     passLadyOfLakeToken(newHolderId) {
+        console.log('=== PASS LADY OF LAKE TOKEN ===');
+        console.log('Function called with newHolderId:', newHolderId);
+        console.log('Current holder before passing:', this.ladyOfLake.currentHolder);
+        
         const oldHolder = this.players.find(p => p.id === this.ladyOfLake.currentHolder);
         const newHolder = this.players.find(p => p.id === newHolderId);
         
+        console.log('Old holder found:', oldHolder);
+        console.log('New holder found:', newHolder);
+        
         if (!oldHolder || !newHolder) {
             console.error('Player not found for token passing');
+            console.log('Old holder:', oldHolder);
+            console.log('New holder:', newHolder);
+            return;
+        }
+        
+        // Check if trying to pass to same player
+        if (oldHolder.id === newHolder.id) {
+            console.error('Cannot pass token to the same player!');
+            authSystem.showNotification('Cannot pass token to the same player!', 'error');
             return;
         }
         
@@ -1376,7 +1392,18 @@ class GameSystem {
         authSystem.showNotification(`Lady of the Lake token passed to ${newHolder.name}!`, 'info');
         
         // Close modal and update display
-        authSystem.closeModals();
+        try {
+            authSystem.closeModals();
+        } catch (error) {
+            console.log('authSystem.closeModals failed, manually closing modals...');
+            // Manually close any open modals
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (modal.style.display !== 'none') {
+                    modal.style.display = 'none';
+                }
+            });
+        }
         
         // Update player display to show new token holder
         this.updateLadyOfLakeDisplay();
