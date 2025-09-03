@@ -1164,83 +1164,72 @@ class GameSystem {
         console.log('Modal content created, calling authSystem.showModal...');
         console.log('Modal content length:', modalContent.length);
         
-        try {
-            console.log('Checking if authSystem is available...');
-            console.log('authSystem object:', authSystem);
-            console.log('authSystem.showModal function:', authSystem?.showModal);
-            
-            if (!authSystem) {
-                console.error('authSystem is not available!');
-                return;
-            }
-            
-            if (!authSystem.showModal) {
-                console.error('authSystem.showModal function not found!');
-                return;
-            }
-            
-            authSystem.showModal(modalContent);
-            console.log('authSystem.showModal called successfully');
-        } catch (error) {
-            console.error('Error calling authSystem.showModal:', error);
-            console.log('Trying to create modal manually...');
-            
-            // Fallback: Create modal manually
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.8);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 9999;
-            `;
-            
-            const modalContentDiv = document.createElement('div');
-            modalContentDiv.className = 'modal-content';
-            modalContentDiv.innerHTML = modalContent;
-            modalContentDiv.style.cssText = `
-                background: #1a1a1a;
-                border: 2px solid #ffd700;
-                border-radius: 15px;
-                padding: 2rem;
-                max-width: 600px;
-                max-height: 80vh;
-                overflow-y: auto;
-                position: relative;
-            `;
-            
-            // Add close button
-            const closeBtn = document.createElement('span');
-            closeBtn.className = 'close';
-            closeBtn.innerHTML = '&times;';
-            closeBtn.style.cssText = `
-                position: absolute;
-                top: 10px;
-                right: 20px;
-                font-size: 28px;
-                font-weight: bold;
-                color: #ffd700;
-                cursor: pointer;
-            `;
-            closeBtn.onclick = () => modal.remove();
-            
-            modalContentDiv.appendChild(closeBtn);
-            modal.appendChild(modalContentDiv);
-            document.body.appendChild(modal);
-            
-            console.log('Fallback modal created manually');
-            
-            // Also try a simple alert to test
-            setTimeout(() => {
-                alert(`Lady of the Lake: ${ladyOfLakePlayer.name} can examine players. Check console for details.`);
-            }, 100);
+        // Create a dedicated modal for Lady of the Lake instead of reusing auth modal
+        console.log('Creating dedicated Lady of Lake modal...');
+        
+        // Remove any existing Lady of Lake modal
+        const existingModal = document.getElementById('ladyOfLakeModal');
+        if (existingModal) {
+            existingModal.remove();
         }
+        
+        // Create new modal
+        const modal = document.createElement('div');
+        modal.id = 'ladyOfLakeModal';
+        modal.className = 'modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        `;
+        
+        const modalContentDiv = document.createElement('div');
+        modalContentDiv.className = 'modal-content';
+        modalContentDiv.innerHTML = modalContent;
+        modalContentDiv.style.cssText = `
+            background: #1a1a1a;
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+        `;
+        
+        // Add close button
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            cursor: pointer;
+            z-index: 10;
+        `;
+        closeBtn.onclick = () => modal.remove();
+        
+        modalContentDiv.appendChild(closeBtn);
+        modal.appendChild(modalContentDiv);
+        document.body.appendChild(modal);
+        
+        console.log('Dedicated Lady of Lake modal created successfully');
+        console.log('Modal element:', modal);
+        console.log('Modal display style:', modal.style.display);
+        console.log('Modal z-index:', modal.style.zIndex);
     }
 
     examinePlayerLoyalty(targetPlayerId) {
@@ -1286,7 +1275,69 @@ class GameSystem {
             </div>
         `;
         
-        authSystem.showModal(resultContent);
+        // Create dedicated modal for loyalty result
+        console.log('Creating loyalty result modal...');
+        
+        // Remove any existing loyalty result modal
+        const existingModal = document.getElementById('loyaltyResultModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Create new modal
+        const modal = document.createElement('div');
+        modal.id = 'loyaltyResultModal';
+        modal.className = 'modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        `;
+        
+        const modalContentDiv = document.createElement('div');
+        modalContentDiv.className = 'modal-content';
+        modalContentDiv.innerHTML = resultContent;
+        modalContentDiv.style.cssText = `
+            background: #1a1a1a;
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+        `;
+        
+        // Add close button
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            cursor: pointer;
+            z-index: 10;
+        `;
+        closeBtn.onclick = () => modal.remove();
+        
+        modalContentDiv.appendChild(closeBtn);
+        modal.appendChild(modalContentDiv);
+        document.body.appendChild(modal);
+        
+        console.log('Loyalty result modal created successfully');
     }
 
     passLadyOfLakeToken(newHolderId) {
