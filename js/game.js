@@ -1394,6 +1394,11 @@ class GameSystem {
         // Close only the Lady of Lake modals, not the game interface
         console.log('Closing Lady of Lake modals...');
         
+        // Check if game interface is still visible before closing modals
+        const gameInterface = document.getElementById('gameInterface');
+        console.log('Game interface before closing modals:', gameInterface);
+        console.log('Game interface display style:', gameInterface?.style.display);
+        
         // Close the loyalty result modal
         const loyaltyResultModal = document.getElementById('ladyOfLakeModal');
         if (loyaltyResultModal) {
@@ -1416,6 +1421,10 @@ class GameSystem {
                 console.log('Removed modal:', modal.id);
             }
         });
+        
+        // Check if game interface is still visible after closing modals
+        console.log('Game interface after closing modals:', document.getElementById('gameInterface'));
+        console.log('Game interface display style after:', document.getElementById('gameInterface')?.style.display);
         
         // Update player display to show new token holder
         this.updateLadyOfLakeDisplay();

@@ -529,6 +529,37 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         window.checkForActiveGame();
     }, 1000);
+    
+    // Monitor game interface visibility to catch when it gets closed
+    window.monitorGameInterface = function() {
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            // Create a MutationObserver to watch for style changes
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        const display = gameInterface.style.display;
+                        if (display === 'none') {
+                            console.error('🚨 GAME INTERFACE WAS CLOSED! 🚨');
+                            console.error('Display changed to:', display);
+                            console.error('Stack trace:', new Error().stack);
+                            
+                            // Show return to game button immediately
+                            window.checkForActiveGame();
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(gameInterface, { attributes: true, attributeFilter: ['style'] });
+            console.log('Game interface monitoring started');
+        }
+    };
+    
+    // Start monitoring when page loads
+    setTimeout(() => {
+        window.monitorGameInterface();
+    }, 2000);
 });
 
 // Handle page visibility changes
