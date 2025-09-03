@@ -1121,6 +1121,19 @@ class GameSystem {
     }
 
     showLadyOfLakeInterface(ladyOfLakePlayer) {
+        console.log('=== SHOW LADY OF LAKE INTERFACE ===');
+        console.log('Function called with player:', ladyOfLakePlayer);
+        console.log('Available players:', this.players.map(p => ({id: p.id, name: p.name})));
+        console.log('Previous holders:', this.ladyOfLake.previousHolders);
+        
+        // Filter available players
+        const availablePlayers = this.players.filter(player => 
+            player.id !== ladyOfLakePlayer.id && 
+            !this.ladyOfLake.previousHolders.includes(player.id)
+        );
+        
+        console.log('Available players for selection:', availablePlayers.map(p => p.name));
+        
         const modalContent = `
             <div class="lady-of-lake-interface">
                 <h2 style="color: #ffd700;">🕵️ Lady of the Lake</h2>
@@ -1131,17 +1144,12 @@ class GameSystem {
                 <div class="player-selection">
                     <h3>Select Player to Examine:</h3>
                     <div class="player-options">
-                        ${this.players
-                            .filter(player => 
-                                player.id !== ladyOfLakePlayer.id && 
-                                !this.ladyOfLake.previousHolders.includes(player.id)
-                            )
-                            .map(player => `
-                                <button class="player-option" onclick="gameSystem.examinePlayerLoyalty('${player.id}')">
-                                    <span class="player-avatar">${player.avatar}</span>
-                                    <span class="player-name">${player.name}</span>
-                                </button>
-                            `).join('')}
+                        ${availablePlayers.map(player => `
+                            <button class="player-option" onclick="gameSystem.examinePlayerLoyalty('${player.id}')">
+                                <span class="player-avatar">${player.avatar}</span>
+                                <span class="player-name">${player.name}</span>
+                            </button>
+                        `).join('')}
                     </div>
                 </div>
                 
@@ -1153,7 +1161,86 @@ class GameSystem {
             </div>
         `;
         
-        authSystem.showModal(modalContent);
+        console.log('Modal content created, calling authSystem.showModal...');
+        console.log('Modal content length:', modalContent.length);
+        
+        try {
+            console.log('Checking if authSystem is available...');
+            console.log('authSystem object:', authSystem);
+            console.log('authSystem.showModal function:', authSystem?.showModal);
+            
+            if (!authSystem) {
+                console.error('authSystem is not available!');
+                return;
+            }
+            
+            if (!authSystem.showModal) {
+                console.error('authSystem.showModal function not found!');
+                return;
+            }
+            
+            authSystem.showModal(modalContent);
+            console.log('authSystem.showModal called successfully');
+        } catch (error) {
+            console.error('Error calling authSystem.showModal:', error);
+            console.log('Trying to create modal manually...');
+            
+            // Fallback: Create modal manually
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            `;
+            
+            const modalContentDiv = document.createElement('div');
+            modalContentDiv.className = 'modal-content';
+            modalContentDiv.innerHTML = modalContent;
+            modalContentDiv.style.cssText = `
+                background: #1a1a1a;
+                border: 2px solid #ffd700;
+                border-radius: 15px;
+                padding: 2rem;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow-y: auto;
+                position: relative;
+            `;
+            
+            // Add close button
+            const closeBtn = document.createElement('span');
+            closeBtn.className = 'close';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 20px;
+                font-size: 28px;
+                font-weight: bold;
+                color: #ffd700;
+                cursor: pointer;
+            `;
+            closeBtn.onclick = () => modal.remove();
+            
+            modalContentDiv.appendChild(closeBtn);
+            modal.appendChild(modalContentDiv);
+            document.body.appendChild(modal);
+            
+            console.log('Fallback modal created manually');
+            
+            // Also try a simple alert to test
+            setTimeout(() => {
+                alert(`Lady of the Lake: ${ladyOfLakePlayer.name} can examine players. Check console for details.`);
+            }, 100);
+        }
     }
 
     examinePlayerLoyalty(targetPlayerId) {
