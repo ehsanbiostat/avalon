@@ -1391,19 +1391,31 @@ class GameSystem {
         // Show notification
         authSystem.showNotification(`Lady of the Lake token passed to ${newHolder.name}!`, 'info');
         
-        // Close modal and update display
-        try {
-            authSystem.closeModals();
-        } catch (error) {
-            console.log('authSystem.closeModals failed, manually closing modals...');
-            // Manually close any open modals
-            const modals = document.querySelectorAll('.modal');
-            modals.forEach(modal => {
-                if (modal.style.display !== 'none') {
-                    modal.style.display = 'none';
-                }
-            });
+        // Close only the Lady of Lake modals, not the game interface
+        console.log('Closing Lady of Lake modals...');
+        
+        // Close the loyalty result modal
+        const loyaltyResultModal = document.getElementById('ladyOfLakeModal');
+        if (loyaltyResultModal) {
+            loyaltyResultModal.remove();
+            console.log('Removed ladyOfLakeModal');
         }
+        
+        // Close the loyalty result modal
+        const resultModal = document.getElementById('loyaltyResultModal');
+        if (resultModal) {
+            resultModal.remove();
+            console.log('Removed loyaltyResultModal');
+        }
+        
+        // Also try to close any other Lady of Lake related modals
+        const ladyModals = document.querySelectorAll('[id*="lady"], [id*="loyalty"]');
+        ladyModals.forEach(modal => {
+            if (modal.id !== 'gameInterface') { // Don't close the main game interface
+                modal.remove();
+                console.log('Removed modal:', modal.id);
+            }
+        });
         
         // Update player display to show new token holder
         this.updateLadyOfLakeDisplay();

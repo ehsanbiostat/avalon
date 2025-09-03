@@ -471,6 +471,64 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     console.log('🎮 Avalon - The Resistance is ready!');
+    
+    // Check if there's an active game and provide return option
+    window.checkForActiveGame = function() {
+        console.log('Checking for active game...');
+        
+        // Check if game system exists and has current game
+        if (window.gameSystem && window.gameSystem.currentGame) {
+            console.log('Active game found:', window.gameSystem.currentGame);
+            
+            // Show return to game option
+            const returnButton = document.createElement('div');
+            returnButton.id = 'returnToGameButton';
+            returnButton.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(45deg, #ffd700, #ffed4e);
+                color: #000;
+                padding: 1rem 1.5rem;
+                border-radius: 10px;
+                border: 2px solid #fff;
+                cursor: pointer;
+                font-weight: bold;
+                z-index: 10000;
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+                animation: pulse 2s infinite;
+            `;
+            returnButton.innerHTML = '🕵️ Return to Game';
+            returnButton.onclick = () => {
+                if (window.gameSystem && window.gameSystem.showGameInterface) {
+                    window.gameSystem.showGameInterface();
+                    returnButton.remove();
+                }
+            };
+            
+            document.body.appendChild(returnButton);
+            console.log('Return to game button added');
+            
+            // Add pulse animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes pulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                    100% { transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+            
+        } else {
+            console.log('No active game found');
+        }
+    };
+    
+    // Check for active game when page loads
+    setTimeout(() => {
+        window.checkForActiveGame();
+    }, 1000);
 });
 
 // Handle page visibility changes
