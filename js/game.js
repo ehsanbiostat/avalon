@@ -1788,7 +1788,7 @@ class GameSystem {
                         ${evilPlayersVisibleToMerlin.map(p => `
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
-                                <span class="player-name">${p.name}</span>
+                                <span class="player-name" style="white-space: nowrap; overflow: visible;">${p.name}</span>
                                 <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
@@ -1809,7 +1809,7 @@ class GameSystem {
                         ${merlinCandidates.map(p => `
                             <div class="player-item merlin-candidate">
                                 <span class="player-avatar">${p.avatar}</span>
-                                <span class="player-name">${p.name}</span>
+                                <span class="player-name" style="white-space: nowrap; overflow: visible;">${p.name}</span>
                                 <span class="role-badge">Merlin or Morgana</span>
                             </div>
                         `).join('')}
@@ -1831,7 +1831,7 @@ class GameSystem {
                         ${morganaTeammates.map(p => `
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
-                                <span class="player-name">${p.name}</span>
+                                <span class="player-name" style="white-space: nowrap; overflow: visible;">${p.name}</span>
                                 <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
@@ -1853,7 +1853,7 @@ class GameSystem {
                         ${assassinTeammates.map(p => `
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
-                                <span class="player-name">${p.name}</span>
+                                <span class="player-name" style="white-space: nowrap; overflow: visible;">${p.name}</span>
                                 <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
@@ -1875,7 +1875,7 @@ class GameSystem {
                         ${mordredTeammates.map(p => `
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
-                                <span class="player-name">${p.name}</span>
+                                <span class="player-name" style="white-space: nowrap; overflow: visible;">${p.name}</span>
                                 <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
@@ -1906,7 +1906,7 @@ class GameSystem {
                         ${minionTeammates.map(p => `
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
-                                <span class="player-name">${p.name}</span>
+                                <span class="player-name" style="white-space: nowrap; overflow: visible;">${p.name}</span>
                                 <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}

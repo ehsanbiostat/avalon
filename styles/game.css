@@ -421,6 +421,8 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
+    min-width: 0;
+    width: 100%;
 }
 
 .player-item:hover {
@@ -445,6 +447,9 @@
     flex: 1;
     font-weight: bold;
     color: #ffffff;
+    white-space: nowrap;
+    overflow: visible;
+    min-width: 0;
 }
 
 .role-badge {
