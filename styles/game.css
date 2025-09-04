@@ -907,17 +907,17 @@
     font-size: 1.2rem;
 }
 
-/* Loyalty Permission Request */
-.loyalty-permission-request {
+/* Loyalty Examination Notification */
+.loyalty-examination-notification {
     text-align: center;
     color: #ffffff;
 }
 
-.loyalty-permission-request h2 {
+.loyalty-examination-notification h2 {
     margin-bottom: 2rem;
 }
 
-.permission-message {
+.examination-message {
     background: rgba(255, 255, 255, 0.1);
     padding: 2rem;
     border-radius: 10px;
@@ -925,19 +925,18 @@
     border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
-.permission-message p {
+.examination-message p {
     margin-bottom: 1rem;
     font-size: 1.1rem;
 }
 
-.permission-buttons {
+.examination-buttons {
     display: flex;
     justify-content: center;
-    gap: 1rem;
     margin-top: 2rem;
 }
 
-.permission-buttons .btn {
+.examination-buttons .btn {
     padding: 1rem 2rem;
     font-size: 1.1rem;
     font-weight: bold;
@@ -945,19 +944,11 @@
     cursor: pointer;
     transition: all 0.3s ease;
     border: none;
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    color: #000;
 }
 
-.permission-buttons .btn-success {
-    background: linear-gradient(45deg, #00b894, #00cec9);
-    color: #fff;
-}
-
-.permission-buttons .btn-danger {
-    background: linear-gradient(45deg, #d63031, #74b9ff);
-    color: #fff;
-}
-
-.permission-buttons .btn:hover {
+.examination-buttons .btn:hover {
     transform: scale(1.05);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }

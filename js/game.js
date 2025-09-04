@@ -1257,42 +1257,38 @@ class GameSystem {
     }
     
     showLoyaltyPermissionRequest(targetPlayer, currentHolder) {
-        console.log(`Showing permission request for ${targetPlayer.name} (${targetPlayer.isAI ? 'AI' : 'Human'} player)`);
+        console.log(`Showing loyalty examination notification for ${targetPlayer.name} (${targetPlayer.isAI ? 'AI' : 'Human'} player)`);
         
-        // For testing purposes, always show the permission popup to the human player
-        // In a real multiplayer game, this would only show to the target player
-        const permissionContent = `
-            <div class="loyalty-permission-request">
+        // The Lady of the Lake examination is mandatory - no refusal allowed
+        const notificationContent = `
+            <div class="loyalty-examination-notification">
                 <h2 style="color: #ffd700;">🕵️ Lady of the Lake</h2>
-                <div class="permission-message">
-                    <p><strong>${currentHolder.name}</strong> wants to examine <strong>${targetPlayer.name}</strong>'s loyalty using the Lady of the Lake.</p>
+                <div class="examination-message">
+                    <p><strong>${currentHolder.name}</strong> is examining <strong>${targetPlayer.name}</strong>'s loyalty using the Lady of the Lake.</p>
                     <p style="color: #ffd700; font-style: italic;">This will reveal whether ${targetPlayer.name} is Good or Evil to ${currentHolder.name}.</p>
-                    <p><em>Do you consent to this examination on behalf of ${targetPlayer.name}?</em></p>
-                    ${targetPlayer.isAI ? '<p style="color: #ffd700; font-size: 0.9rem;">💡 Since this is an AI player, you are making this decision for them.</p>' : ''}
+                    <p><em>The examination is mandatory - ${targetPlayer.name} cannot refuse.</em></p>
+                    ${targetPlayer.isAI ? '<p style="color: #ffd700; font-size: 0.9rem;">💡 Since this is an AI player, you are witnessing this examination.</p>' : ''}
                 </div>
-                <div class="permission-buttons">
-                    <button class="btn btn-success" onclick="gameSystem.consentToLoyaltyExamination('${targetPlayer.id}')" style="margin-right: 1rem;">
-                        Yes, I Consent
-                    </button>
-                    <button class="btn btn-danger" onclick="gameSystem.denyLoyaltyExamination()">
-                        No, I Refuse
+                <div class="examination-buttons">
+                    <button class="btn btn-primary" onclick="gameSystem.proceedWithLoyaltyExamination('${targetPlayer.id}')" style="margin: 0 auto; display: block;">
+                        Proceed with Examination
                     </button>
                 </div>
             </div>
         `;
         
-        // Create dedicated modal for permission request
-        console.log('Creating loyalty permission modal...');
+        // Create dedicated modal for examination notification
+        console.log('Creating loyalty examination notification modal...');
         
-        // Remove any existing permission modal
-        const existingModal = document.getElementById('loyaltyPermissionModal');
+        // Remove any existing examination modal
+        const existingModal = document.getElementById('loyaltyExaminationModal');
         if (existingModal) {
             existingModal.remove();
         }
         
         // Create new modal
         const modal = document.createElement('div');
-        modal.id = 'loyaltyPermissionModal';
+        modal.id = 'loyaltyExaminationModal';
         modal.className = 'modal';
         modal.style.cssText = `
             position: fixed;
@@ -1309,7 +1305,7 @@ class GameSystem {
         
         const modalContentDiv = document.createElement('div');
         modalContentDiv.className = 'modal-content';
-        modalContentDiv.innerHTML = permissionContent;
+        modalContentDiv.innerHTML = notificationContent;
         modalContentDiv.style.cssText = `
             background: #1a1a1a;
             border: 2px solid #ffd700;
@@ -1342,39 +1338,20 @@ class GameSystem {
         modal.appendChild(modalContentDiv);
         document.body.appendChild(modal);
         
-        console.log('Loyalty permission modal created successfully');
+        console.log('Loyalty examination notification modal created successfully');
     }
     
-    consentToLoyaltyExamination(targetPlayerId) {
-        console.log(`Player ${targetPlayerId} consented to loyalty examination`);
+    proceedWithLoyaltyExamination(targetPlayerId) {
+        console.log(`Proceeding with loyalty examination for player ${targetPlayerId}`);
         
-        // Close permission modal
-        const permissionModal = document.getElementById('loyaltyPermissionModal');
-        if (permissionModal) {
-            permissionModal.remove();
+        // Close examination notification modal
+        const examinationModal = document.getElementById('loyaltyExaminationModal');
+        if (examinationModal) {
+            examinationModal.remove();
         }
         
         // Now show the loyalty result
         this.showLoyaltyResult(targetPlayerId);
-    }
-    
-    denyLoyaltyExamination() {
-        console.log('Player denied loyalty examination');
-        
-        // Close permission modal
-        const permissionModal = document.getElementById('loyaltyPermissionModal');
-        if (permissionModal) {
-            permissionModal.remove();
-        }
-        
-        // Show notification that examination was denied
-        authSystem.showNotification('Loyalty examination was refused. The Lady of the Lake token remains with the current holder.', 'warning');
-        
-        // Close the Lady of Lake interface as well
-        const ladyModal = document.getElementById('ladyOfLakeModal');
-        if (ladyModal) {
-            ladyModal.remove();
-        }
     }
     
     showLoyaltyResult(targetPlayerId) {
@@ -1543,11 +1520,11 @@ class GameSystem {
             console.log('Removed loyaltyResultModal');
         }
         
-        // Close the permission modal if it exists
-        const permissionModal = document.getElementById('loyaltyPermissionModal');
-        if (permissionModal) {
-            permissionModal.remove();
-            console.log('Removed loyaltyPermissionModal');
+        // Close the examination notification modal if it exists
+        const examinationModal = document.getElementById('loyaltyExaminationModal');
+        if (examinationModal) {
+            examinationModal.remove();
+            console.log('Removed loyaltyExaminationModal');
         }
         
         // Also try to close any other Lady of Lake related modals

@@ -471,8 +471,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     window.testLadyOfLakePermission = function() {
-        console.log('=== TEST LADY OF LAKE PERMISSION ===');
-        console.log('Debug button clicked: Test Lady of Lake Permission');
+        console.log('=== TEST LADY OF LAKE EXAMINATION ===');
+        console.log('Debug button clicked: Test Lady of Lake Examination');
         
         if (!window.gameSystem) {
             console.error('Game system not available');
@@ -500,12 +500,12 @@ document.addEventListener('DOMContentLoaded', () => {
             avatar: 'L'
         };
         
-        console.log('Testing Lady of Lake permission request...');
+        console.log('Testing Lady of Lake examination notification...');
         console.log('Target player:', testTargetPlayer);
         console.log('Current holder:', testCurrentHolder);
         
         window.gameSystem.showLoyaltyPermissionRequest(testTargetPlayer, testCurrentHolder);
-        authSystem.showNotification('Lady of Lake permission test triggered!', 'info');
+        authSystem.showNotification('Lady of Lake examination test triggered!', 'info');
     };
     
     console.log('🎮 Avalon - The Resistance is ready!');
