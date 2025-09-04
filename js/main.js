@@ -470,6 +470,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    window.testLadyOfLakePermission = function() {
+        console.log('=== TEST LADY OF LAKE PERMISSION ===');
+        console.log('Debug button clicked: Test Lady of Lake Permission');
+        
+        if (!window.gameSystem) {
+            console.error('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+            return;
+        }
+        
+        if (!window.gameSystem.showLoyaltyPermissionRequest) {
+            console.error('showLoyaltyPermissionRequest function not found');
+            authSystem.showNotification('showLoyaltyPermissionRequest function not found', 'error');
+            return;
+        }
+        
+        // Create test players for demonstration
+        const testTargetPlayer = { 
+            id: 'test_target', 
+            name: 'Test Player', 
+            isAI: true,
+            avatar: 'T'
+        };
+        const testCurrentHolder = { 
+            id: 'test_holder', 
+            name: 'Lady of Lake Holder', 
+            isAI: false,
+            avatar: 'L'
+        };
+        
+        console.log('Testing Lady of Lake permission request...');
+        console.log('Target player:', testTargetPlayer);
+        console.log('Current holder:', testCurrentHolder);
+        
+        window.gameSystem.showLoyaltyPermissionRequest(testTargetPlayer, testCurrentHolder);
+        authSystem.showNotification('Lady of Lake permission test triggered!', 'info');
+    };
+    
     console.log('🎮 Avalon - The Resistance is ready!');
     
     // Check if there's an active game and provide return option

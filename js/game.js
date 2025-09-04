@@ -1257,15 +1257,18 @@ class GameSystem {
     }
     
     showLoyaltyPermissionRequest(targetPlayer, currentHolder) {
-        console.log(`Showing permission request to ${targetPlayer.name}`);
+        console.log(`Showing permission request for ${targetPlayer.name} (${targetPlayer.isAI ? 'AI' : 'Human'} player)`);
         
+        // For testing purposes, always show the permission popup to the human player
+        // In a real multiplayer game, this would only show to the target player
         const permissionContent = `
             <div class="loyalty-permission-request">
                 <h2 style="color: #ffd700;">🕵️ Lady of the Lake</h2>
                 <div class="permission-message">
-                    <p><strong>${currentHolder.name}</strong> wants to examine your loyalty using the Lady of the Lake.</p>
-                    <p style="color: #ffd700; font-style: italic;">This will reveal whether you are Good or Evil to ${currentHolder.name}.</p>
-                    <p><em>Do you consent to this examination?</em></p>
+                    <p><strong>${currentHolder.name}</strong> wants to examine <strong>${targetPlayer.name}</strong>'s loyalty using the Lady of the Lake.</p>
+                    <p style="color: #ffd700; font-style: italic;">This will reveal whether ${targetPlayer.name} is Good or Evil to ${currentHolder.name}.</p>
+                    <p><em>Do you consent to this examination on behalf of ${targetPlayer.name}?</em></p>
+                    ${targetPlayer.isAI ? '<p style="color: #ffd700; font-size: 0.9rem;">💡 Since this is an AI player, you are making this decision for them.</p>' : ''}
                 </div>
                 <div class="permission-buttons">
                     <button class="btn btn-success" onclick="gameSystem.consentToLoyaltyExamination('${targetPlayer.id}')" style="margin-right: 1rem;">
