@@ -430,6 +430,34 @@ class GameSystem {
         }
     }
 
+    resetVoteButton() {
+        console.log('=== RESET VOTE BUTTON ===');
+        const voteBtn = document.getElementById('voteTeamBtn');
+        if (!voteBtn) {
+            console.log('Vote button not found!');
+            return;
+        }
+        
+        // Reset to default state
+        voteBtn.innerHTML = 'Vote';
+        voteBtn.disabled = false;
+        console.log('Vote button reset to default state');
+    }
+
+    resetMissionButton() {
+        console.log('=== RESET MISSION BUTTON ===');
+        const executeBtn = document.getElementById('executeMissionBtn');
+        if (!executeBtn) {
+            console.log('Execute mission button not found!');
+            return;
+        }
+        
+        // Reset to default state
+        executeBtn.innerHTML = 'Execute Mission';
+        executeBtn.disabled = false;
+        console.log('Mission button reset to default state');
+    }
+
     showVotingInterface() {
         if (this.gamePhase !== 'voting') {
             authSystem.showNotification('No team has been proposed yet!');
@@ -528,6 +556,9 @@ class GameSystem {
                 this.startRound();
             }
         }
+        
+        // Reset vote button to default state
+        this.resetVoteButton();
     }
 
     showMissionInterface() {
@@ -663,6 +694,9 @@ class GameSystem {
         // Update game status panel
         this.updateGameStatusPanel();
         this.updateMissionButton();
+        
+        // Reset mission button to default state
+        this.resetMissionButton();
     }
 
     showVoteResults() {
@@ -945,6 +979,10 @@ class GameSystem {
         
         // Clear any previous selections from UI
         this.clearPlayerSelections();
+        
+        // Reset buttons to default state
+        this.resetVoteButton();
+        this.resetMissionButton();
         
         // Highlight current leader
         this.highlightLeader();
