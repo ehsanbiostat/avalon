@@ -127,11 +127,8 @@ class GameSystem {
         // Position players on table
         this.positionPlayers();
         
-        // Show role to current player
-        this.showPlayerRole();
-        
-        // Start first round
-        this.startRound();
+        // Start role distribution phase
+        this.startRoleDistribution();
         
         // Initialize rejection counter
         this.updateRejectionCounter();
@@ -315,6 +312,105 @@ class GameSystem {
         
         // Update game status panel
         this.updateGameStatusPanel();
+    }
+
+    startRoleDistribution() {
+        console.log('=== STARTING ROLE DISTRIBUTION PHASE ===');
+        console.log('Showing role information to all players...');
+        
+        // Set game phase to role distribution
+        this.gamePhase = 'role_distribution';
+        
+        // Show notification about role distribution
+        authSystem.showNotification('🎭 Role Distribution Phase - All players will see their roles privately', 'info');
+        
+        // Show role information to the current player (human player)
+        this.showPlayerRole();
+        
+        // For AI players, we'll simulate them seeing their roles
+        this.simulateAIRoleDistribution();
+        
+        // Update game status panel
+        this.updateGameStatusPanel();
+    }
+
+    simulateAIRoleDistribution() {
+        console.log('=== SIMULATING AI ROLE DISTRIBUTION ===');
+        
+        // Simulate AI players seeing their roles
+        this.players.forEach(player => {
+            if (player.isAI) {
+                const role = this.playerRoles[player.id];
+                const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
+                
+                console.log(`AI Player ${player.name} (${role}) sees their role information`);
+                
+                // Log what this AI player can see (for debugging)
+                this.logPlayerRoleInfo(player, role);
+            }
+        });
+    }
+
+    logPlayerRoleInfo(player, role) {
+        console.log(`--- ${player.name} (${role}) Role Information ---`);
+        
+        switch (role) {
+            case 'Merlin':
+                const evilPlayersVisibleToMerlin = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Assassin', 'Minion', 'Oberon'].includes(playerRole);
+                });
+                console.log(`Merlin can see these evil players: ${evilPlayersVisibleToMerlin.map(p => p.name).join(', ')}`);
+                console.log(`Merlin CANNOT see Mordred`);
+                break;
+                
+            case 'Percival':
+                const merlin = this.players.find(p => this.playerRoles[p.id] === 'Merlin');
+                const morgana = this.players.find(p => this.playerRoles[p.id] === 'Morgana');
+                const merlinCandidates = [merlin, morgana].filter(p => p);
+                console.log(`Percival can see these Merlin candidates: ${merlinCandidates.map(p => p.name).join(', ')}`);
+                break;
+                
+            case 'Morgana':
+                const morganaTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Assassin', 'Minion', 'Mordred'].includes(playerRole);
+                });
+                console.log(`Morgana can see these evil teammates: ${morganaTeammates.map(p => p.name).join(', ')}`);
+                break;
+                
+            case 'Assassin':
+                const assassinTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Minion', 'Mordred'].includes(playerRole);
+                });
+                console.log(`Assassin can see these evil teammates: ${assassinTeammates.map(p => p.name).join(', ')}`);
+                break;
+                
+            case 'Mordred':
+                const mordredTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Assassin', 'Minion'].includes(playerRole);
+                });
+                console.log(`Mordred can see these evil teammates: ${mordredTeammates.map(p => p.name).join(', ')}`);
+                break;
+                
+            case 'Oberon':
+                console.log(`Oberon works alone - cannot see any other evil players`);
+                break;
+                
+            case 'Minion':
+                const minionTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Assassin', 'Mordred'].includes(playerRole);
+                });
+                console.log(`Minion can see these evil teammates: ${minionTeammates.map(p => p.name).join(', ')}`);
+                break;
+                
+            case 'Loyal Servant':
+                console.log(`Loyal Servant cannot see any other players`);
+                break;
+        }
     }
 
     updateMissionTokens() {
@@ -1022,6 +1118,23 @@ class GameSystem {
         let statusHTML = '';
         
         switch (this.gamePhase) {
+            case 'role_distribution':
+                statusHTML = `
+                    <p><strong>🎭 Role Distribution Phase</strong></p>
+                    <div class="role-info">
+                        <p>All players are now seeing their roles privately.</p>
+                        <p>Each player can see:</p>
+                        <ul style="text-align: left; margin: 1rem 0;">
+                            <li><strong>Merlin:</strong> Evil players (except Mordred)</li>
+                            <li><strong>Percival:</strong> Merlin and Morgana candidates</li>
+                            <li><strong>Evil players:</strong> Their evil teammates</li>
+                            <li><strong>Loyal Servant:</strong> No one</li>
+                        </ul>
+                        <p style="color: #ffd700; font-style: italic;">Click "Start Game" in your role popup when ready!</p>
+                    </div>
+                `;
+                break;
+                
             case 'team_building':
                 const leader = this.players[this.currentLeader];
                 const teamSize = this.teamSize[this.players.length][this.currentMission - 1];
@@ -1815,17 +1928,42 @@ class GameSystem {
                 </div>`;
         }
         
+        // Determine button text based on game phase
+        const buttonText = this.gamePhase === 'role_distribution' ? 'Start Game' : 'Continue';
+        const buttonAction = this.gamePhase === 'role_distribution' ? 'gameSystem.startFirstRound()' : 'authSystem.closeModals()';
+        
         const modalContent = `
             <div class="role-modal">
                 <h2 style="color: ${isEvil ? '#ff6b6b' : '#00b894'};">Your Role</h2>
                 <div class="role-name ${isEvil ? 'evil' : 'good'}">${role}</div>
                 <div class="role-description">${this.getRoleDescription(role)}</div>
                 ${roleInfo}
-                <button class="btn btn-primary" onclick="authSystem.closeModals()">Continue</button>
+                ${this.gamePhase === 'role_distribution' ? 
+                    '<p style="color: #ffd700; font-style: italic; margin: 1rem 0;">🎭 All players are now seeing their roles privately. When ready, click "Start Game" to begin!</p>' : 
+                    ''
+                }
+                <button class="btn btn-primary" onclick="${buttonAction}">${buttonText}</button>
             </div>
         `;
         
         authSystem.showModal(modalContent);
+    }
+
+    startFirstRound() {
+        console.log('=== STARTING FIRST ROUND ===');
+        console.log('Player has seen their role and is ready to start the game');
+        
+        // Close the role modal
+        authSystem.closeModals();
+        
+        // Set game phase to team building
+        this.gamePhase = 'team_building';
+        
+        // Show notification that the game is starting
+        authSystem.showNotification('🎮 Game Starting! The first leader will now select players for Mission 1', 'success');
+        
+        // Start the first round
+        this.startRound();
     }
 
     getRoleDescription(role) {
