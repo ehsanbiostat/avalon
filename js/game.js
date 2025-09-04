@@ -75,6 +75,18 @@ class GameSystem {
             this.players = roomConfig.players;
         }
         
+        // Randomize player positions on the circle
+        this.shufflePlayers();
+        
+        // Randomly select the first mission leader
+        this.currentLeader = Math.floor(Math.random() * this.players.length);
+        console.log('=== RANDOM LEADER SELECTION ===');
+        console.log('Randomly selected leader index:', this.currentLeader);
+        console.log('First mission leader:', this.players[this.currentLeader].name);
+        
+        // Show notification about random leader selection
+        authSystem.showNotification(`🎲 Random leader selected: ${this.players[this.currentLeader].name}`, 'info');
+        
         this.currentMission = 1;
         this.missionResults = [];
         this.selectedPlayers = [];
@@ -2172,6 +2184,20 @@ class GameSystem {
         }
         
         return players;
+    }
+
+    // Shuffle players array to randomize positions on the circle
+    shufflePlayers() {
+        console.log('=== SHUFFLING PLAYERS ===');
+        console.log('Original player order:', this.players.map(p => p.name));
+        
+        // Fisher-Yates shuffle algorithm
+        for (let i = this.players.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.players[i], this.players[j]] = [this.players[j], this.players[i]];
+        }
+        
+        console.log('Shuffled player order:', this.players.map(p => p.name));
     }
 
     // Debug functions for testing
