@@ -906,3 +906,58 @@
     font-weight: bold;
     font-size: 1.2rem;
 }
+
+/* Loyalty Permission Request */
+.loyalty-permission-request {
+    text-align: center;
+    color: #ffffff;
+}
+
+.loyalty-permission-request h2 {
+    margin-bottom: 2rem;
+}
+
+.permission-message {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 10px;
+    margin: 2rem 0;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.permission-message p {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.permission-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.permission-buttons .btn {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.permission-buttons .btn-success {
+    background: linear-gradient(45deg, #00b894, #00cec9);
+    color: #fff;
+}
+
+.permission-buttons .btn-danger {
+    background: linear-gradient(45deg, #d63031, #74b9ff);
+    color: #fff;
+}
+
+.permission-buttons .btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
