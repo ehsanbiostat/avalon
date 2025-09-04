@@ -1789,7 +1789,7 @@ class GameSystem {
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
                                 <span class="player-name">${p.name}</span>
-                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                                <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
                     </div>
@@ -1832,7 +1832,7 @@ class GameSystem {
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
                                 <span class="player-name">${p.name}</span>
-                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                                <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
                     </div>
@@ -1854,7 +1854,7 @@ class GameSystem {
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
                                 <span class="player-name">${p.name}</span>
-                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                                <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
                     </div>
@@ -1876,7 +1876,7 @@ class GameSystem {
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
                                 <span class="player-name">${p.name}</span>
-                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                                <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
                     </div>
@@ -1907,7 +1907,7 @@ class GameSystem {
                             <div class="player-item evil">
                                 <span class="player-avatar">${p.avatar}</span>
                                 <span class="player-name">${p.name}</span>
-                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                                <span class="role-badge">Evil</span>
                             </div>
                         `).join('')}
                     </div>
