@@ -1784,11 +1784,10 @@ class GameSystem {
                 
                 roleInfo = `<div class="role-info">
                     <h4>🔍 You can see these EVIL players:</h4>
-                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">👤 = Avatar | 📝 = Full Name</p>
+                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">📝 = Player Name | 🏷️ = Loyalty</p>
                     <div class="player-list evil-players" style="width: 100%; min-width: 400px;">
                         ${evilPlayersVisibleToMerlin.map(p => `
                             <div class="player-item evil" style="display: flex; align-items: center; gap: 10px; padding: 10px; margin: 5px 0; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.5); width: 100%; min-width: 300px; max-width: none;">
-                                <span class="player-avatar" style="width: 25px; height: 25px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; flex-shrink: 0; opacity: 0.7;">${p.avatar}</span>
                                 <span class="player-name" style="flex: 1; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: visible; min-width: 0; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); display: block; width: 100%; max-width: none;">${p.name}</span>
                                 <span class="role-badge" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: #fff; flex-shrink: 0;">Evil</span>
                             </div>
@@ -1806,11 +1805,10 @@ class GameSystem {
                 
                 roleInfo = `<div class="role-info">
                     <h4>👑 You can see these players (one is Merlin, one is Morgana):</h4>
-                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">👤 = Avatar | 📝 = Full Name</p>
+                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">📝 = Player Name | 🏷️ = Loyalty</p>
                     <div class="player-list merlin-candidates" style="width: 100%; min-width: 400px;">
                         ${merlinCandidates.map(p => `
                             <div class="player-item merlin-candidate" style="display: flex; align-items: center; gap: 10px; padding: 10px; margin: 5px 0; background: rgba(255, 215, 0, 0.1); border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.5); width: 100%; min-width: 300px; max-width: none;">
-                                <span class="player-avatar" style="width: 25px; height: 25px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; flex-shrink: 0; opacity: 0.7;">${p.avatar}</span>
                                 <span class="player-name" style="flex: 1; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: visible; min-width: 0; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); display: block; width: 100%; max-width: none;">${p.name}</span>
                                 <span class="role-badge" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; flex-shrink: 0;">Merlin or Morgana</span>
                             </div>
@@ -1829,11 +1827,10 @@ class GameSystem {
                 
                 roleInfo = `<div class="role-info">
                     <h4>👥 Your evil teammates:</h4>
-                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">👤 = Avatar | 📝 = Full Name</p>
+                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">📝 = Player Name | 🏷️ = Loyalty</p>
                     <div class="player-list evil-teammates" style="width: 100%; min-width: 400px;">
                         ${morganaTeammates.map(p => `
                             <div class="player-item evil" style="display: flex; align-items: center; gap: 10px; padding: 10px; margin: 5px 0; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.5); width: 100%; min-width: 300px; max-width: none;">
-                                <span class="player-avatar" style="width: 25px; height: 25px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; flex-shrink: 0; opacity: 0.7;">${p.avatar}</span>
                                 <span class="player-name" style="flex: 1; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: visible; min-width: 0; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); display: block; width: 100%; max-width: none;">${p.name}</span>
                                 <span class="role-badge" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: #fff; flex-shrink: 0;">Evil</span>
                             </div>
@@ -1852,11 +1849,10 @@ class GameSystem {
                 
                 roleInfo = `<div class="role-info">
                     <h4>👥 Your evil teammates:</h4>
-                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">👤 = Avatar | 📝 = Full Name</p>
+                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">📝 = Player Name | 🏷️ = Loyalty</p>
                     <div class="player-list evil-teammates" style="width: 100%; min-width: 400px;">
                         ${assassinTeammates.map(p => `
                             <div class="player-item evil" style="display: flex; align-items: center; gap: 10px; padding: 10px; margin: 5px 0; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.5); width: 100%; min-width: 300px; max-width: none;">
-                                <span class="player-avatar" style="width: 25px; height: 25px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; flex-shrink: 0; opacity: 0.7;">${p.avatar}</span>
                                 <span class="player-name" style="flex: 1; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: visible; min-width: 0; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); display: block; width: 100%; max-width: none;">${p.name}</span>
                                 <span class="role-badge" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: #fff; flex-shrink: 0;">Evil</span>
                             </div>
@@ -1875,11 +1871,10 @@ class GameSystem {
                 
                 roleInfo = `<div class="role-info">
                     <h4>👥 Your evil teammates:</h4>
-                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">👤 = Avatar | 📝 = Full Name</p>
+                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">📝 = Player Name | 🏷️ = Loyalty</p>
                     <div class="player-list evil-teammates" style="width: 100%; min-width: 400px;">
                         ${mordredTeammates.map(p => `
                             <div class="player-item evil" style="display: flex; align-items: center; gap: 10px; padding: 10px; margin: 5px 0; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.5); width: 100%; min-width: 300px; max-width: none;">
-                                <span class="player-avatar" style="width: 25px; height: 25px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; flex-shrink: 0; opacity: 0.7;">${p.avatar}</span>
                                 <span class="player-name" style="flex: 1; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: visible; min-width: 0; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); display: block; width: 100%; max-width: none;">${p.name}</span>
                                 <span class="role-badge" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: #fff; flex-shrink: 0;">Evil</span>
                             </div>
@@ -1907,11 +1902,10 @@ class GameSystem {
                 
                 roleInfo = `<div class="role-info">
                     <h4>👥 Your evil teammates:</h4>
-                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">👤 = Avatar | 📝 = Full Name</p>
+                    <p style="color: #ccc; font-size: 0.9rem; margin: 0.5rem 0;">📝 = Player Name | 🏷️ = Loyalty</p>
                     <div class="player-list evil-teammates" style="width: 100%; min-width: 400px;">
                         ${minionTeammates.map(p => `
                             <div class="player-item evil" style="display: flex; align-items: center; gap: 10px; padding: 10px; margin: 5px 0; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.5); width: 100%; min-width: 300px; max-width: none;">
-                                <span class="player-avatar" style="width: 25px; height: 25px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffed4e); color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; flex-shrink: 0; opacity: 0.7;">${p.avatar}</span>
                                 <span class="player-name" style="flex: 1; font-weight: bold; color: #ffffff; white-space: nowrap; overflow: visible; min-width: 0; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); display: block; width: 100%; max-width: none;">${p.name}</span>
                                 <span class="role-badge" style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: #fff; flex-shrink: 0;">Evil</span>
                             </div>
