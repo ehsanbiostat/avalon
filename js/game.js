@@ -1649,30 +1649,170 @@ class GameSystem {
     showPlayerRole() {
         if (!authSystem.getCurrentUser()) return;
         
-        const role = this.playerRoles[authSystem.getCurrentUser().id];
+        const currentUserId = authSystem.getCurrentUser().id;
+        const role = this.playerRoles[currentUserId];
         const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
         
+        console.log(`=== SHOWING ROLE FOR ${authSystem.getCurrentUser().name} ===`);
+        console.log(`Role: ${role}`);
+        console.log(`Is Evil: ${isEvil}`);
+        
         let roleInfo = '';
-        if (role === 'Merlin') {
-            const evilPlayers = this.players.filter(p => {
-                const playerRole = this.playerRoles[p.id];
-                return ['Morgana', 'Assassin', 'Minion', 'Oberon'].includes(playerRole) && playerRole !== 'Mordred';
-            });
-            roleInfo = `<div class="role-info">
-                <h4>Evil players you can see:</h4>
-                <p>${evilPlayers.map(p => p.name).join(', ')}</p>
-            </div>`;
-        } else if (isEvil && role !== 'Oberon') {
-            const evilTeammates = this.players.filter(p => {
-                const playerRole = this.playerRoles[p.id];
-                return ['Morgana', 'Assassin', 'Minion', 'Mordred'].includes(playerRole) && 
-                       playerRole !== 'Oberon' && 
-                       p.id !== authSystem.getCurrentUser().id;
-            });
-            roleInfo = `<div class="role-info">
-                <h4>Your evil teammates:</h4>
-                <p>${evilTeammates.map(p => p.name).join(', ')}</p>
-            </div>`;
+        let specialInfo = '';
+        
+        // Implement proper Avalon rulebook role visibility
+        switch (role) {
+            case 'Merlin':
+                // Merlin sees all evil players EXCEPT Mordred
+                const evilPlayersVisibleToMerlin = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Assassin', 'Minion', 'Oberon'].includes(playerRole);
+                });
+                
+                roleInfo = `<div class="role-info">
+                    <h4>🔍 You can see these EVIL players:</h4>
+                    <div class="player-list evil-players">
+                        ${evilPlayersVisibleToMerlin.map(p => `
+                            <div class="player-item evil">
+                                <span class="player-avatar">${p.avatar}</span>
+                                <span class="player-name">${p.name}</span>
+                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="warning-text">⚠️ You CANNOT see Mordred - they appear as Good to you!</p>
+                </div>`;
+                break;
+                
+            case 'Percival':
+                // Percival sees Merlin and Morgana (but can't tell which is which)
+                const merlin = this.players.find(p => this.playerRoles[p.id] === 'Merlin');
+                const morgana = this.players.find(p => this.playerRoles[p.id] === 'Morgana');
+                const merlinCandidates = [merlin, morgana].filter(p => p);
+                
+                roleInfo = `<div class="role-info">
+                    <h4>👑 You can see these players (one is Merlin, one is Morgana):</h4>
+                    <div class="player-list merlin-candidates">
+                        ${merlinCandidates.map(p => `
+                            <div class="player-item merlin-candidate">
+                                <span class="player-avatar">${p.avatar}</span>
+                                <span class="player-name">${p.name}</span>
+                                <span class="role-badge">Merlin or Morgana</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="info-text">💡 You must figure out which one is the real Merlin!</p>
+                </div>`;
+                break;
+                
+            case 'Morgana':
+                // Morgana sees all evil teammates except Oberon
+                const morganaTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Assassin', 'Minion', 'Mordred'].includes(playerRole);
+                });
+                
+                roleInfo = `<div class="role-info">
+                    <h4>👥 Your evil teammates:</h4>
+                    <div class="player-list evil-teammates">
+                        ${morganaTeammates.map(p => `
+                            <div class="player-item evil">
+                                <span class="player-avatar">${p.avatar}</span>
+                                <span class="player-name">${p.name}</span>
+                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="info-text">🎭 You appear as Merlin to Percival!</p>
+                </div>`;
+                break;
+                
+            case 'Assassin':
+                // Assassin sees all evil teammates except Oberon
+                const assassinTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Minion', 'Mordred'].includes(playerRole);
+                });
+                
+                roleInfo = `<div class="role-info">
+                    <h4>👥 Your evil teammates:</h4>
+                    <div class="player-list evil-teammates">
+                        ${assassinTeammates.map(p => `
+                            <div class="player-item evil">
+                                <span class="player-avatar">${p.avatar}</span>
+                                <span class="player-name">${p.name}</span>
+                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="warning-text">🗡️ If Good wins, you can still win by identifying Merlin!</p>
+                </div>`;
+                break;
+                
+            case 'Mordred':
+                // Mordred sees all evil teammates except Oberon
+                const mordredTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Assassin', 'Minion'].includes(playerRole);
+                });
+                
+                roleInfo = `<div class="role-info">
+                    <h4>👥 Your evil teammates:</h4>
+                    <div class="player-list evil-teammates">
+                        ${mordredTeammates.map(p => `
+                            <div class="player-item evil">
+                                <span class="player-avatar">${p.avatar}</span>
+                                <span class="player-name">${p.name}</span>
+                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p class="warning-text">👻 You are invisible to Merlin - they cannot see you!</p>
+                </div>`;
+                break;
+                
+            case 'Oberon':
+                // Oberon sees no one (works alone)
+                roleInfo = `<div class="role-info">
+                    <h4>🕴️ You work alone:</h4>
+                    <p class="info-text">You don't know who the other evil players are, and they don't know you.</p>
+                    <p class="warning-text">⚠️ You must figure out who your teammates are through gameplay!</p>
+                </div>`;
+                break;
+                
+            case 'Minion':
+                // Minion sees all evil teammates except Oberon
+                const minionTeammates = this.players.filter(p => {
+                    const playerRole = this.playerRoles[p.id];
+                    return ['Morgana', 'Assassin', 'Mordred'].includes(playerRole);
+                });
+                
+                roleInfo = `<div class="role-info">
+                    <h4>👥 Your evil teammates:</h4>
+                    <div class="player-list evil-teammates">
+                        ${minionTeammates.map(p => `
+                            <div class="player-item evil">
+                                <span class="player-avatar">${p.avatar}</span>
+                                <span class="player-name">${p.name}</span>
+                                <span class="role-badge">${this.playerRoles[p.id]}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+                break;
+                
+            case 'Loyal Servant':
+                // Loyal Servant sees no one
+                roleInfo = `<div class="role-info">
+                    <h4>🛡️ You are a loyal servant of Good:</h4>
+                    <p class="info-text">You don't know who the other players are. Use your deduction skills to identify the evil players!</p>
+                </div>`;
+                break;
+                
+            default:
+                roleInfo = `<div class="role-info">
+                    <h4>❓ Unknown role</h4>
+                </div>`;
         }
         
         const modalContent = `
