@@ -1257,7 +1257,10 @@ class GameSystem {
     }
     
     showLoyaltyPermissionRequest(targetPlayer, currentHolder) {
+        console.log(`=== SHOW LADY OF LAKE EXAMINATION NOTIFICATION ===`);
         console.log(`Showing loyalty examination notification for ${targetPlayer.name} (${targetPlayer.isAI ? 'AI' : 'Human'} player)`);
+        console.log(`Current holder: ${currentHolder.name}`);
+        console.log(`This is the MANDATORY examination - no refusal allowed!`);
         
         // The Lady of the Lake examination is mandatory - no refusal allowed
         const notificationContent = `
@@ -1271,7 +1274,7 @@ class GameSystem {
                 </div>
                 <div class="examination-buttons">
                     <button class="btn btn-primary" onclick="gameSystem.proceedWithLoyaltyExamination('${targetPlayer.id}')" style="margin: 0 auto; display: block;">
-                        Proceed with Examination
+                        Proceed with Mandatory Examination
                     </button>
                 </div>
             </div>
