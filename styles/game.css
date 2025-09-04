@@ -76,6 +76,18 @@
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
 }
 
+.mission-token::after {
+    content: 'players';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: rgba(255, 215, 0, 0.7);
+    font-weight: normal;
+    white-space: nowrap;
+}
+
 
 
 /* Game Table */

@@ -253,6 +253,9 @@ class GameSystem {
         `;
         table.appendChild(centerDisplay);
         
+        // Update mission tokens to show team sizes instead of mission numbers
+        this.updateMissionTokens();
+        
         // Debug: Check if rejection counter elements were created
         console.log('=== REJECTION COUNTER CREATION DEBUG ===');
         console.log('Center display created:', centerDisplay);
@@ -312,6 +315,28 @@ class GameSystem {
         
         // Update game status panel
         this.updateGameStatusPanel();
+    }
+
+    updateMissionTokens() {
+        console.log('=== UPDATE MISSION TOKENS ===');
+        console.log(`Updating mission tokens for ${this.players.length} players`);
+        
+        // Get team sizes for this player count
+        const teamSizes = this.teamSize[this.players.length];
+        console.log('Team sizes:', teamSizes);
+        
+        // Update each mission token to show team size instead of mission number
+        for (let i = 1; i <= 5; i++) {
+            const token = document.getElementById(`mission${i}`);
+            if (token) {
+                const teamSize = teamSizes[i - 1];
+                token.textContent = teamSize;
+                token.title = `Mission ${i} - Team Size: ${teamSize}`;
+                console.log(`Mission ${i} token updated to show team size: ${teamSize}`);
+            } else {
+                console.error(`Mission token ${i} not found!`);
+            }
+        }
     }
 
     selectPlayer(element) {
@@ -914,6 +939,9 @@ class GameSystem {
         
         if (missionNumber) missionNumber.textContent = this.currentMission;
         if (teamSizeDisplay) teamSizeDisplay.textContent = `Team Size: ${this.teamSize[this.players.length][this.currentMission - 1]}`;
+        
+        // Update mission tokens to show team sizes
+        this.updateMissionTokens();
         
         // Clear any previous selections from UI
         this.clearPlayerSelections();
