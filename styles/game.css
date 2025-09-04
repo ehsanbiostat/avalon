@@ -167,20 +167,20 @@
 
 .player-slot.selected {
     transform: scale(1.15);
-    border-color: #00b894;
+    border-color: #007bff;
     border-width: 4px;
-    box-shadow: 0 10px 30px rgba(0, 184, 148, 0.6);
-    background: linear-gradient(135deg, rgba(0, 184, 148, 0.2), rgba(0, 184, 148, 0.05));
+    box-shadow: 0 10px 30px rgba(0, 123, 255, 0.6);
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 123, 255, 0.05));
     animation: selectedPulse 2s ease-in-out infinite;
 }
 
 @keyframes selectedPulse {
     0%, 100% {
-        box-shadow: 0 10px 30px rgba(0, 184, 148, 0.6);
+        box-shadow: 0 10px 30px rgba(0, 123, 255, 0.6);
         transform: scale(1.15);
     }
     50% {
-        box-shadow: 0 15px 40px rgba(0, 184, 148, 0.8);
+        box-shadow: 0 15px 40px rgba(0, 123, 255, 0.8);
         transform: scale(1.2);
     }
 }
@@ -196,10 +196,10 @@
 .player-slot.leader::after {
     content: '👑';
     position: absolute;
-    top: -20px;
+    top: -25px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 1.8rem;
+    font-size: 2.2rem;
     z-index: 20;
     animation: crownBounce 2s ease-in-out infinite;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
@@ -226,15 +226,15 @@
 }
 
 .player-avatar {
-    width: 55px;
-    height: 55px;
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     color: #fff;
     z-index: 1;
     transition: all 0.3s ease;
@@ -243,28 +243,28 @@
 }
 
 .player-slot:hover .player-avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 1.7rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.4rem;
     box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
 }
 
 .player-slot.selected .player-avatar {
-    width: 65px;
-    height: 65px;
-    font-size: 1.9rem;
-    background: linear-gradient(135deg, #00b894, #00cec9);
-    box-shadow: 0 8px 25px rgba(0, 184, 148, 0.6);
+    width: 55px;
+    height: 55px;
+    font-size: 1.6rem;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.6);
     animation: avatarPulse 2s ease-in-out infinite;
 }
 
 @keyframes avatarPulse {
     0%, 100% {
-        box-shadow: 0 8px 25px rgba(0, 184, 148, 0.6);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.6);
         transform: scale(1);
     }
     50% {
-        box-shadow: 0 12px 35px rgba(0, 184, 148, 0.8);
+        box-shadow: 0 12px 35px rgba(0, 123, 255, 0.8);
         transform: scale(1.05);
     }
 }
@@ -301,7 +301,7 @@
 
 .player-slot.selected .player-name {
     color: #ffffff;
-    background: rgba(0, 184, 148, 0.9);
+    background: rgba(0, 123, 255, 0.9);
     border-color: #ffffff;
     transform: translateX(-50%) scale(1.2);
     font-size: 1.1rem;
@@ -311,12 +311,12 @@
 
 @keyframes namePulse {
     0%, 100% {
-        background: rgba(0, 184, 148, 0.9);
-        box-shadow: 0 0 10px rgba(0, 184, 148, 0.5);
+        background: rgba(0, 123, 255, 0.9);
+        box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
     }
     50% {
-        background: rgba(0, 184, 148, 1);
-        box-shadow: 0 0 20px rgba(0, 184, 148, 0.8);
+        background: rgba(0, 123, 255, 1);
+        box-shadow: 0 0 20px rgba(0, 123, 255, 0.8);
     }
 }
 
@@ -862,19 +862,19 @@
 /* Lady of the Lake Token */
 .lady-of-lake-token {
     position: absolute;
-    top: -15px;
-    left: -15px;
-    width: 30px;
-    height: 30px;
+    top: -18px;
+    left: -18px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(45deg, #2c3e50, #34495e);
     border: 2px solid #fff;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 18px;
     z-index: 15;
-    box-shadow: 0 0 10px rgba(44, 62, 80, 0.6);
+    box-shadow: 0 0 12px rgba(44, 62, 80, 0.6);
     animation: ladyTokenGlow 2s ease-in-out infinite alternate;
 }
 
