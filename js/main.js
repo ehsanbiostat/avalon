@@ -507,6 +507,27 @@ document.addEventListener('DOMContentLoaded', () => {
         window.gameSystem.showLoyaltyPermissionRequest(testTargetPlayer, testCurrentHolder);
         authSystem.showNotification('Lady of Lake examination test triggered!', 'info');
     };
+
+    window.testRoleModal = function() {
+        console.log('=== TEST ROLE MODAL ===');
+        console.log('Debug button clicked: Test Role Modal');
+        
+        if (!window.gameSystem) {
+            console.error('Game system not available');
+            authSystem.showNotification('Game system not available', 'error');
+            return;
+        }
+        
+        if (!window.gameSystem.showPlayerRole) {
+            console.error('showPlayerRole function not found');
+            authSystem.showNotification('showPlayerRole function not found', 'error');
+            return;
+        }
+        
+        console.log('Testing role modal display...');
+        window.gameSystem.showPlayerRole();
+        authSystem.showNotification('Role modal test triggered!', 'info');
+    };
     
     console.log('🎮 Avalon - The Resistance is ready!');
     

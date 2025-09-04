@@ -1946,7 +1946,78 @@ class GameSystem {
             </div>
         `;
         
-        authSystem.showModal(modalContent);
+        // Create dedicated modal for role display instead of using auth modal
+        this.createRoleModal(modalContent);
+    }
+
+    createRoleModal(content) {
+        console.log('=== CREATING ROLE MODAL ===');
+        
+        // Remove any existing role modal
+        const existingModal = document.getElementById('roleModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Create new modal
+        const modal = document.createElement('div');
+        modal.id = 'roleModal';
+        modal.className = 'modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        const modalContentDiv = document.createElement('div');
+        modalContentDiv.className = 'modal-content';
+        modalContentDiv.innerHTML = content;
+        modalContentDiv.style.cssText = `
+            background: #1a1a1a;
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+        `;
+        
+        // Add close button
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'close';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            cursor: pointer;
+            z-index: 10;
+        `;
+        closeBtn.onclick = () => {
+            if (this.gamePhase === 'role_distribution') {
+                this.startFirstRound();
+            } else {
+                modal.remove();
+            }
+        };
+        
+        modalContentDiv.appendChild(closeBtn);
+        modal.appendChild(modalContentDiv);
+        document.body.appendChild(modal);
+        
+        console.log('Role modal created successfully');
     }
 
     startFirstRound() {
@@ -1954,7 +2025,10 @@ class GameSystem {
         console.log('Player has seen their role and is ready to start the game');
         
         // Close the role modal
-        authSystem.closeModals();
+        const roleModal = document.getElementById('roleModal');
+        if (roleModal) {
+            roleModal.remove();
+        }
         
         // Set game phase to team building
         this.gamePhase = 'team_building';
