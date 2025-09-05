@@ -28,7 +28,14 @@ class SupabaseAuthSystem {
             if (event === 'SIGNED_IN' && session) {
                 this.currentUser = session.user;
                 this.isLoggedIn = true;
-                await this.loadUserProfile();
+                
+                // Try to load existing profile, create if doesn't exist
+                const profileExists = await this.loadUserProfile();
+                if (!profileExists) {
+                    console.log('No profile found, creating new profile...');
+                    await this.createUserProfile();
+                }
+                
                 this.updateUI();
                 this.showNotification('Successfully logged in!', 'success');
             } else if (event === 'SIGNED_OUT') {
@@ -152,7 +159,7 @@ class SupabaseAuthSystem {
     }
 
     async loadUserProfile() {
-        if (!this.currentUser) return;
+        if (!this.currentUser) return false;
 
         console.log('=== LOADING USER PROFILE ===');
         console.log('User ID:', this.currentUser.id);
@@ -167,18 +174,21 @@ class SupabaseAuthSystem {
             console.log('Profile query result:', { profile, error });
 
             if (error && error.code === 'PGRST116') {
-                // Profile doesn't exist, create it
-                console.log('Profile not found, creating new profile...');
-                await this.createUserProfile();
+                // Profile doesn't exist
+                console.log('Profile not found');
+                return false;
             } else if (error) {
                 console.error('Error loading profile:', error);
                 console.error('Error details:', error.message, error.details, error.hint);
+                return false;
             } else {
                 console.log('Profile loaded successfully:', profile);
                 this.currentUser.profile = profile;
+                return true;
             }
         } catch (error) {
             console.error('Error loading user profile:', error);
+            return false;
         }
     }
 
