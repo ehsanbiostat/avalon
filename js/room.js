@@ -123,11 +123,6 @@ class RoomSystem {
             startGameBtn.addEventListener('click', () => this.startGameFromLobby());
         }
 
-        // Debug start button
-        const debugStartBtn = document.getElementById('debugStartBtn');
-        if (debugStartBtn) {
-            debugStartBtn.addEventListener('click', () => this.startDebugGame());
-        }
 
         // Leave lobby button
         const leaveLobbyBtn = document.getElementById('leaveLobbyBtn');
@@ -367,7 +362,6 @@ class RoomSystem {
             },
             ladyOfLake: document.getElementById('ladyOfLake')?.checked || false,
             chaosForMerlin: document.getElementById('chaosMode')?.checked || false,
-            debugMode: false, // Debug mode is explicitly enabled via button
             status: 'waiting',
             createdAt: new Date().toISOString()
         };
@@ -491,23 +485,16 @@ class RoomSystem {
         
         const room = this.currentRoom;
         const isRoomFull = room && room.players.length >= room.maxPlayers;
-        const canStartDebug = room && room.players.length === 1 && this.isHost;
-        
         if (this.isHost) {
             // Show start button only if room is full
             if (startGameBtn) {
                 startGameBtn.style.display = isRoomFull ? 'inline-block' : 'none';
-            }
-            // Show debug button if room has only 1 player (host)
-            if (debugStartBtn) {
-                debugStartBtn.style.display = canStartDebug ? 'inline-block' : 'none';
             }
             if (waitingMessage) {
                 waitingMessage.style.display = isRoomFull ? 'none' : 'block';
             }
         } else {
             if (startGameBtn) startGameBtn.style.display = 'none';
-            if (debugStartBtn) debugStartBtn.style.display = 'none';
             if (waitingMessage) waitingMessage.style.display = 'block';
         }
         
@@ -597,23 +584,17 @@ class RoomSystem {
         const waitingMessage = document.getElementById('waitingMessage');
         
         const isRoomFull = room.players.length >= room.maxPlayers;
-        const canStartDebug = room.players.length === 1 && this.isHost;
         
         if (this.isHost) {
             // Show start button only if room is full
             if (startGameBtn) {
                 startGameBtn.style.display = isRoomFull ? 'inline-block' : 'none';
             }
-            // Show debug button if room has only 1 player (host)
-            if (debugStartBtn) {
-                debugStartBtn.style.display = canStartDebug ? 'inline-block' : 'none';
-            }
             if (waitingMessage) {
                 waitingMessage.style.display = isRoomFull ? 'none' : 'block';
             }
         } else {
             if (startGameBtn) startGameBtn.style.display = 'none';
-            if (debugStartBtn) debugStartBtn.style.display = 'none';
             if (waitingMessage) waitingMessage.style.display = 'block';
         }
     }
@@ -626,10 +607,8 @@ class RoomSystem {
         
         const room = this.currentRoom;
         
-        // Check if we're in debug mode (explicitly requested)
-        const isDebugMode = room.players.length === 1 && room.debugMode;
-        
-        if (!isDebugMode && room.players.length < room.maxPlayers) {
+        // Check if room is full
+        if (room.players.length < room.maxPlayers) {
             authSystem.showNotification(`Need ${room.maxPlayers - room.players.length} more players to start!`, 'warning');
             return;
         }
@@ -645,34 +624,6 @@ class RoomSystem {
         }
     }
 
-    startDebugGame() {
-        if (!this.isHost) {
-            authSystem.showNotification('Only the host can start debug mode!', 'error');
-            return;
-        }
-        
-        const room = this.currentRoom;
-        
-        if (room.players.length !== 1) {
-            authSystem.showNotification('Debug mode only works with 1 player!', 'error');
-            return;
-        }
-        
-        // Enable debug mode
-        room.debugMode = true;
-        this.gameRooms[room.code] = room;
-        localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
-        
-        // Update room status to role distribution
-        room.status = 'role_distribution';
-        this.gameRooms[room.code] = room;
-        localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
-        
-        // Start role distribution phase with debug mode
-        if (window.gameSystem) {
-            window.gameSystem.startRoleDistribution(room);
-        }
-    }
 
     leaveLobby() {
         this.stopLobbyPolling();

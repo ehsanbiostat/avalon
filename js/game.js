@@ -68,13 +68,8 @@ class GameSystem {
         console.log('=== STARTING ROLE DISTRIBUTION ===');
         this.currentGame = roomConfig;
         
-        // Check if we need to add AI players for testing (only in debug mode)
-        if (roomConfig.players.length === 1 && roomConfig.debugMode) {
-            this.players = this.addAIPlayers(roomConfig);
-            authSystem.showNotification('Debug mode: Added AI players for testing', 'info');
-        } else {
-            this.players = roomConfig.players;
-        }
+        // Use only real players
+        this.players = roomConfig.players;
         
         // Randomize player positions on the circle
         this.shufflePlayers();
@@ -140,13 +135,8 @@ class GameSystem {
     startGame(roomConfig) {
         this.currentGame = roomConfig;
         
-        // Check if we need to add AI players for testing
-        if (roomConfig.players.length === 1) {
-            this.players = this.addAIPlayers(roomConfig);
-            authSystem.showNotification('Debug mode: Added AI players for testing', 'info');
-        } else {
-            this.players = roomConfig.players;
-        }
+        // Use only real players
+        this.players = roomConfig.players;
         
         // Randomize player positions on the circle
         this.shufflePlayers();
@@ -412,29 +402,11 @@ class GameSystem {
         // Show role information to the current player (human player)
         this.showPlayerRole();
         
-        // For AI players, we'll simulate them seeing their roles
-        this.simulateAIRoleDistribution();
         
         // Update game status panel
         this.updateGameStatusPanel();
     }
 
-    simulateAIRoleDistribution() {
-        console.log('=== SIMULATING AI ROLE DISTRIBUTION ===');
-        
-        // Simulate AI players seeing their roles
-        this.players.forEach(player => {
-            if (player.isAI) {
-                const role = this.playerRoles[player.id];
-                const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
-                
-                console.log(`AI Player ${player.name} (${role}) sees their role information`);
-                
-                // Log what this AI player can see (for debugging)
-                this.logPlayerRoleInfo(player, role);
-            }
-        });
-    }
 
     logPlayerRoleInfo(player, role) {
         console.log(`--- ${player.name} (${role}) Role Information ---`);
@@ -1379,11 +1351,7 @@ class GameSystem {
         console.log('About to call showLadyOfLakeInterface...');
         
         // Show notification to human player
-        if (currentHolder.isAI) {
-            authSystem.showNotification(`🕵️ ${currentHolder.name} has the Lady of Lake token and can examine a player's loyalty!`, 'info');
-        } else {
-            authSystem.showNotification(`🕵️ ${currentHolder.name}, you can now use the Lady of Lake token to examine a player's loyalty!`, 'info');
-        }
+        authSystem.showNotification(`🕵️ ${currentHolder.name}, you can now use the Lady of Lake token to examine a player's loyalty!`, 'info');
         
         // Show Lady of the Lake interface
         this.showLadyOfLakeInterface(currentHolder);
@@ -1409,10 +1377,7 @@ class GameSystem {
             <div class="lady-of-lake-interface">
                 <h2 style="color: #ffd700;">🕵️ Lady of the Lake</h2>
                 <p><strong>${ladyOfLakePlayer.name}</strong> has the Lady of the Lake token.</p>
-                ${ladyOfLakePlayer.isAI ? 
-                    `<p style="color: #ffd700; font-style: italic;">💡 Since ${ladyOfLakePlayer.name} is an AI player, you will make this decision for them.</p>` : 
-                    `<p>Choose a player to examine their loyalty (Good or Evil).</p>`
-                }
+                <p>Choose a player to examine their loyalty (Good or Evil).</p>
                 <p><em>Note: You cannot choose someone who has already used the Lady of the Lake.</em></p>
                 
                 <div class="player-selection">
@@ -1522,7 +1487,7 @@ class GameSystem {
     
     showLoyaltyPermissionRequest(targetPlayer, currentHolder) {
         console.log(`=== SHOW LADY OF LAKE EXAMINATION NOTIFICATION ===`);
-        console.log(`Showing loyalty examination notification for ${targetPlayer.name} (${targetPlayer.isAI ? 'AI' : 'Human'} player)`);
+        console.log(`Showing loyalty examination notification for ${targetPlayer.name}`);
         console.log(`Current holder: ${currentHolder.name}`);
         console.log(`This is the MANDATORY examination - no refusal allowed!`);
         
@@ -1534,7 +1499,6 @@ class GameSystem {
                     <p><strong>${currentHolder.name}</strong> is examining <strong>${targetPlayer.name}</strong>'s loyalty using the Lady of the Lake.</p>
                     <p style="color: #ffd700; font-style: italic;">This will reveal whether ${targetPlayer.name} is Good or Evil to ${currentHolder.name}.</p>
                     <p><em>The examination is mandatory - ${targetPlayer.name} cannot refuse.</em></p>
-                    ${targetPlayer.isAI ? '<p style="color: #ffd700; font-size: 0.9rem;">💡 Since this is an AI player, you are witnessing this examination.</p>' : ''}
                 </div>
                 <div class="examination-buttons">
                     <button class="btn btn-primary" onclick="gameSystem.proceedWithLoyaltyExamination('${targetPlayer.id}')" style="margin: 0 auto; display: block;">
@@ -2235,29 +2199,6 @@ class GameSystem {
         return this.gamePhase !== 'waiting' && this.gamePhase !== 'game_over';
     }
 
-    // Add AI players for testing
-    addAIPlayers(roomConfig) {
-        const aiNames = [
-            'Arthur', 'Lancelot', 'Guinevere', 'Morgan', 'Gawain', 
-            'Tristan', 'Isolde', 'Percival', 'Galahad', 'Bedivere'
-        ];
-        
-        const players = [...roomConfig.players]; // Start with the real player
-        const neededPlayers = roomConfig.maxPlayers - players.length;
-        
-        for (let i = 0; i < neededPlayers; i++) {
-            const aiName = aiNames[i];
-            const aiPlayer = {
-                name: aiName,
-                id: `ai_${i + 1}`,
-                avatar: aiName.charAt(0),
-                isAI: true
-            };
-            players.push(aiPlayer);
-        }
-        
-        return players;
-    }
 
     // Shuffle players array to randomize positions on the circle
     shufflePlayers() {
@@ -2287,8 +2228,7 @@ class GameSystem {
         this.players.forEach(player => {
             const role = this.playerRoles[player.id];
             const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(role);
-            const aiIndicator = player.isAI ? ' (AI)' : '';
-            console.log(`  ${player.name}${aiIndicator}: ${role} (${isEvil ? 'Evil' : 'Good'})`);
+            console.log(`  ${player.name}: ${role} (${isEvil ? 'Evil' : 'Good'})`);
         });
         
         const evilCount = this.players.filter(p => 
@@ -2351,93 +2291,7 @@ class GameSystem {
         console.log('\nFinal mission results:', this.missionResults);
     }
 
-    // Function to simulate AI votes for testing
-    simulateAIVotes() {
-        if (this.gamePhase !== 'voting') {
-            authSystem.showNotification('No voting in progress!');
-            return;
-        }
-        
-        // Simulate votes for all AI players
-        this.players.forEach(player => {
-            if (player.isAI && this.playerVotes[player.id] === undefined) {
-                // AI players vote randomly but with some strategy
-                const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(this.playerRoles[player.id]);
-                let vote;
-                
-                if (isEvil) {
-                    // Evil players are more likely to reject teams
-                    vote = Math.random() > 0.4;
-                } else {
-                    // Good players are more likely to approve teams
-                    vote = Math.random() > 0.3;
-                }
-                
-                this.playerVotes[player.id] = vote;
-                this.votesReceived++;
-                
-                const voteText = vote ? 'approved' : 'rejected';
-                console.log(`AI ${player.name} ${voteText} the team`);
-            }
-        });
-        
-        // Update status panel
-        this.updateGameStatusPanel();
-        
-        // Check if all players have voted
-        if (this.votesReceived >= this.players.length) {
-            this.processVoteResults();
-        }
-    }
 
-    // Function to simulate AI mission votes for testing
-    simulateAIMissionVotes() {
-        console.log('=== SIMULATE AI MISSION VOTES ===');
-        console.log(`Game phase: ${this.gamePhase}`);
-        console.log(`Selected players: ${this.selectedPlayers.join(', ')}`);
-        
-        if (this.gamePhase !== 'mission') {
-            authSystem.showNotification('No mission in progress!');
-            return;
-        }
-        
-        // Simulate mission votes for AI players in the team
-        this.players.forEach(player => {
-            if (player.isAI && this.selectedPlayers.includes(player.id) && this.missionVotes[player.id] === undefined) {
-                // AI players vote based on their role
-                const isEvil = ['Morgana', 'Assassin', 'Mordred', 'Oberon', 'Minion'].includes(this.playerRoles[player.id]);
-                let vote;
-                
-                if (isEvil) {
-                    // Evil players can choose to fail (with some probability)
-                    vote = Math.random() > 0.3; // 70% chance to fail
-                } else {
-                    // Good players must choose success
-                    vote = true;
-                }
-                
-                this.missionVotes[player.id] = vote;
-                this.missionVotesReceived++;
-                
-                const voteText = vote ? 'Success' : 'Fail';
-                console.log(`AI ${player.name} voted ${voteText} on mission`);
-            }
-        });
-        
-        console.log(`Mission votes received: ${this.missionVotesReceived}/${this.selectedPlayers.length}`);
-        console.log(`Mission votes:`, this.missionVotes);
-        
-        // Update status panel
-        this.updateGameStatusPanel();
-        
-        // Check if all team members have voted
-        if (this.missionVotesReceived >= this.selectedPlayers.length) {
-            console.log('All team members voted, calling processMissionResults()');
-            this.processMissionResults();
-        } else {
-            console.log('Not all team members voted yet');
-        }
-    }
 }
 
 // Initialize game system
