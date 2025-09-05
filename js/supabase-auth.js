@@ -466,4 +466,6 @@ const supabaseAuthSystem = new SupabaseAuthSystem();
 window.supabaseAuthSystem = supabaseAuthSystem;
 console.log('Supabase auth system initialized and available globally');
 
+// Export both as default and named export
 export default supabaseAuthSystem;
+export { supabaseAuthSystem };
