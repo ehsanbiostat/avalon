@@ -396,13 +396,21 @@ class SupabaseAuthSystem {
     }
 
     async logout() {
+        console.log('=== LOGOUT CALLED ===');
         try {
             const { error } = await this.supabase.auth.signOut();
             if (error) {
+                console.error('Logout error:', error);
                 this.showNotification('Logout failed.', 'error');
+                return false;
             }
+            console.log('Logout successful');
+            this.showNotification('Logged out successfully!', 'info');
+            return true;
         } catch (error) {
+            console.error('Logout exception:', error);
             this.showNotification('Logout failed.', 'error');
+            return false;
         }
     }
 
@@ -440,34 +448,43 @@ class SupabaseAuthSystem {
     }
 
     updateUI() {
-        const authSection = document.getElementById('authSection');
-        const userSection = document.getElementById('userSection');
-        const userInfo = document.getElementById('userInfo');
+        console.log('=== UPDATE UI CALLED ===');
+        console.log('Is logged in:', this.isLoggedIn);
+        console.log('Current user:', this.currentUser);
+        
+        const authBtn = document.getElementById('authBtn');
         const authModal = document.getElementById('authModal');
 
         if (this.isLoggedIn && this.currentUser) {
-            if (authSection) authSection.style.display = 'none';
-            if (userSection) userSection.style.display = 'block';
-            if (authModal) authModal.style.display = 'none';
-
-            if (userInfo) {
+            console.log('Updating UI for logged in user');
+            // Hide auth modal
+            if (authModal) {
+                authModal.style.display = 'none';
+                console.log('Auth modal hidden');
+            }
+            
+            // Update login button to show user info and logout option
+            if (authBtn) {
                 const profile = this.currentUser.profile;
-                userInfo.innerHTML = `
-                    <div class="user-avatar">${profile?.avatar || '👤'}</div>
-                    <div class="user-details">
-                        <div class="user-name">${profile?.display_name || this.currentUser.email}</div>
-                        <div class="user-stats">
-                            Games: ${profile?.games_played || 0} |
-                            Wins: ${profile?.games_won || 0} |
-                            Rate: ${profile?.win_rate || 0}%
-                        </div>
-                    </div>
-                `;
+                const displayName = profile?.display_name || this.currentUser.email.split('@')[0];
+                authBtn.innerHTML = `${displayName} (Logout)`;
+                authBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.logout();
+                };
+                console.log('Auth button updated to show user:', displayName);
             }
         } else {
-            if (authSection) authSection.style.display = 'block';
-            if (userSection) userSection.style.display = 'none';
-            // Don't automatically show auth modal - let user click login button
+            console.log('Updating UI for logged out user');
+            // Reset login button
+            if (authBtn) {
+                authBtn.innerHTML = 'Login';
+                authBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.toggleAuthModal();
+                };
+                console.log('Auth button reset to Login');
+            }
         }
     }
 
