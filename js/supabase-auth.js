@@ -307,19 +307,29 @@ class SupabaseAuthSystem {
     }
 
     async login(email, password) {
+        console.log('=== LOGIN FUNCTION CALLED ===');
+        console.log('Email:', email);
+        console.log('Password length:', password.length);
+        
         try {
             const { data, error } = await this.supabase.auth.signInWithPassword({
                 email,
                 password
             });
 
+            console.log('Login result:', { data, error });
+
             if (error) {
+                console.error('Login error:', error);
+                console.error('Error details:', error.message, error.status, error.statusText);
                 this.showNotification(error.message, 'error');
                 return false;
             }
 
+            console.log('Login successful:', data);
             return true;
         } catch (error) {
+            console.error('Login exception:', error);
             this.showNotification('Login failed. Please try again.', 'error');
             return false;
         }
