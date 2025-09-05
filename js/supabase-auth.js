@@ -154,6 +154,9 @@ class SupabaseAuthSystem {
     async loadUserProfile() {
         if (!this.currentUser) return;
 
+        console.log('=== LOADING USER PROFILE ===');
+        console.log('User ID:', this.currentUser.id);
+
         try {
             const { data: profile, error } = await this.supabase
                 .from('profiles')
@@ -161,12 +164,17 @@ class SupabaseAuthSystem {
                 .eq('id', this.currentUser.id)
                 .single();
 
+            console.log('Profile query result:', { profile, error });
+
             if (error && error.code === 'PGRST116') {
                 // Profile doesn't exist, create it
+                console.log('Profile not found, creating new profile...');
                 await this.createUserProfile();
             } else if (error) {
                 console.error('Error loading profile:', error);
+                console.error('Error details:', error.message, error.details, error.hint);
             } else {
+                console.log('Profile loaded successfully:', profile);
                 this.currentUser.profile = profile;
             }
         } catch (error) {
@@ -175,7 +183,17 @@ class SupabaseAuthSystem {
     }
 
     async createUserProfile() {
-        if (!this.currentUser) return;
+        if (!this.currentUser) {
+            console.error('No current user found when trying to create profile');
+            return;
+        }
+
+        // Validate that we have a proper UUID
+        if (!this.currentUser.id || typeof this.currentUser.id !== 'string') {
+            console.error('Invalid user ID:', this.currentUser.id);
+            this.showNotification('Invalid user ID. Please try logging in again.', 'error');
+            return;
+        }
 
         const profileData = {
             id: this.currentUser.id,
@@ -183,6 +201,11 @@ class SupabaseAuthSystem {
             display_name: this.currentUser.user_metadata?.full_name || this.currentUser.email.split('@')[0],
             avatar: '👤'
         };
+
+        console.log('=== CREATING USER PROFILE ===');
+        console.log('User ID:', this.currentUser.id);
+        console.log('User ID type:', typeof this.currentUser.id);
+        console.log('Profile data:', profileData);
 
         try {
             const { data, error } = await this.supabase
@@ -193,11 +216,27 @@ class SupabaseAuthSystem {
 
             if (error) {
                 console.error('Error creating profile:', error);
+                console.error('Error details:', error.message, error.details, error.hint);
+                console.error('Error code:', error.code);
+                
+                // Handle specific error cases
+                if (error.code === '23505') {
+                    this.showNotification('Profile already exists for this user.', 'info');
+                    // Try to load the existing profile
+                    await this.loadUserProfile();
+                } else if (error.code === '42501') {
+                    this.showNotification('Permission denied. Please check your account status.', 'error');
+                } else {
+                    this.showNotification('Failed to create user profile: ' + error.message, 'error');
+                }
             } else {
+                console.log('Profile created successfully:', data);
                 this.currentUser.profile = data;
+                this.showNotification('Profile created successfully!', 'success');
             }
         } catch (error) {
             console.error('Error creating user profile:', error);
+            this.showNotification('Failed to create user profile.', 'error');
         }
     }
 

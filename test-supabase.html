@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Supabase Connection</h3>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connectionResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Authentication</h3>
+        <button onclick="testAuth()">Test Auth</button>
+        <div id="authResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Profiles Table</h3>
+        <button onclick="testProfilesTable()">Test Profiles Table</button>
+        <div id="profilesResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test Authentication</h3>
+        <button onclick="testAuth()">Test Authentication</button>
+        <div id="authResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Create Test Profile</h3>
+        <button onclick="createTestProfile()">Create Test Profile</button>
+        <div id="createResult"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        
+        const supabaseUrl = 'https://osgygcmgtzpsdiravuct.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zZ3lnY21ndHpwc2RpcmF2dWN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNjgzNDcsImV4cCI6MjA3MjY0NDM0N30.lEx6gI1XiAllLziRimQ-BWFg7gxppgQDYuIbm49efcQ';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        window.testConnection = async function() {
+            const resultDiv = document.getElementById('connectionResult');
+            try {
+                const { data, error } = await supabase.from('profiles').select('count').limit(1);
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error">Connection Error: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success">Connection successful! Supabase is working.</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">Connection failed: ${err.message}</div>`;
+            }
+        };
+
+        window.testAuth = async function() {
+            const resultDiv = document.getElementById('authResult');
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                resultDiv.innerHTML = `<div class="success">Auth system working. Current session: ${session ? 'Logged in' : 'Not logged in'}</div>`;
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">Auth test failed: ${err.message}</div>`;
+            }
+        };
+
+        window.testProfilesTable = async function() {
+            const resultDiv = document.getElementById('profilesResult');
+            try {
+                const { data, error } = await supabase.from('profiles').select('*').limit(5);
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error">Profiles table error: ${error.message}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success">Profiles table accessible. Found ${data.length} profiles.</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">Profiles table test failed: ${err.message}</div>`;
+            }
+        };
+
+        window.testAuth = async function() {
+            const resultDiv = document.getElementById('authResult');
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error">Auth check failed: ${error.message}</div>`;
+                } else if (user) {
+                    resultDiv.innerHTML = `<div class="success">Authenticated as: ${user.email}</div><div class="info">User ID: ${user.id}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="warning">Not authenticated</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">Auth test failed: ${err.message}</div>`;
+            }
+        };
+
+        window.createTestProfile = async function() {
+            const resultDiv = document.getElementById('createResult');
+            try {
+                // First check if we're authenticated
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    resultDiv.innerHTML = `<div class="error">Not authenticated. RLS policy requires authentication to create profiles.</div><div class="info">Error: ${authError?.message || 'No user found'}</div><div class="info">Try logging in first, then test profile creation.</div>`;
+                    return;
+                }
+                
+                const testProfile = {
+                    id: user.id, // Use the authenticated user's ID
+                    username: 'testuser',
+                    display_name: 'Test User',
+                    avatar: '🧪'
+                };
+                
+                const { data, error } = await supabase.from('profiles').insert(testProfile).select();
+                if (error) {
+                    resultDiv.innerHTML = `<div class="error">Create profile error: ${error.message}</div><pre>${JSON.stringify(error, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="success">Test profile created successfully!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">Create profile failed: ${err.message}</div>`;
+            }
+        };
+    </script>
+</body>
+</html>
