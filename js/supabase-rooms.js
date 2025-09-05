@@ -20,6 +20,7 @@ class SupabaseRoomSystem {
             console.log('setTimeout callback executing...');
             console.log('About to call setupEventListeners...');
             try {
+                console.log('Calling setupEventListeners method...');
                 this.setupEventListeners();
                 console.log('setupEventListeners completed successfully');
             } catch (error) {
@@ -32,7 +33,16 @@ class SupabaseRoomSystem {
     setupEventListeners() {
         console.log('=== SETTING UP ROOM EVENT LISTENERS ===');
         console.log('Method is being called!');
+        console.log('This is a test log to see if the method is executing');
         console.log('Document ready state:', document.readyState);
+        
+        // Test if we can find the buttons
+        const testBtn = document.getElementById('createRoomBtn');
+        console.log('TEST: createRoomBtn found:', !!testBtn);
+        if (testBtn) {
+            console.log('TEST: Button element:', testBtn);
+            console.log('TEST: Button text:', testBtn.textContent);
+        }
         console.log('All elements with createRoomBtn ID:', document.querySelectorAll('#createRoomBtn'));
         console.log('All elements with joinRoomBtn ID:', document.querySelectorAll('#joinRoomBtn'));
         
