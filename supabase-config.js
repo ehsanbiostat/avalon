@@ -2,7 +2,7 @@
 // Replace these with your actual Supabase project credentials
 
 export const supabaseConfig = {
-    url: '[https://osgygcmgtzpsdiravuct.supabase.co](https://osgygcmgtzpsdiravuct.supabase.co)', // e.g., 'https://your-project.supabase.co'
+    url: 'https://osgygcmgtzpsdiravuct.supabase.co', // e.g., 'https://your-project.supabase.co'
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zZ3lnY21ndHpwc2RpcmF2dWN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNjgzNDcsImV4cCI6MjA3MjY0NDM0N30.lEx6gI1XiAllLziRimQ-BWFg7gxppgQDYuIbm49efcQ', // Your public anon key
     serviceRoleKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zZ3lnY21ndHpwc2RpcmF2dWN0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA2ODM0NywiZXhwIjoyMDcyNjQ0MzQ3fQ.uyHzs28hBDt9JJXmKphJZoQklKKrOaiHcZlj9PmIjJ4' // Your service role key (keep secret)
 };

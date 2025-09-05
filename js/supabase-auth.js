@@ -4,28 +4,43 @@ import { supabaseConfig } from '../supabase-config.js';
 
 class SupabaseAuthSystem {
     constructor() {
+        console.log('=== SUPABASE AUTH SYSTEM CONSTRUCTOR ===');
+        console.log('Supabase URL:', supabaseConfig.url);
+        console.log('Supabase anon key:', supabaseConfig.anonKey.substring(0, 20) + '...');
         this.supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey);
         this.currentUser = null;
         this.isLoggedIn = false;
         this.isRegistering = false;
+        console.log('Supabase client created:', this.supabase);
         
         this.initializeAuth();
     }
 
     async initializeAuth() {
+        console.log('=== INITIALIZING AUTH ===');
         // Check for existing session
         const { data: { session } } = await this.supabase.auth.getSession();
+        console.log('Existing session:', session);
         
         if (session) {
+            console.log('Found existing session, user:', session.user);
             this.currentUser = session.user;
             this.isLoggedIn = true;
             await this.loadUserProfile();
             this.updateUI();
+        } else {
+            console.log('No existing session found');
         }
 
         // Listen for auth changes
+        console.log('Setting up auth state change listener...');
         this.supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('=== AUTH STATE CHANGE ===');
+            console.log('Event:', event);
+            console.log('Session:', session);
+            
             if (event === 'SIGNED_IN' && session) {
+                console.log('User signed in:', session.user);
                 this.currentUser = session.user;
                 this.isLoggedIn = true;
                 
@@ -39,6 +54,7 @@ class SupabaseAuthSystem {
                 this.updateUI();
                 this.showNotification('Successfully logged in!', 'success');
             } else if (event === 'SIGNED_OUT') {
+                console.log('User signed out');
                 this.currentUser = null;
                 this.isLoggedIn = false;
                 this.updateUI();
@@ -134,9 +150,14 @@ class SupabaseAuthSystem {
     }
 
     async handleAuthSubmit() {
+        console.log('=== AUTH FORM SUBMITTED ===');
+        console.log('Is registering:', this.isRegistering);
+        
         const email = document.getElementById('email')?.value;
         const password = document.getElementById('password')?.value;
         const confirmPassword = document.getElementById('confirmPassword')?.value;
+
+        console.log('Form data:', { email, passwordLength: password?.length, confirmPasswordLength: confirmPassword?.length });
 
         if (!email || !password) {
             this.showNotification('Please fill in all required fields!', 'error');
@@ -152,8 +173,10 @@ class SupabaseAuthSystem {
                 this.showNotification('Password must be at least 6 characters!', 'error');
                 return;
             }
+            console.log('Calling register function...');
             await this.register(email, password, email.split('@')[0]);
         } else {
+            console.log('Calling login function...');
             await this.login(email, password);
         }
     }
@@ -270,6 +293,11 @@ class SupabaseAuthSystem {
     }
 
     async register(email, password, fullName) {
+        console.log('=== REGISTER FUNCTION CALLED ===');
+        console.log('Email:', email);
+        console.log('Password length:', password.length);
+        console.log('Full name:', fullName);
+        
         try {
             const { data, error } = await this.supabase.auth.signUp({
                 email,
@@ -281,17 +309,24 @@ class SupabaseAuthSystem {
                 }
             });
 
+            console.log('Sign up result:', { data, error });
+
             if (error) {
+                console.error('Registration error:', error);
                 this.showNotification(error.message, 'error');
                 return false;
             }
 
             if (data.user && !data.user.email_confirmed_at) {
+                console.log('User created but email not confirmed');
                 this.showNotification('Please check your email to confirm your account.', 'info');
+            } else {
+                console.log('User created and confirmed:', data.user);
             }
 
             return true;
         } catch (error) {
+            console.error('Registration exception:', error);
             this.showNotification('Registration failed. Please try again.', 'error');
             return false;
         }
@@ -424,9 +459,11 @@ class SupabaseAuthSystem {
 }
 
 // Initialize the auth system
+console.log('=== INITIALIZING SUPABASE AUTH SYSTEM ===');
 const supabaseAuthSystem = new SupabaseAuthSystem();
 
 // Make it globally available
 window.supabaseAuthSystem = supabaseAuthSystem;
+console.log('Supabase auth system initialized and available globally');
 
 export default supabaseAuthSystem;
