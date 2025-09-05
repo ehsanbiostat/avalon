@@ -245,6 +245,9 @@ class RoomSystem {
             return;
         }
         
+        // Load the room creation content
+        this.loadRoomCreationContent();
+        
         const roomModal = document.getElementById('roomModal');
         if (roomModal) {
             roomModal.style.display = 'block';
@@ -470,7 +473,20 @@ class RoomSystem {
         });
     }
 
+    closeAllModals() {
+        // Close all modals except the game lobby
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (modal.id !== 'gameLobby') {
+                modal.style.display = 'none';
+            }
+        });
+    }
+
     showLobby() {
+        // Close any open modals first
+        this.closeAllModals();
+        
         const gameLobby = document.getElementById('gameLobby');
         if (gameLobby) {
             gameLobby.style.display = 'block';
