@@ -379,9 +379,12 @@ class SupabaseRoomSystem {
                 .select('*')
                 .eq('room_id', roomId)
                 .eq('player_id', user.id)
-                .single();
+                .maybeSingle();
 
-            if (existingPlayer) {
+            if (checkError) {
+                console.error('Error checking existing player:', checkError);
+                // Continue anyway, might be a new player
+            } else if (existingPlayer) {
                 console.log('Player already in room:', existingPlayer);
                 return true; // Player already exists, that's fine
             }
