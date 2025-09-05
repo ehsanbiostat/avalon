@@ -12,8 +12,25 @@ class SupabaseRoomSystem {
         this.currentRoom = null;
         this.isHost = false;
         this.roomSubscription = null;
+        this.lobbyPolling = null; // For compatibility with old room system
         
         this.setupEventListeners();
+    }
+
+    stopLobbyPolling() {
+        // For compatibility with old room system
+        // In Supabase version, we use real-time subscriptions instead of polling
+        console.log('stopLobbyPolling called (compatibility method)');
+    }
+
+    updatePlayerCount() {
+        // For compatibility with old room system
+        console.log('updatePlayerCount called (compatibility method)');
+    }
+
+    updateLobbyDisplay() {
+        // For compatibility with old room system
+        console.log('updateLobbyDisplay called (compatibility method)');
     }
 
     async createRoom(roomConfig) {
