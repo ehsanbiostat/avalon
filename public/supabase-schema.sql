@@ -53,6 +53,7 @@ CREATE TABLE public.room_players (
     position INTEGER, -- Position on the game circle
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_ready BOOLEAN DEFAULT FALSE,
+    is_host BOOLEAN DEFAULT FALSE, -- Whether this player is the room host
     
     UNIQUE(room_id, player_id)
 );
