@@ -1029,6 +1029,18 @@ class SupabaseRoomSystem {
         console.log('isRoomFull:', isRoomFull);
         console.log('current_players:', room.current_players);
         console.log('max_players:', room.max_players);
+        console.log('room.status:', room.status);
+        
+        // Don't show start game button if game has already started
+        if (room.status !== GAME_STATUS.WAITING) {
+            console.log('Game has already started, not showing start game button');
+            // Remove any existing button overlay
+            const buttonContainer = document.getElementById('startGameButtonContainer');
+            if (buttonContainer) {
+                buttonContainer.remove();
+            }
+            return;
+        }
         
         // Update start game button
         const startGameBtn = document.getElementById('startGameBtn');
@@ -1372,11 +1384,24 @@ class SupabaseRoomSystem {
         console.log('=== SHOWING ROLE INFORMATION ===');
         
         const currentUser = supabaseAuthSystem.getCurrentUser();
-        if (!currentUser) return;
+        if (!currentUser) {
+            console.log('No current user found');
+            return;
+        }
+        
+        console.log('Current user:', currentUser);
+        console.log('Current room players:', this.currentRoom.players);
         
         // Find current player's role
         const currentPlayer = this.currentRoom.players.find(p => p.player_id === currentUser.id);
-        if (!currentPlayer) return;
+        if (!currentPlayer) {
+            console.log('Current player not found in room players');
+            return;
+        }
+        
+        console.log('Current player found:', currentPlayer);
+        console.log('Player role:', currentPlayer.role);
+        console.log('Player alignment:', currentPlayer.alignment);
         
         // Create role information modal
         const modal = document.createElement('div');
@@ -1663,6 +1688,8 @@ class SupabaseRoomSystem {
     handleRoomStatusChange(payload) {
         console.log('=== HANDLING ROOM STATUS CHANGE ===');
         console.log('Payload:', payload);
+        console.log('New status:', payload.new.status);
+        console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
         
         // Update local room data
         this.currentRoom = payload.new;
@@ -1674,6 +1701,7 @@ class SupabaseRoomSystem {
             // Remove any existing button overlay
             const buttonContainer = document.getElementById('startGameButtonContainer');
             if (buttonContainer) {
+                console.log('Removing button overlay');
                 buttonContainer.remove();
             }
             
@@ -1686,9 +1714,12 @@ class SupabaseRoomSystem {
             
             // Refresh room data to get updated player roles
             this.refreshRoomData().then(() => {
+                console.log('Room data refreshed, showing role information');
                 // Show role information to current player
                 this.showRoleInformation();
             });
+        } else {
+            console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
         }
     }
 
@@ -1709,7 +1740,9 @@ class SupabaseRoomSystem {
                         player_name,
                         player_avatar,
                         is_host,
-                        joined_at
+                        joined_at,
+                        role,
+                        alignment
                     )
                 `)
                 .eq('id', this.currentRoom.id)

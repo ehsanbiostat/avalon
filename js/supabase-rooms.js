@@ -602,9 +602,24 @@ class SupabaseRoomSystem {
                 
                 // Check if game started
                 if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-                    if (window.gameSystem) {
-                        window.gameSystem.startRoleDistribution(payload.new);
+                    console.log('Game started! Role distribution beginning...');
+                    
+                    // Remove any existing button overlay
+                    const buttonContainer = document.getElementById('startGameButtonContainer');
+                    if (buttonContainer) {
+                        console.log('Removing button overlay');
+                        buttonContainer.remove();
                     }
+                    
+                    // Update status message
+                    const statusMessage = document.getElementById('statusMessage');
+                    if (statusMessage) {
+                        statusMessage.textContent = 'Game starting... Role distribution in progress.';
+                        statusMessage.className = 'status-message ready';
+                    }
+                    
+                    // Start role distribution
+                    this.startRoleDistribution();
                 }
             })
             .subscribe();
@@ -835,6 +850,18 @@ class SupabaseRoomSystem {
         console.log('isRoomFull:', isRoomFull);
         console.log('current_players:', room.current_players);
         console.log('max_players:', room.max_players);
+        console.log('room.status:', room.status);
+        
+        // Don't show start game button if game has already started
+        if (room.status !== GAME_STATUS.WAITING) {
+            console.log('Game has already started, not showing start game button');
+            // Remove any existing button overlay
+            const buttonContainer = document.getElementById('startGameButtonContainer');
+            if (buttonContainer) {
+                buttonContainer.remove();
+            }
+            return;
+        }
         
         // Update start game button
         const startGameBtn = document.getElementById('startGameBtn');
@@ -1339,6 +1366,298 @@ class SupabaseRoomSystem {
         const merlin = this.currentRoom.players.find(p => p.role === 'merlin');
         const morgana = this.currentRoom.players.find(p => p.role === 'morgana');
         return [merlin, morgana].filter(Boolean);
+    }
+
+    async startRoleDistribution() {
+        console.log('=== STARTING ROLE DISTRIBUTION ===');
+        
+        if (!this.currentRoom || !this.currentRoom.players) {
+            console.error('No room or players available for role distribution');
+            return;
+        }
+
+        // Randomize player positions
+        this.randomizePlayerPositions();
+        
+        // Assign roles based on room configuration
+        this.assignRoles();
+        
+        // Select random mission leader
+        this.selectRandomMissionLeader();
+        
+        // Save roles to database so all players can receive them
+        await this.saveRolesToDatabase();
+        
+        // Show role information to current player
+        this.showRoleInformation();
+    }
+
+    async saveRolesToDatabase() {
+        console.log('=== SAVING ROLES TO DATABASE ===');
+        
+        try {
+            // Update each player's role in the database
+            for (const player of this.currentRoom.players) {
+                const { error } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .update({
+                        role: player.role,
+                        alignment: player.alignment
+                    })
+                    .eq('room_id', this.currentRoom.id)
+                    .eq('player_id', player.player_id);
+
+                if (error) {
+                    console.error(`Error updating role for player ${player.player_name}:`, error);
+                } else {
+                    console.log(`Updated role for ${player.player_name}: ${player.role} (${player.alignment})`);
+                }
+            }
+
+            // Update room with mission leader and current mission
+            const { error: roomError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    mission_leader: this.currentRoom.mission_leader,
+                    current_mission: this.currentRoom.current_mission,
+                    players: this.currentRoom.players // Save the complete player data
+                })
+                .eq('id', this.currentRoom.id);
+
+            if (roomError) {
+                console.error('Error updating room with mission data:', roomError);
+            } else {
+                console.log('Room updated with mission leader and player roles');
+            }
+
+        } catch (error) {
+            console.error('Exception saving roles to database:', error);
+        }
+    }
+
+    randomizePlayerPositions() {
+        console.log('=== RANDOMIZING PLAYER POSITIONS ===');
+        
+        // Shuffle players array using Fisher-Yates algorithm
+        const players = [...this.currentRoom.players];
+        for (let i = players.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [players[i], players[j]] = [players[j], players[i]];
+        }
+        
+        this.currentRoom.players = players;
+        console.log('Player positions randomized:', players.map(p => p.player_name));
+        
+        // Update the display
+        this.positionPlayersOnCircle();
+    }
+
+    assignRoles() {
+        console.log('=== ASSIGNING ROLES ===');
+        
+        const players = this.currentRoom.players;
+        const playerCount = players.length;
+        
+        // Clear existing roles
+        players.forEach(player => {
+            player.role = null;
+            player.alignment = null;
+        });
+        
+        // Assign roles based on room configuration
+        const roles = this.currentRoom.roles || [];
+        
+        // Always assign Merlin and Assassin
+        const merlinIndex = Math.floor(Math.random() * playerCount);
+        const assassinIndex = Math.floor(Math.random() * playerCount);
+        
+        players[merlinIndex].role = 'merlin';
+        players[merlinIndex].alignment = 'good';
+        
+        players[assassinIndex].role = 'assassin';
+        players[assassinIndex].alignment = 'evil';
+        
+        // Assign other roles based on configuration
+        if (roles.includes('percival')) {
+            const percivalIndex = Math.floor(Math.random() * playerCount);
+            if (players[percivalIndex].role === null) {
+                players[percivalIndex].role = 'percival';
+                players[percivalIndex].alignment = 'good';
+            }
+        }
+        
+        if (roles.includes('morgana')) {
+            const morganaIndex = Math.floor(Math.random() * playerCount);
+            if (players[morganaIndex].role === null) {
+                players[morganaIndex].role = 'morgana';
+                players[morganaIndex].alignment = 'evil';
+            }
+        }
+        
+        if (roles.includes('mordred')) {
+            const mordredIndex = Math.floor(Math.random() * playerCount);
+            if (players[mordredIndex].role === null) {
+                players[mordredIndex].role = 'mordred';
+                players[mordredIndex].alignment = 'evil';
+            }
+        }
+        
+        if (roles.includes('oberon')) {
+            const oberonIndex = Math.floor(Math.random() * playerCount);
+            if (players[oberonIndex].role === null) {
+                players[oberonIndex].role = 'oberon';
+                players[oberonIndex].alignment = 'evil';
+            }
+        }
+        
+        // Fill remaining slots with loyal servants and minions
+        const remainingPlayers = players.filter(p => p.role === null);
+        const evilCount = Math.floor(playerCount / 2);
+        const goodCount = playerCount - evilCount;
+        
+        let assignedEvil = players.filter(p => p.alignment === 'evil').length;
+        let assignedGood = players.filter(p => p.alignment === 'good').length;
+        
+        for (const player of remainingPlayers) {
+            if (assignedEvil < evilCount) {
+                player.role = 'minion';
+                player.alignment = 'evil';
+                assignedEvil++;
+            } else {
+                player.role = 'loyal_servant';
+                player.alignment = 'good';
+                assignedGood++;
+            }
+        }
+        
+        console.log('Roles assigned:', players.map(p => `${p.player_name}: ${p.role} (${p.alignment})`));
+    }
+
+    selectRandomMissionLeader() {
+        console.log('=== SELECTING RANDOM MISSION LEADER ===');
+        
+        const missionLeader = this.currentRoom.players[Math.floor(Math.random() * this.currentRoom.players.length)];
+        this.currentRoom.mission_leader = missionLeader.player_id;
+        this.currentRoom.current_mission = 1;
+        
+        console.log('Mission leader selected:', missionLeader.player_name);
+    }
+
+    showRoleInformation() {
+        console.log('=== SHOWING ROLE INFORMATION ===');
+        
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser) {
+            console.log('No current user found');
+            return;
+        }
+        
+        console.log('Current user:', currentUser);
+        console.log('Current room players:', this.currentRoom.players);
+        
+        // Find current player's role
+        const currentPlayer = this.currentRoom.players.find(p => p.player_id === currentUser.id);
+        if (!currentPlayer) {
+            console.log('Current player not found in room players');
+            return;
+        }
+        
+        console.log('Current player found:', currentPlayer);
+        console.log('Player role:', currentPlayer.role);
+        console.log('Player alignment:', currentPlayer.alignment);
+        
+        // Create role information modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'roleModal';
+        modal.style.display = 'block';
+        
+        const roleInfo = this.getRoleInformation(currentPlayer);
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2>Your Role: ${roleInfo.roleName}</h2>
+                <div class="role-description">
+                    <p><strong>Alignment:</strong> ${roleInfo.alignment}</p>
+                    <p><strong>Description:</strong> ${roleInfo.description}</p>
+                    ${roleInfo.specialInfo ? `<p><strong>Special Information:</strong> ${roleInfo.specialInfo}</p>` : ''}
+                </div>
+                <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">I Understand</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+
+    getRoleInformation(player) {
+        const roleInfo = {
+            merlin: {
+                roleName: 'Merlin',
+                alignment: 'Good',
+                description: 'You are Merlin, the wise wizard. You know the identities of all evil players, but you must be careful not to reveal yourself.',
+                specialInfo: `You can see these evil players: ${this.getEvilPlayers().map(p => p.player_name).join(', ')}`
+            },
+            assassin: {
+                roleName: 'Assassin',
+                alignment: 'Evil',
+                description: 'You are the Assassin. Your goal is to identify and eliminate Merlin at the end of the game.',
+                specialInfo: `Your evil teammates are: ${this.getEvilTeammates(player).map(p => p.player_name).join(', ')}`
+            },
+            percival: {
+                roleName: 'Percival',
+                alignment: 'Good',
+                description: 'You are Percival. You know the identities of Merlin and Morgana, but you cannot tell which is which.',
+                specialInfo: `You can see these players (one is Merlin, one is Morgana): ${this.getMerlinAndMorgana().map(p => p.player_name).join(', ')}`
+            },
+            morgana: {
+                roleName: 'Morgana',
+                alignment: 'Evil',
+                description: 'You are Morgana. You appear as Merlin to Percival, confusing the good players.',
+                specialInfo: `Your evil teammates are: ${this.getEvilTeammates(player).map(p => p.player_name).join(', ')}`
+            },
+            mordred: {
+                roleName: 'Mordred',
+                alignment: 'Evil',
+                description: 'You are Mordred. You are invisible to Merlin, making you a powerful hidden threat.',
+                specialInfo: `Your evil teammates are: ${this.getEvilTeammates(player).map(p => p.player_name).join(', ')}`
+            },
+            oberon: {
+                roleName: 'Oberon',
+                alignment: 'Evil',
+                description: 'You are Oberon. You do not know the identities of other evil players, and they do not know you.',
+                specialInfo: 'You are alone in your knowledge of being evil.'
+            },
+            loyal_servant: {
+                roleName: 'Loyal Servant of Arthur',
+                alignment: 'Good',
+                description: 'You are a loyal servant of King Arthur. You know nothing special, but you must help the good players succeed.',
+                specialInfo: 'You have no special information, but your loyalty is your strength.'
+            },
+            minion: {
+                roleName: 'Minion of Mordred',
+                alignment: 'Evil',
+                description: 'You are a minion of Mordred. You know the identities of other evil players and must help them fail the missions.',
+                specialInfo: `Your evil teammates are: ${this.getEvilTeammates(player).map(p => p.player_name).join(', ')}`
+            }
+        };
+        
+        return roleInfo[player.role] || {
+            roleName: 'Unknown',
+            alignment: 'Unknown',
+            description: 'Your role is not recognized.',
+            specialInfo: ''
+        };
+    }
+
+    getEvilPlayers() {
+        return this.currentRoom.players.filter(p => p.alignment === 'evil' && p.role !== 'mordred');
+    }
+
+    getEvilTeammates(player) {
+        if (player.role === 'oberon') {
+            return []; // Oberon doesn't know other evil players
+        }
+        return this.currentRoom.players.filter(p => p.alignment === 'evil' && p.player_id !== player.player_id);
     }
 }
 
