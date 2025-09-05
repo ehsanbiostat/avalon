@@ -322,11 +322,20 @@ class SupabaseAuthSystem {
             if (error) {
                 console.error('Login error:', error);
                 console.error('Error details:', error.message, error.status, error.statusText);
-                this.showNotification(error.message, 'error');
+                
+                // Show user-friendly error messages
+                if (error.message === 'Invalid login credentials') {
+                    this.showNotification('Invalid email or password. Please check your credentials or create an account.', 'error');
+                } else if (error.message.includes('Email not confirmed')) {
+                    this.showNotification('Please check your email and click the confirmation link before logging in.', 'error');
+                } else {
+                    this.showNotification(`Login failed: ${error.message}`, 'error');
+                }
                 return false;
             }
 
             console.log('Login successful:', data);
+            this.showNotification('Login successful! Welcome back!', 'success');
             return true;
         } catch (error) {
             console.error('Login exception:', error);
@@ -356,15 +365,26 @@ class SupabaseAuthSystem {
 
             if (error) {
                 console.error('Registration error:', error);
-                this.showNotification(error.message, 'error');
+                
+                // Show user-friendly error messages
+                if (error.message.includes('User already registered')) {
+                    this.showNotification('An account with this email already exists. Please try logging in instead.', 'error');
+                } else if (error.message.includes('Password should be at least')) {
+                    this.showNotification('Password must be at least 6 characters long.', 'error');
+                } else if (error.message.includes('Invalid email')) {
+                    this.showNotification('Please enter a valid email address.', 'error');
+                } else {
+                    this.showNotification(`Registration failed: ${error.message}`, 'error');
+                }
                 return false;
             }
 
             if (data.user && !data.user.email_confirmed_at) {
                 console.log('User created but email not confirmed');
-                this.showNotification('Please check your email to confirm your account.', 'info');
+                this.showNotification('Account created successfully! Please check your email and click the confirmation link to activate your account.', 'success');
             } else {
                 console.log('User created and confirmed:', data.user);
+                this.showNotification('Account created successfully! You can now log in.', 'success');
             }
 
             return true;
