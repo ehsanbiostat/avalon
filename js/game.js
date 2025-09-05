@@ -68,8 +68,8 @@ class GameSystem {
         console.log('=== STARTING ROLE DISTRIBUTION ===');
         this.currentGame = roomConfig;
         
-        // Check if we need to add AI players for testing
-        if (roomConfig.players.length === 1) {
+        // Check if we need to add AI players for testing (only in debug mode)
+        if (roomConfig.players.length === 1 && roomConfig.debugMode) {
             this.players = this.addAIPlayers(roomConfig);
             authSystem.showNotification('Debug mode: Added AI players for testing', 'info');
         } else {
