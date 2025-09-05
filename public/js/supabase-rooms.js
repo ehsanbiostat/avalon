@@ -539,7 +539,32 @@ class SupabaseRoomSystem {
             // Add host as first player
             await this.addPlayerToRoom(room.id, user);
 
-            this.currentRoom = room;
+            // Fetch the complete room data with players
+            const { data: completeRoom, error: fetchError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    *,
+                    room_players (
+                        id,
+                        player_id,
+                        player_name,
+                        player_avatar,
+                        is_host,
+                        joined_at
+                    )
+                `)
+                .eq('id', room.id)
+                .single();
+
+            if (fetchError) {
+                console.error('Error fetching complete room data:', fetchError);
+                this.currentRoom = room;
+            } else {
+                this.currentRoom = completeRoom;
+                this.currentRoom.players = completeRoom.room_players || [];
+                this.currentRoom.current_players = this.currentRoom.players.length;
+            }
+
             this.isHost = true;
 
             this.showNotification(`Room created! Code: ${roomConfig.code}`, 'success');
@@ -550,10 +575,10 @@ class SupabaseRoomSystem {
                 roomModal.style.display = 'none';
             }
             
-            // Show room interface (placeholder for now)
+            // Show room interface
             this.showRoomInterface();
             
-            // Subscribe to room updates (placeholder for now)
+            // Subscribe to room updates
             this.subscribeToRoomUpdates(room.id);
 
             return true;
@@ -1117,8 +1142,93 @@ class SupabaseRoomSystem {
     subscribeToRoomUpdates(roomId) {
         console.log('=== SUBSCRIBING TO ROOM UPDATES ===');
         console.log('Room ID:', roomId);
-        // For now, just log
-        // TODO: Implement real-time subscriptions
+        
+        // Subscribe to room_players changes for this room
+        this.roomSubscription = this.supabase
+            .channel(`room_${roomId}`)
+            .on('postgres_changes', {
+                event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+                schema: 'public',
+                table: 'room_players',
+                filter: `room_id=eq.${roomId}`
+            }, (payload) => {
+                console.log('Room players changed:', payload);
+                this.handleRoomPlayersChange(payload);
+            })
+            .subscribe();
+
+        // Also set up polling as backup
+        this.startRoomPolling(roomId);
+    }
+
+    handleRoomPlayersChange(payload) {
+        console.log('=== HANDLING ROOM PLAYERS CHANGE ===');
+        console.log('Payload:', payload);
+        
+        // Refresh the room data and update display
+        this.refreshRoomData();
+    }
+
+    async refreshRoomData() {
+        if (!this.currentRoom) return;
+        
+        try {
+            console.log('=== REFRESHING ROOM DATA ===');
+            
+            // Fetch updated room data with players
+            const { data: room, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    *,
+                    room_players (
+                        id,
+                        player_id,
+                        player_name,
+                        player_avatar,
+                        is_host,
+                        joined_at
+                    )
+                `)
+                .eq('id', this.currentRoom.id)
+                .single();
+
+            if (error) {
+                console.error('Error refreshing room data:', error);
+                return;
+            }
+
+            console.log('Updated room data:', room);
+            
+            // Update current room
+            this.currentRoom = room;
+            this.currentRoom.players = room.room_players || [];
+            this.currentRoom.current_players = this.currentRoom.players.length;
+            
+            // Update the display
+            this.updateRoomDisplay();
+            
+        } catch (error) {
+            console.error('Exception refreshing room data:', error);
+        }
+    }
+
+    startRoomPolling(roomId) {
+        // Poll every 3 seconds as backup
+        this.roomPolling = setInterval(() => {
+            this.refreshRoomData();
+        }, 3000);
+    }
+
+    stopRoomPolling() {
+        if (this.roomPolling) {
+            clearInterval(this.roomPolling);
+            this.roomPolling = null;
+        }
+        
+        if (this.roomSubscription) {
+            this.supabase.removeChannel(this.roomSubscription);
+            this.roomSubscription = null;
+        }
     }
 }
 

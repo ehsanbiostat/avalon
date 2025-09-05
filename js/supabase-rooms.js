@@ -260,7 +260,32 @@ class SupabaseRoomSystem {
             // Add host as first player
             await this.addPlayerToRoom(room.id, user);
 
-            this.currentRoom = room;
+            // Fetch the complete room data with players
+            const { data: completeRoom, error: fetchError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    *,
+                    room_players (
+                        id,
+                        player_id,
+                        player_name,
+                        player_avatar,
+                        is_host,
+                        joined_at
+                    )
+                `)
+                .eq('id', room.id)
+                .single();
+
+            if (fetchError) {
+                console.error('Error fetching complete room data:', fetchError);
+                this.currentRoom = room;
+            } else {
+                this.currentRoom = completeRoom;
+                this.currentRoom.players = completeRoom.room_players || [];
+                this.currentRoom.current_players = this.currentRoom.players.length;
+            }
+
             this.isHost = true;
 
             this.showNotification(`Room created! Code: ${roomConfig.code}`, 'success');
