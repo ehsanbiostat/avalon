@@ -386,6 +386,9 @@ class SupabaseRoomSystem {
                 return true; // Player already exists, that's fine
             }
 
+            // Ensure user profile exists before adding to room
+            await this.ensureUserProfile(user);
+
             // If not found, add the player
             const { data, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
@@ -411,6 +414,54 @@ class SupabaseRoomSystem {
             console.error('Exception adding player to room:', error);
             this.showNotification('Failed to add player to room.', 'error');
             return false;
+        }
+    }
+
+    async ensureUserProfile(user) {
+        console.log('=== ENSURING USER PROFILE EXISTS ===');
+        console.log('User:', user);
+        
+        try {
+            // Check if profile already exists
+            const { data: existingProfile, error: checkError } = await this.supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (existingProfile) {
+                console.log('Profile already exists:', existingProfile);
+                return true;
+            }
+
+            // Create profile if it doesn't exist
+            console.log('Creating new profile for user:', user.id);
+            const { data: newProfile, error: createError } = await this.supabase
+                .from('profiles')
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    display_name: user.profile?.display_name || user.email.split('@')[0],
+                    avatar: user.profile?.avatar || '👤',
+                    created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (createError) {
+                console.error('Error creating profile:', createError);
+                throw createError;
+            }
+
+            console.log('Profile created successfully:', newProfile);
+            
+            // Update user object with new profile
+            user.profile = newProfile;
+            
+            return true;
+        } catch (error) {
+            console.error('Exception ensuring user profile:', error);
+            throw error;
         }
     }
 
