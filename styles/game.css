@@ -1,4 +1,24 @@
 /* Game Interface Styles */
+.game-interface {
+    /* Prevent layout shifts and scrolling issues */
+    position: relative;
+    overflow: hidden;
+    contain: layout style;
+}
+
+.game-content {
+    /* Prevent layout shifts during updates */
+    position: relative;
+    min-height: 500px;
+    contain: layout;
+}
+
+.game-table {
+    /* Prevent layout shifts */
+    position: relative;
+    contain: layout style;
+}
+
 .game-header {
     display: flex;
     justify-content: space-between;
@@ -6,6 +26,8 @@
     margin-bottom: 2rem;
     padding-bottom: 1rem;
     border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+    /* Prevent layout shifts */
+    min-height: 60px;
 }
 
 .game-header h2 {

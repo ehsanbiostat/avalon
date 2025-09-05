@@ -11,6 +11,9 @@ body {
     min-height: 100vh;
     color: #fff;
     overflow-x: hidden;
+    /* Prevent unwanted scrolling during updates */
+    scroll-behavior: smooth;
+    position: relative;
 }
 
 /* Animated Background */

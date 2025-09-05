@@ -1755,13 +1755,24 @@ class SupabaseRoomSystem {
 
             console.log('Updated room data:', room);
             
+            // Check if there are actual changes before updating
+            const newPlayers = room.room_players || [];
+            const currentPlayers = this.currentRoom.players || [];
+            const playersChanged = JSON.stringify(newPlayers) !== JSON.stringify(currentPlayers);
+            const statusChanged = room.status !== this.currentRoom.status;
+            
             // Update current room
             this.currentRoom = room;
-            this.currentRoom.players = room.room_players || [];
-            this.currentRoom.current_players = this.currentRoom.players.length;
+            this.currentRoom.players = newPlayers;
+            this.currentRoom.current_players = newPlayers.length;
             
-            // Update the display
-            this.updateRoomDisplay();
+            // Only update display if there are actual changes
+            if (playersChanged || statusChanged) {
+                console.log('Room data changed, updating display');
+                this.updateRoomDisplay();
+            } else {
+                console.log('No changes detected, skipping display update');
+            }
             
         } catch (error) {
             console.error('Exception refreshing room data:', error);
@@ -1769,10 +1780,11 @@ class SupabaseRoomSystem {
     }
 
     startRoomPolling(roomId) {
-        // Poll every 3 seconds as backup
+        // Poll every 30 seconds as backup (much less frequent)
+        // Real-time subscriptions should handle most updates
         this.roomPolling = setInterval(() => {
             this.refreshRoomData();
-        }, 3000);
+        }, 30000);
     }
 
     stopRoomPolling() {
