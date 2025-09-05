@@ -100,6 +100,58 @@ class RoomSystem {
     initializeRoomSystem() {
         this.setupEventListeners();
         this.loadRoomCreationContent();
+        this.setupRoomSharing();
+    }
+
+    setupRoomSharing() {
+        // Add a global function to manually share room data
+        window.shareRoomData = () => {
+            if (this.currentRoom) {
+                const roomData = JSON.stringify(this.currentRoom, null, 2);
+                console.log('=== ROOM DATA TO SHARE ===');
+                console.log(roomData);
+                console.log('Copy this data and paste it in the other browser console:');
+                console.log('window.importRoomData(' + JSON.stringify(roomData) + ');');
+                
+                // Also copy to clipboard if possible
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(roomData).then(() => {
+                        authSystem.showNotification('Room data copied to clipboard!', 'success');
+                    });
+                }
+                
+                return roomData;
+            } else {
+                console.log('No current room to share');
+                return null;
+            }
+        };
+        
+        // Add a global function to import room data
+        window.importRoomData = (roomDataString) => {
+            try {
+                const roomData = JSON.parse(roomDataString);
+                console.log('=== IMPORTING ROOM DATA ===');
+                console.log('Imported room:', roomData);
+                
+                // Add the room to the current browser's storage
+                this.gameRooms[roomData.code] = roomData;
+                this.saveRoomsToStorage();
+                
+                authSystem.showNotification(`Room ${roomData.code} imported successfully!`, 'success');
+                console.log('Room imported and saved to storage');
+                
+                return true;
+            } catch (e) {
+                console.error('Error importing room data:', e);
+                authSystem.showNotification('Error importing room data!', 'error');
+                return false;
+            }
+        };
+        
+        console.log('Room sharing functions available:');
+        console.log('- window.shareRoomData() - Share current room data');
+        console.log('- window.importRoomData(roomDataString) - Import room data');
     }
 
     loadRoomsFromStorage() {
@@ -117,8 +169,75 @@ class RoomSystem {
             console.log('sessionStorage keys:', Object.keys(rooms));
         }
         
+        // If still no rooms, try to load from a shared storage mechanism
+        if (Object.keys(rooms).length === 0) {
+            rooms = this.loadFromSharedStorage();
+            console.log('Shared storage rooms:', rooms);
+            console.log('Shared storage keys:', Object.keys(rooms));
+        }
+        
         this.gameRooms = rooms;
         console.log('Final gameRooms:', this.gameRooms);
+    }
+
+    loadFromSharedStorage() {
+        // Try to load from a shared storage mechanism
+        // This is a workaround for cross-browser testing
+        
+        // Method 1: Try to load from a global variable (if available)
+        if (window.avalonSharedRooms) {
+            console.log('Found shared rooms in window object');
+            return window.avalonSharedRooms;
+        }
+        
+        // Method 2: Try to load from a cookie (limited but works across browsers)
+        const cookieRooms = this.loadFromCookie();
+        if (Object.keys(cookieRooms).length > 0) {
+            console.log('Found rooms in cookie');
+            return cookieRooms;
+        }
+        
+        // Method 3: Try to load from a simple file-based storage simulation
+        const fileRooms = this.loadFromFileStorage();
+        if (Object.keys(fileRooms).length > 0) {
+            console.log('Found rooms in file storage');
+            return fileRooms;
+        }
+        
+        return {};
+    }
+
+    loadFromCookie() {
+        // Try to load rooms from a cookie (works across browsers on same domain)
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('avalonRooms='))
+            ?.split('=')[1];
+        
+        if (cookieValue) {
+            try {
+                return JSON.parse(decodeURIComponent(cookieValue));
+            } catch (e) {
+                console.log('Error parsing cookie rooms:', e);
+            }
+        }
+        
+        return {};
+    }
+
+    loadFromFileStorage() {
+        // Simulate file-based storage using a simple approach
+        // This is just for testing - in production you'd use a real server
+        try {
+            const stored = window.localStorage.getItem('avalonFileStorage');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+        } catch (e) {
+            console.log('Error loading from file storage:', e);
+        }
+        
+        return {};
     }
 
     saveRoomsToStorage() {
@@ -127,10 +246,51 @@ class RoomSystem {
         console.log('Saving rooms:', this.gameRooms);
         console.log('Room keys being saved:', Object.keys(this.gameRooms));
         
+        // Save to standard storage
         localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
         sessionStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
         
-        console.log('Saved to localStorage and sessionStorage');
+        // Save to shared storage mechanisms
+        this.saveToSharedStorage();
+        
+        console.log('Saved to localStorage, sessionStorage, and shared storage');
+    }
+
+    saveToSharedStorage() {
+        // Save to shared storage mechanisms for cross-browser testing
+        
+        // Method 1: Save to global variable
+        window.avalonSharedRooms = this.gameRooms;
+        
+        // Method 2: Save to cookie (limited size but works across browsers)
+        this.saveToCookie();
+        
+        // Method 3: Save to file storage simulation
+        this.saveToFileStorage();
+    }
+
+    saveToCookie() {
+        // Save rooms to a cookie (works across browsers on same domain)
+        // Note: Cookies have size limits, so this is just for testing
+        try {
+            const cookieValue = encodeURIComponent(JSON.stringify(this.gameRooms));
+            // Set cookie with 1 hour expiration
+            const expiration = new Date(Date.now() + 60 * 60 * 1000).toUTCString();
+            document.cookie = `avalonRooms=${cookieValue}; expires=${expiration}; path=/`;
+            console.log('Saved to cookie');
+        } catch (e) {
+            console.log('Error saving to cookie:', e);
+        }
+    }
+
+    saveToFileStorage() {
+        // Simulate file-based storage
+        try {
+            localStorage.setItem('avalonFileStorage', JSON.stringify(this.gameRooms));
+            console.log('Saved to file storage simulation');
+        } catch (e) {
+            console.log('Error saving to file storage:', e);
+        }
     }
 
     setupEventListeners() {
