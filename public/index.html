@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avalon - The Resistance</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/game.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="brand-icon">⚔️</span>
+            <span class="brand-text">AVALON</span>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="#" class="nav-link" data-section="home">Home</a></li>
+            <li><a href="#" class="nav-link" data-section="rules">Rules</a></li>
+            <li><a href="#" class="nav-link" data-section="roles">Roles</a></li>
+            <li><a href="#" class="nav-link" data-section="stats">Stats</a></li>
+            <li><a href="#" class="nav-link" id="authBtn">Login</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="hero">
+                <h1 class="hero-title">The Resistance: Avalon</h1>
+                <p class="hero-subtitle">A game of hidden identities, deduction, and betrayal</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" id="createRoomBtn">Create Game Room</button>
+                    <button class="btn btn-secondary" id="joinRoomBtn">Join Game Room</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rules Section -->
+        <section id="rules" class="section">
+            <div class="container">
+                <h2 class="section-title">Game Rules</h2>
+                <div class="rules-grid">
+                    <div class="rule-card">
+                    <h3>Objective</h3>
+                    <p>Good must succeed in three quests, while Evil must fail three quests. Evil can also win if they assassinate Merlin at the end.</p>
+                </div>
+                    <div class="rule-card">
+                    <h3>Team Building</h3>
+                    <p>The leader proposes a team for the quest. All players vote to approve or reject. Five rejections in a row = Evil wins.</p>
+                </div>
+                    <div class="rule-card">
+                    <h3>Quest Phase</h3>
+                    <p>Team members secretly choose Success or Fail. Good must choose Success. Evil can choose either. One Fail card fails the mission (two required on 4th mission with 7+ players).</p>
+                </div>
+                    <div class="rule-card">
+                    <h3>Victory</h3>
+                    <p>First faction to win three quests wins. If Good wins, Evil can still win by correctly identifying Merlin.</p>
+                </div>
+            </div>
+        </div>
+        </section>
+
+        <!-- Roles Section -->
+        <section id="roles" class="section">
+            <div class="container">
+                <h2 class="section-title">Character Roles</h2>
+            <div class="roles-grid">
+                    <div class="role-card good">
+                    <h3>Merlin</h3>
+                    <p>Knows who the Evil players are (except Mordred). Must remain hidden from the Assassin.</p>
+                </div>
+                    <div class="role-card good">
+                    <h3>Percival</h3>
+                    <p>Knows who Merlin is (also sees Morgana as Merlin). Helps protect Merlin's identity.</p>
+                </div>
+                    <div class="role-card good">
+                    <h3>Loyal Servants</h3>
+                    <p>Good players with no special knowledge. Must deduce who to trust.</p>
+                </div>
+                <div class="role-card evil">
+                    <h3>Assassin</h3>
+                    <p>Evil player who can win the game by correctly identifying Merlin if Good succeeds in three quests.</p>
+                </div>
+                <div class="role-card evil">
+                    <h3>Morgana</h3>
+                    <p>Appears as Merlin to Percival. Creates confusion about Merlin's true identity.</p>
+                </div>
+                <div class="role-card evil">
+                    <h3>Mordred</h3>
+                    <p>Evil player invisible to Merlin. Can infiltrate Good's plans more easily.</p>
+                </div>
+                <div class="role-card evil">
+                    <h3>Oberon</h3>
+                    <p>Evil player who doesn't know other Evil players and they don't know him. A wildcard.</p>
+                </div>
+                <div class="role-card evil">
+                    <h3>Minions</h3>
+                    <p>Regular Evil players. Know each other (except Oberon) and work together to fail quests.</p>
+                </div>
+            </div>
+        </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section id="stats" class="section">
+            <div class="container">
+                <h2 class="section-title">Your Statistics</h2>
+                <div class="stats-grid">
+                <div class="stat-card">
+                        <div class="stat-value" id="gamesPlayed">0</div>
+                    <div class="stat-label">Games Played</div>
+                </div>
+                <div class="stat-card">
+                        <div class="stat-value" id="winRate">0%</div>
+                    <div class="stat-label">Win Rate</div>
+                </div>
+                <div class="stat-card">
+                        <div class="stat-value" id="questsSucceeded">0</div>
+                    <div class="stat-label">Quests Succeeded</div>
+                </div>
+                <div class="stat-card">
+                        <div class="stat-value" id="timesAsMerlin">0</div>
+                    <div class="stat-label">Times as Merlin</div>
+                </div>
+                <div class="stat-card">
+                        <div class="stat-value" id="successfulAssassinations">0</div>
+                    <div class="stat-label">Successful Assassinations</div>
+                </div>
+                <div class="stat-card">
+                        <div class="stat-value" id="perfectDeductions">0</div>
+                    <div class="stat-label">Perfect Deductions</div>
+                </div>
+            </div>
+        </div>
+        </section>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="authTitle">Join the Quest</h2>
+            <form id="authForm">
+                <div class="form-group" id="emailGroup">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required minlength="6">
+                </div>
+                <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" id="authSubmitBtn">Enter Avalon</button>
+                <div class="auth-toggle">
+                    <a href="#" id="authToggleLink">New to Avalon? Create an account</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Room Creation Modal -->
+    <div id="roomModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Create Game Room</h2>
+            <div id="roomCreationContent"></div>
+        </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div id="joinModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Join Game Room</h2>
+            <div class="form-group">
+                <label for="roomCode">Enter Room Code</label>
+                <input type="text" id="roomCode" placeholder="e.g., ABC123" maxlength="6">
+            </div>
+            <button class="btn btn-primary" id="joinRoomSubmitBtn">Join Room</button>
+            <div class="active-rooms">
+                <h3>Active Rooms</h3>
+                <div id="activeRoomsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Lobby -->
+    <div id="gameLobby" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Game Lobby - Room: <span id="lobbyRoomCode"></span></h2>
+            <div class="lobby-content">
+                <div class="lobby-players">
+                    <h3>Players (<span id="playerCountLobby">0</span>/<span id="maxPlayersLobby">5</span>)</h3>
+                    <div id="lobbyPlayersList"></div>
+                </div>
+                <div class="lobby-settings">
+                    <h3>Game Settings</h3>
+                    <div id="lobbySettings"></div>
+                </div>
+            </div>
+            <div class="lobby-actions">
+                <button class="btn btn-primary" id="startGameBtn" style="display: none;">Start Game</button>
+                <button class="btn btn-secondary" id="leaveLobbyBtn">Leave Lobby</button>
+            </div>
+            <div id="waitingMessage" class="waiting-message">
+                Waiting for host to start the game...
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Interface -->
+    <div id="gameInterface" class="modal">
+        <div class="modal-content fullscreen">
+            <div class="game-header">
+                <h2 id="gameTitle">Quest in Progress</h2>
+                <div class="room-info">
+                    <span id="roomCodeDisplay">Room: ABC123</span>
+                    <span id="playerCountDisplay">5/5 players</span>
+                </div>
+                <button class="btn btn-secondary" id="leaveGameBtn">Leave Game</button>
+                </div>
+            <div class="game-content">
+                <div class="mission-track">
+                    <div class="mission-token" id="mission1">1</div>
+                    <div class="mission-token" id="mission2">2</div>
+                    <div class="mission-token" id="mission3">3</div>
+                    <div class="mission-token" id="mission4">4</div>
+                    <div class="mission-token" id="mission5">5</div>
+                </div>
+                <div class="game-table" id="gameTable"></div>
+                <div class="game-controls">
+                    <button class="btn btn-primary" id="proposeTeamBtn" style="display: none;">Propose Team</button>
+                    <button class="btn btn-primary" id="voteTeamBtn" style="display: none;">Vote</button>
+                    <button class="btn btn-primary" id="executeMissionBtn" style="display: none;">Execute Mission</button>
+                    <button class="btn btn-secondary" id="revealRoleBtn" style="display: none;">Reveal Role</button>
+                    <button class="btn btn-primary" id="startGameBtn" style="display: none;">Start Game</button>
+                </div>
+                
+                <!-- Room Status Message -->
+                <div id="statusMessage" class="status-message waiting">Waiting for players...</div>
+                
+                <!-- Game Status Panel -->
+                <div id="gameStatusPanel" class="game-status-panel">
+                    <h3>Game Status</h3>
+                    <div id="gameStatusContent">
+                        <p>Welcome to Avalon!</p>
+                </div>
+                </div>
+            </div>
+                
+                <!-- Debug Panel (only visible in development) -->
+                <div id="debugPanel" style="position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 1rem; border-radius: 10px; border: 2px solid #ffd700; display: none;">
+                    <h4 style="color: #ffd700; margin-bottom: 1rem;">Debug Panel</h4>
+                                    <button class="btn btn-secondary" onclick="debugShowAllRoles()" style="margin: 0.5rem;">Show All Roles</button>
+                <button class="btn btn-secondary" onclick="debugSimulateGame()" style="margin: 0.5rem;">Simulate Full Game</button>
+                <button class="btn btn-secondary" onclick="simulateAIVotes()" style="margin: 0.5rem;">Simulate AI Votes</button>
+                <button class="btn btn-secondary" onclick="simulateAIMissionVotes()" style="margin: 0.5rem;">Simulate AI Mission Votes</button>
+                <button class="btn btn-secondary" onclick="testFailCount()" style="margin: 0.5rem;">Test Fail Count</button>
+                <button class="btn btn-secondary" onclick="testVoteResults()" style="margin: 0.5rem;">Test Vote Results</button>
+                <button class="btn btn-secondary" onclick="testRejectionCounter()" style="margin: 0.5rem;">Test Rejection Counter</button>
+                <button class="btn btn-secondary" onclick="testLadyOfLake()" style="margin: 0.5rem;">Test Lady of Lake</button>
+                <button class="btn btn-secondary" onclick="testLadyOfLakePermission()" style="margin: 0.5rem;">Test Lady of Lake Examination</button>
+                <button class="btn btn-secondary" onclick="testRoleModal()" style="margin: 0.5rem;">Test Role Modal</button>
+                    <button class="btn btn-secondary" onclick="console.log('Test button works!'); authSystem.showNotification('Debug panel is working!', 'success');" style="margin: 0.5rem;">Test Debug Panel</button>
+                    <button class="btn btn-secondary" onclick="toggleDebugPanel()" style="margin: 0.5rem;">Hide Debug</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/supabase-auth.js"></script>
+    <script type="module" src="js/supabase-rooms.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

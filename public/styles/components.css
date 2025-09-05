@@ -1,0 +1,415 @@
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 3000;
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 3rem;
+    border-radius: 20px;
+    max-width: 500px;
+    width: 90%;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.large {
+    max-width: 800px;
+}
+
+.modal-content.fullscreen {
+    max-width: 95vw;
+    max-height: 95vh;
+    width: 95vw;
+    height: 95vh;
+    padding: 2rem;
+}
+
+.close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #ffd700;
+    transition: transform 0.3s;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.close:hover {
+    transform: rotate(90deg);
+    background: rgba(255, 215, 0, 0.2);
+}
+
+/* Card Styles */
+.rules-grid, .roles-grid, .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.rule-card, .role-card, .stat-card {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 15px;
+    padding: 2rem;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.rule-card::before, .role-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, transparent, rgba(255, 215, 0, 0.1));
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+}
+
+.rule-card:hover::before, .role-card:hover::before {
+    transform: translateX(0);
+}
+
+.rule-card:hover, .role-card:hover, .stat-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(255, 215, 0, 0.3);
+    border-color: #ffd700;
+}
+
+.rule-card h3, .role-card h3 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.role-card.evil h3 {
+    color: #ff6b6b;
+}
+
+.rule-card p, .role-card p {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+}
+
+/* Stats Cards */
+.stat-card {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    background: linear-gradient(45deg, #ffd700, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+}
+
+/* Auth Toggle */
+.auth-toggle {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.auth-toggle a {
+    color: #ffd700;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.auth-toggle a:hover {
+    color: #ff6b6b;
+}
+
+/* Room Creation Styles */
+.room-presets {
+    margin-bottom: 2rem;
+}
+
+.preset-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.preset-btn {
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.preset-btn:hover {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.preset-btn.active {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.room-settings {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 2rem;
+}
+
+.role-selection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.role-column h4 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.role-column.good h4 {
+    color: #00b894;
+}
+
+.role-column.evil h4 {
+    color: #ff6b6b;
+}
+
+.role-option {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.role-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.role-option input[type="checkbox"] {
+    margin-right: 0.5rem;
+    width: 18px;
+    height: 18px;
+    accent-color: #ffd700;
+}
+
+.role-option label {
+    color: #fff;
+    cursor: pointer;
+    flex: 1;
+}
+
+.role-balance {
+    background: rgba(255, 215, 0, 0.1);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.role-balance p {
+    margin-bottom: 0.5rem;
+    color: #ffd700;
+}
+
+.role-balance .good-count {
+    color: #00b894;
+}
+
+.role-balance .evil-count {
+    color: #ff6b6b;
+}
+
+/* Lobby Styles */
+.lobby-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.lobby-players, .lobby-settings {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1.5rem;
+    border-radius: 15px;
+}
+
+.lobby-players h3, .lobby-settings h3 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+}
+
+.player-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 5px;
+}
+
+.player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.player-name {
+    flex: 1;
+    color: #fff;
+}
+
+.player-host {
+    color: #ffd700;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+}
+
+.lobby-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.waiting-message {
+    text-align: center;
+    color: #ffd700;
+    font-style: italic;
+}
+
+/* Active Rooms */
+.active-rooms {
+    margin-top: 2rem;
+}
+
+.active-rooms h3 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+}
+
+.room-item {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1rem;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.room-item:hover {
+    border-color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.room-info {
+    flex: 1;
+}
+
+.room-code {
+    font-weight: bold;
+    color: #ffd700;
+    font-family: monospace;
+    font-size: 1.2rem;
+}
+
+.room-details {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Responsive Design for Components */
+@media (max-width: 768px) {
+    .modal-content {
+        padding: 2rem;
+        width: 95%;
+    }
+    
+    .lobby-content {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .role-selection {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .preset-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .room-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+}
