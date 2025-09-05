@@ -490,18 +490,27 @@ class SupabaseAuthSystem {
     }
 
     showNotification(message, type = 'info') {
+        console.log(`=== SHOWING NOTIFICATION ===`);
+        console.log(`Message: ${message}`);
+        console.log(`Type: ${type}`);
+        
         // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
 
+        console.log('Notification element created:', notification);
+        console.log('Notification classes:', notification.className);
+
         // Add to page
         document.body.appendChild(notification);
+        console.log('Notification added to page');
 
         // Remove after 3 seconds
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
+                console.log('Notification removed from page');
             }
         }, 3000);
     }
