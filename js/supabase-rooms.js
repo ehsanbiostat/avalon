@@ -1103,7 +1103,13 @@ class SupabaseRoomSystem {
             this.currentRoom.status = GAME_STATUS.ROLE_DISTRIBUTION;
             this.currentRoom.started_at = new Date().toISOString();
 
-            // Hide start game button
+            // Remove the button overlay
+            const buttonContainer = document.getElementById('startGameButtonContainer');
+            if (buttonContainer) {
+                buttonContainer.remove();
+            }
+
+            // Hide original start game button
             const startGameBtn = document.getElementById('startGameBtn');
             if (startGameBtn) {
                 startGameBtn.style.display = 'none';
@@ -1116,7 +1122,7 @@ class SupabaseRoomSystem {
                 statusMessage.className = 'status-message ready';
             }
 
-            // Start role distribution
+            // Start role distribution for all players
             this.startRoleDistribution();
 
         } catch (error) {

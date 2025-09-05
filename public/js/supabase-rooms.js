@@ -1193,7 +1193,13 @@ class SupabaseRoomSystem {
             this.currentRoom.status = GAME_STATUS.ROLE_DISTRIBUTION;
             this.currentRoom.started_at = new Date().toISOString();
 
-            // Hide start game button
+            // Remove the button overlay
+            const buttonContainer = document.getElementById('startGameButtonContainer');
+            if (buttonContainer) {
+                buttonContainer.remove();
+            }
+
+            // Hide original start game button
             const startGameBtn = document.getElementById('startGameBtn');
             if (startGameBtn) {
                 startGameBtn.style.display = 'none';
@@ -1206,7 +1212,7 @@ class SupabaseRoomSystem {
                 statusMessage.className = 'status-message ready';
             }
 
-            // Start role distribution
+            // Start role distribution for all players
             this.startRoleDistribution();
 
         } catch (error) {
@@ -1215,7 +1221,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    startRoleDistribution() {
+    async startRoleDistribution() {
         console.log('=== STARTING ROLE DISTRIBUTION ===');
         
         if (!this.currentRoom || !this.currentRoom.players) {
@@ -1232,8 +1238,54 @@ class SupabaseRoomSystem {
         // Select random mission leader
         this.selectRandomMissionLeader();
         
-        // Show role information to all players
+        // Save roles to database so all players can receive them
+        await this.saveRolesToDatabase();
+        
+        // Show role information to current player
         this.showRoleInformation();
+    }
+
+    async saveRolesToDatabase() {
+        console.log('=== SAVING ROLES TO DATABASE ===');
+        
+        try {
+            // Update each player's role in the database
+            for (const player of this.currentRoom.players) {
+                const { error } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .update({
+                        role: player.role,
+                        alignment: player.alignment
+                    })
+                    .eq('room_id', this.currentRoom.id)
+                    .eq('player_id', player.player_id);
+
+                if (error) {
+                    console.error(`Error updating role for player ${player.player_name}:`, error);
+                } else {
+                    console.log(`Updated role for ${player.player_name}: ${player.role} (${player.alignment})`);
+                }
+            }
+
+            // Update room with mission leader and current mission
+            const { error: roomError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    mission_leader: this.currentRoom.mission_leader,
+                    current_mission: this.currentRoom.current_mission,
+                    players: this.currentRoom.players // Save the complete player data
+                })
+                .eq('id', this.currentRoom.id);
+
+            if (roomError) {
+                console.error('Error updating room with mission data:', roomError);
+            } else {
+                console.log('Room updated with mission leader and player roles');
+            }
+
+        } catch (error) {
+            console.error('Exception saving roles to database:', error);
+        }
     }
 
     randomizePlayerPositions() {
@@ -1585,6 +1637,15 @@ class SupabaseRoomSystem {
                 console.log('Room players changed:', payload);
                 this.handleRoomPlayersChange(payload);
             })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'game_rooms',
+                filter: `id=eq.${roomId}`
+            }, (payload) => {
+                console.log('Room status changed:', payload);
+                this.handleRoomStatusChange(payload);
+            })
             .subscribe();
 
         // Also set up polling as backup
@@ -1597,6 +1658,38 @@ class SupabaseRoomSystem {
         
         // Refresh the room data and update display
         this.refreshRoomData();
+    }
+
+    handleRoomStatusChange(payload) {
+        console.log('=== HANDLING ROOM STATUS CHANGE ===');
+        console.log('Payload:', payload);
+        
+        // Update local room data
+        this.currentRoom = payload.new;
+        
+        // Check if game started (role distribution)
+        if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+            console.log('Game started! Role distribution beginning...');
+            
+            // Remove any existing button overlay
+            const buttonContainer = document.getElementById('startGameButtonContainer');
+            if (buttonContainer) {
+                buttonContainer.remove();
+            }
+            
+            // Update status message
+            const statusMessage = document.getElementById('statusMessage');
+            if (statusMessage) {
+                statusMessage.textContent = 'Game starting... Role distribution in progress.';
+                statusMessage.className = 'status-message ready';
+            }
+            
+            // Refresh room data to get updated player roles
+            this.refreshRoomData().then(() => {
+                // Show role information to current player
+                this.showRoleInformation();
+            });
+        }
     }
 
     async refreshRoomData() {
