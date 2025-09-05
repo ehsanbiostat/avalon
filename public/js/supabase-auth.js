@@ -1,5 +1,5 @@
 // Supabase Authentication System
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
 import { supabaseConfig } from '../supabase-config.js';
 
 class SupabaseAuthSystem {
@@ -12,7 +12,7 @@ class SupabaseAuthSystem {
         this.isLoggedIn = false;
         this.isRegistering = false;
         console.log('Supabase client created:', this.supabase);
-        
+
         this.initializeAuth();
     }
 
@@ -21,7 +21,7 @@ class SupabaseAuthSystem {
         // Check for existing session
         const { data: { session } } = await this.supabase.auth.getSession();
         console.log('Existing session:', session);
-        
+
         if (session) {
             console.log('Found existing session, user:', session.user);
             this.currentUser = session.user;
@@ -38,19 +38,19 @@ class SupabaseAuthSystem {
             console.log('=== AUTH STATE CHANGE ===');
             console.log('Event:', event);
             console.log('Session:', session);
-            
+
             if (event === 'SIGNED_IN' && session) {
                 console.log('User signed in:', session.user);
                 this.currentUser = session.user;
                 this.isLoggedIn = true;
-                
+
                 // Try to load existing profile, create if doesn't exist
                 const profileExists = await this.loadUserProfile();
                 if (!profileExists) {
                     console.log('No profile found, creating new profile...');
                     await this.createUserProfile();
                 }
-                
+
                 this.updateUI();
                 this.showNotification('Successfully logged in!', 'success');
             } else if (event === 'SIGNED_OUT') {
@@ -152,7 +152,7 @@ class SupabaseAuthSystem {
     async handleAuthSubmit() {
         console.log('=== AUTH FORM SUBMITTED ===');
         console.log('Is registering:', this.isRegistering);
-        
+
         const email = document.getElementById('email')?.value;
         const password = document.getElementById('password')?.value;
         const confirmPassword = document.getElementById('confirmPassword')?.value;
@@ -251,7 +251,7 @@ class SupabaseAuthSystem {
                 console.error('Error creating profile:', error);
                 console.error('Error details:', error.message, error.details, error.hint);
                 console.error('Error code:', error.code);
-                
+
                 // Handle specific error cases
                 if (error.code === '23505') {
                     this.showNotification('Profile already exists for this user.', 'info');
@@ -297,7 +297,7 @@ class SupabaseAuthSystem {
         console.log('Email:', email);
         console.log('Password length:', password.length);
         console.log('Full name:', fullName);
-        
+
         try {
             const { data, error } = await this.supabase.auth.signUp({
                 email,
@@ -386,7 +386,7 @@ class SupabaseAuthSystem {
             if (authSection) authSection.style.display = 'none';
             if (userSection) userSection.style.display = 'block';
             if (authModal) authModal.style.display = 'none';
-            
+
             if (userInfo) {
                 const profile = this.currentUser.profile;
                 userInfo.innerHTML = `
@@ -394,8 +394,8 @@ class SupabaseAuthSystem {
                     <div class="user-details">
                         <div class="user-name">${profile?.display_name || this.currentUser.email}</div>
                         <div class="user-stats">
-                            Games: ${profile?.games_played || 0} | 
-                            Wins: ${profile?.games_won || 0} | 
+                            Games: ${profile?.games_played || 0} |
+                            Wins: ${profile?.games_won || 0} |
                             Rate: ${profile?.win_rate || 0}%
                         </div>
                     </div>
@@ -411,11 +411,11 @@ class SupabaseAuthSystem {
     showModal(content) {
         const modal = document.getElementById('authModal');
         const modalContent = modal.querySelector('.modal-content');
-        
+
         if (modalContent) {
             modalContent.innerHTML = content;
         }
-        
+
         modal.style.display = 'block';
     }
 
@@ -431,10 +431,10 @@ class SupabaseAuthSystem {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
-        
+
         // Add to page
         document.body.appendChild(notification);
-        
+
         // Remove after 3 seconds
         setTimeout(() => {
             if (notification.parentNode) {
