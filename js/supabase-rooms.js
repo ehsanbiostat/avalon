@@ -23,6 +23,9 @@ class SupabaseRoomSystem {
                 console.log('Calling setupEventListeners method...');
                 this.setupEventListeners();
                 console.log('setupEventListeners completed successfully');
+                
+                // Check if user is already in a room
+                this.checkForExistingRoom();
             } catch (error) {
                 console.error('Error in setupEventListeners:', error);
                 console.error('Error stack:', error.stack);
@@ -583,6 +586,7 @@ class SupabaseRoomSystem {
 
             this.currentRoom = room;
             this.currentRoom.players = players;
+            this.currentRoom.current_players = players.length; // Update player count
 
             // Update UI
             this.setupRoomInterface();
@@ -823,6 +827,79 @@ class SupabaseRoomSystem {
                 notification.parentNode.removeChild(notification);
             }
         }, 3000);
+    }
+    async checkForExistingRoom() {
+        console.log('=== CHECKING FOR EXISTING ROOM ===');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            console.log('User not logged in, skipping room check');
+            return;
+        }
+
+        const user = supabaseAuthSystem.getCurrentUser();
+        if (!user) {
+            console.log('No user data available, skipping room check');
+            return;
+        }
+
+        try {
+            console.log('Checking for existing room for user:', user.id);
+            
+            // Find if user is in any active room
+            const { data: playerRoom, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select(`
+                    *,
+                    game_rooms (
+                        *,
+                        room_players (
+                            id,
+                            player_id,
+                            player_name,
+                            player_avatar,
+                            is_host,
+                            joined_at
+                        )
+                    )
+                `)
+                .eq('player_id', user.id)
+                .eq('game_rooms.status', GAME_STATUS.WAITING)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    console.log('User is not in any active room');
+                    return;
+                }
+                console.error('Error checking for existing room:', error);
+                return;
+            }
+
+            if (playerRoom && playerRoom.game_rooms) {
+                console.log('Found existing room:', playerRoom.game_rooms);
+                
+                // Set current room data
+                this.currentRoom = playerRoom.game_rooms;
+                this.currentRoom.players = playerRoom.game_rooms.room_players || [];
+                this.currentRoom.current_players = this.currentRoom.players.length;
+                this.isHost = playerRoom.is_host;
+                
+                // Show room interface
+                this.showRoomInterface();
+                
+                // Subscribe to room updates
+                this.subscribeToRoomUpdates(this.currentRoom.id);
+                
+                // Show notification
+                this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
+                
+                console.log('Successfully restored room state');
+            }
+            
+        } catch (error) {
+            console.error('Exception checking for existing room:', error);
+        }
     }
 }
 
