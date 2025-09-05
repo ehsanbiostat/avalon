@@ -1039,6 +1039,31 @@ class SupabaseRoomSystem {
                 console.log('Showing Start Game button');
                 startGameBtn.style.display = 'inline-block';
                 startGameBtn.textContent = 'Start Game';
+                
+                // Debug button visibility
+                const computedStyle = window.getComputedStyle(startGameBtn);
+                console.log('Button computed styles:', {
+                    display: computedStyle.display,
+                    visibility: computedStyle.visibility,
+                    opacity: computedStyle.opacity,
+                    position: computedStyle.position,
+                    zIndex: computedStyle.zIndex,
+                    width: computedStyle.width,
+                    height: computedStyle.height,
+                    top: computedStyle.top,
+                    left: computedStyle.left
+                });
+                
+                // Check if button is actually visible
+                const rect = startGameBtn.getBoundingClientRect();
+                console.log('Button bounding rect:', rect);
+                console.log('Button is visible:', rect.width > 0 && rect.height > 0);
+                
+                // Force make it visible
+                startGameBtn.style.visibility = 'visible';
+                startGameBtn.style.opacity = '1';
+                startGameBtn.style.position = 'relative';
+                startGameBtn.style.zIndex = '1000';
             } else {
                 console.log('Hiding Start Game button - isHost:', this.isHost, 'isRoomFull:', isRoomFull);
                 startGameBtn.style.display = 'none';
