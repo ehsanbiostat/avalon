@@ -13,6 +13,56 @@
     margin: 0;
 }
 
+.room-info {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.room-info span {
+    background: rgba(255, 215, 0, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    font-size: 0.9rem;
+    color: #ffd700;
+}
+
+.status-message {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 10px;
+    margin: 1rem 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.status-message.waiting {
+    background: rgba(255, 193, 7, 0.2);
+    border: 2px solid rgba(255, 193, 7, 0.5);
+    color: #ffc107;
+}
+
+.status-message.ready {
+    background: rgba(40, 167, 69, 0.2);
+    border: 2px solid rgba(40, 167, 69, 0.5);
+    color: #28a745;
+}
+
+.empty-slot {
+    opacity: 0.5;
+    border-style: dashed !important;
+}
+
+.empty-slot .player-avatar {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.empty-slot .player-name {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
 .game-content {
     display: flex;
     flex-direction: column;

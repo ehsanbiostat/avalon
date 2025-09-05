@@ -392,7 +392,7 @@ class RoomSystem {
         this.isHost = true;
         
         authSystem.showNotification(`Room created! Code: ${roomCode}`, 'success');
-        this.showLobby();
+        this.showRoomInterface();
     }
 
     joinRoomByCode() {
@@ -438,7 +438,7 @@ class RoomSystem {
         this.isHost = false;
         
         authSystem.showNotification(`Joined room ${code}!`, 'success');
-        this.showLobby();
+        this.showRoomInterface();
     }
 
     displayActiveRooms() {
@@ -483,6 +483,25 @@ class RoomSystem {
         });
     }
 
+    showRoomInterface() {
+        // Close any open modals first
+        this.closeAllModals();
+        
+        // Show the game interface
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            gameInterface.style.display = 'block';
+        }
+        
+        // Initialize the room display
+        this.initializeRoomDisplay();
+        
+        // Start polling for updates
+        if (!this.roomPolling) {
+            this.roomPolling = setInterval(() => this.updateRoomDisplay(), 2000);
+        }
+    }
+
     showLobby() {
         // Close any open modals first
         this.closeAllModals();
@@ -517,6 +536,178 @@ class RoomSystem {
         // Start polling for updates
         if (!this.lobbyPolling) {
             this.lobbyPolling = setInterval(() => this.updateLobbyDisplay(), 2000);
+        }
+    }
+
+    initializeRoomDisplay() {
+        if (!this.currentRoom) return;
+        
+        // Set up the room display
+        this.setupRoomInterface();
+        this.positionPlayersOnCircle();
+        this.updateRoomStatus();
+    }
+
+    setupRoomInterface() {
+        const room = this.currentRoom;
+        
+        // Update game title
+        const gameTitle = document.getElementById('gameTitle');
+        if (gameTitle) {
+            gameTitle.textContent = 'Game Room';
+        }
+        
+        // Update room info display
+        const roomCodeElement = document.getElementById('roomCodeDisplay');
+        if (roomCodeElement) {
+            roomCodeElement.textContent = `Room: ${room.code}`;
+        }
+        
+        // Update player count
+        const playerCountElement = document.getElementById('playerCountDisplay');
+        if (playerCountElement) {
+            playerCountElement.textContent = `${room.players.length}/${room.maxPlayers} players`;
+        }
+        
+        // Update game status panel
+        const gameStatusPanel = document.getElementById('gameStatusPanel');
+        if (gameStatusPanel) {
+            gameStatusPanel.innerHTML = `
+                <div class="status-item">
+                    <span class="status-label">Room Status:</span>
+                    <span class="status-value">Waiting for players</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Players:</span>
+                    <span class="status-value">${room.players.length}/${room.maxPlayers}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Room Code:</span>
+                    <span class="status-value">${room.code}</span>
+                </div>
+            `;
+        }
+    }
+
+    positionPlayersOnCircle() {
+        const room = this.currentRoom;
+        if (!room) return;
+        
+        // Clear existing players
+        const gameTable = document.getElementById('gameTable');
+        if (gameTable) {
+            gameTable.innerHTML = '';
+        }
+        
+        // Position players on the circle
+        room.players.forEach((player, index) => {
+            const angle = (index * 2 * Math.PI) / room.maxPlayers;
+            const radius = 200; // Circle radius
+            const centerX = 300; // Center X coordinate
+            const centerY = 300; // Center Y coordinate
+            
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            
+            const playerSlot = document.createElement('div');
+            playerSlot.className = 'player-slot';
+            playerSlot.style.left = `${x}px`;
+            playerSlot.style.top = `${y}px`;
+            playerSlot.setAttribute('data-player-id', player.id);
+            
+            playerSlot.innerHTML = `
+                <div class="player-avatar">${player.avatar}</div>
+                <div class="player-name">${player.name}</div>
+            `;
+            
+            if (gameTable) {
+                gameTable.appendChild(playerSlot);
+            }
+        });
+        
+        // Add empty slots for remaining players
+        for (let i = room.players.length; i < room.maxPlayers; i++) {
+            const angle = (i * 2 * Math.PI) / room.maxPlayers;
+            const radius = 200;
+            const centerX = 300;
+            const centerY = 300;
+            
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            
+            const emptySlot = document.createElement('div');
+            emptySlot.className = 'player-slot empty-slot';
+            emptySlot.style.left = `${x}px`;
+            emptySlot.style.top = `${y}px`;
+            
+            emptySlot.innerHTML = `
+                <div class="player-avatar">?</div>
+                <div class="player-name">Waiting...</div>
+            `;
+            
+            if (gameTable) {
+                gameTable.appendChild(emptySlot);
+            }
+        }
+    }
+
+    updateRoomStatus() {
+        const room = this.currentRoom;
+        if (!room) return;
+        
+        const isRoomFull = room.players.length >= room.maxPlayers;
+        
+        // Update start game button
+        const startGameBtn = document.getElementById('startGameBtn');
+        if (startGameBtn) {
+            if (this.isHost && isRoomFull) {
+                startGameBtn.style.display = 'inline-block';
+                startGameBtn.textContent = 'Start Game';
+            } else {
+                startGameBtn.style.display = 'none';
+            }
+        }
+        
+        // Update status message
+        const statusMessage = document.getElementById('statusMessage');
+        if (statusMessage) {
+            if (isRoomFull) {
+                statusMessage.textContent = 'Room is full! Ready to start.';
+                statusMessage.className = 'status-message ready';
+            } else {
+                statusMessage.textContent = `Waiting for ${room.maxPlayers - room.players.length} more players...`;
+                statusMessage.className = 'status-message waiting';
+            }
+        }
+    }
+
+    updateRoomDisplay() {
+        if (!this.currentRoom) return;
+        
+        const room = this.gameRooms[this.currentRoom.code];
+        if (!room) return;
+        
+        // Update current room data
+        this.currentRoom = room;
+        
+        // Update display
+        this.setupRoomInterface();
+        this.positionPlayersOnCircle();
+        this.updateRoomStatus();
+        
+        // Check if game has started
+        if (room.status === 'role_distribution') {
+            this.stopRoomPolling();
+            if (window.gameSystem) {
+                window.gameSystem.startRoleDistribution(room);
+            }
+        }
+    }
+
+    stopRoomPolling() {
+        if (this.roomPolling) {
+            clearInterval(this.roomPolling);
+            this.roomPolling = null;
         }
     }
 
@@ -667,13 +858,22 @@ class RoomSystem {
         this.currentRoom = null;
         this.isHost = false;
         
+        // Stop room polling
+        this.stopRoomPolling();
+        
+        // Close game interface
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            gameInterface.style.display = 'none';
+        }
+        
         // Close lobby modal
         const gameLobby = document.getElementById('gameLobby');
         if (gameLobby) {
             gameLobby.style.display = 'none';
         }
         
-        authSystem.showNotification('Left the lobby', 'info');
+        authSystem.showNotification('Left the room', 'info');
     }
 
     leaveGame() {
