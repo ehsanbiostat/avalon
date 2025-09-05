@@ -141,6 +141,87 @@ class SupabaseRoomSystem {
         }
     }
 
+    async displayActiveRooms() {
+        console.log('=== DISPLAYING ACTIVE ROOMS ===');
+        const container = document.getElementById('activeRoomsList');
+        if (!container) {
+            console.error('activeRoomsList not found!');
+            return;
+        }
+        
+        container.innerHTML = '<p style="color: rgba(255,255,255,0.5);">Loading active rooms...</p>';
+        
+        try {
+            // Fetch active rooms from Supabase
+            const { data: rooms, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    *,
+                    room_players (
+                        player_name,
+                        player_avatar,
+                        is_host
+                    )
+                `)
+                .eq('status', GAME_STATUS.WAITING)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (error) {
+                console.error('Error fetching active rooms:', error);
+                container.innerHTML = '<p style="color: #e74c3c;">Error loading rooms. Please try again.</p>';
+                return;
+            }
+
+            console.log('Active rooms fetched:', rooms);
+
+            if (!rooms || rooms.length === 0) {
+                container.innerHTML = '<p style="color: rgba(255,255,255,0.5);">No active rooms available. Create one!</p>';
+                return;
+            }
+
+            // Display the rooms
+            container.innerHTML = '';
+            rooms.forEach(room => {
+                const roomCard = document.createElement('div');
+                roomCard.className = 'room-item';
+                roomCard.style.cssText = `
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 15px;
+                    margin: 10px 0;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                `;
+                
+                const playerCount = room.room_players ? room.room_players.length : 0;
+                const host = room.room_players ? room.room_players.find(p => p.is_host) : null;
+                
+                roomCard.innerHTML = `
+                    <div class="room-info">
+                        <div style="font-weight: bold; color: #ffd700;">Room ${room.code}</div>
+                        <div style="color: rgba(255,255,255,0.7); font-size: 0.9em;">
+                            Host: ${host ? host.player_name : room.host_name} | 
+                            Players: ${playerCount}/${room.max_players}
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.supabaseRoomSystem.joinRoomByCode('${room.code}')" 
+                            style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Join
+                    </button>
+                `;
+                container.appendChild(roomCard);
+            });
+
+            console.log('Active rooms displayed successfully');
+        } catch (error) {
+            console.error('Exception fetching active rooms:', error);
+            container.innerHTML = '<p style="color: #e74c3c;">Error loading rooms. Please try again.</p>';
+        }
+    }
+
     showNotification(message, type = 'info') {
         console.log(`Notification (${type}): ${message}`);
         // For now, just log to console
@@ -480,11 +561,24 @@ class SupabaseRoomSystem {
 
     // UI Methods (similar to original room system)
     showRoomInterface() {
-        this.closeAllModals();
+        console.log('=== SHOWING ROOM INTERFACE ===');
         
-        const gameInterface = document.getElementById('gameInterface');
-        if (gameInterface) {
-            gameInterface.style.display = 'block';
+        // Hide the room creation modal
+        const roomModal = document.getElementById('roomModal');
+        if (roomModal) {
+            roomModal.style.display = 'none';
+        }
+        
+        // Show the game lobby modal
+        const gameLobby = document.getElementById('gameLobby');
+        if (gameLobby) {
+            gameLobby.style.display = 'block';
+            console.log('Game lobby modal opened');
+            
+            // Update the lobby with room information
+            this.updateLobbyDisplay();
+        } else {
+            console.error('gameLobby modal not found!');
         }
         
         this.initializeRoomDisplay();
