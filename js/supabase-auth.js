@@ -38,6 +38,117 @@ class SupabaseAuthSystem {
                 this.showNotification('Logged out successfully', 'info');
             }
         });
+
+        // Set up form event listeners
+        this.setupAuthForms();
+    }
+
+    setupAuthForms() {
+        // Get form elements
+        const authForm = document.getElementById('authForm');
+        const authToggleLink = document.getElementById('authToggleLink');
+        const authSubmitBtn = document.getElementById('authSubmitBtn');
+        const emailGroup = document.getElementById('emailGroup');
+        const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+
+        if (authForm) {
+            authForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAuthSubmit();
+            });
+        }
+
+        if (authToggleLink) {
+            authToggleLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.toggleAuthMode();
+            });
+        }
+
+        // Close button
+        const closeBtn = document.querySelector('#authModal .close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeModals();
+            });
+        }
+
+        // Initialize form state
+        this.updateAuthForm();
+    }
+
+    toggleAuthMode() {
+        this.isRegistering = !this.isRegistering;
+        this.updateAuthForm();
+    }
+
+    updateAuthForm() {
+        const authToggleLink = document.getElementById('authToggleLink');
+        const authSubmitBtn = document.getElementById('authSubmitBtn');
+        const emailGroup = document.getElementById('emailGroup');
+        const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+        const passwordLabel = document.querySelector('label[for="password"]');
+
+        if (this.isRegistering) {
+            // Register mode
+            if (authToggleLink) {
+                authToggleLink.textContent = 'Already have an account? Sign in';
+            }
+            if (authSubmitBtn) {
+                authSubmitBtn.textContent = 'Create Account';
+            }
+            if (emailGroup) {
+                emailGroup.style.display = 'block';
+            }
+            if (confirmPasswordGroup) {
+                confirmPasswordGroup.style.display = 'block';
+            }
+            if (passwordLabel) {
+                passwordLabel.textContent = 'Password (min 6 characters)';
+            }
+        } else {
+            // Login mode
+            if (authToggleLink) {
+                authToggleLink.textContent = 'New to Avalon? Create an account';
+            }
+            if (authSubmitBtn) {
+                authSubmitBtn.textContent = 'Enter Avalon';
+            }
+            if (emailGroup) {
+                emailGroup.style.display = 'block'; // Always show email for login
+            }
+            if (confirmPasswordGroup) {
+                confirmPasswordGroup.style.display = 'none';
+            }
+            if (passwordLabel) {
+                passwordLabel.textContent = 'Password';
+            }
+        }
+    }
+
+    async handleAuthSubmit() {
+        const email = document.getElementById('email')?.value;
+        const password = document.getElementById('password')?.value;
+        const confirmPassword = document.getElementById('confirmPassword')?.value;
+
+        if (!email || !password) {
+            this.showNotification('Please fill in all required fields!', 'error');
+            return;
+        }
+
+        if (this.isRegistering) {
+            if (password !== confirmPassword) {
+                this.showNotification('Passwords do not match!', 'error');
+                return;
+            }
+            if (password.length < 6) {
+                this.showNotification('Password must be at least 6 characters!', 'error');
+                return;
+            }
+            await this.register(email, password, email.split('@')[0]);
+        } else {
+            await this.login(email, password);
+        }
     }
 
     async loadUserProfile() {
@@ -185,10 +296,12 @@ class SupabaseAuthSystem {
         const authSection = document.getElementById('authSection');
         const userSection = document.getElementById('userSection');
         const userInfo = document.getElementById('userInfo');
+        const authModal = document.getElementById('authModal');
 
         if (this.isLoggedIn && this.currentUser) {
             if (authSection) authSection.style.display = 'none';
             if (userSection) userSection.style.display = 'block';
+            if (authModal) authModal.style.display = 'none';
             
             if (userInfo) {
                 const profile = this.currentUser.profile;
@@ -207,6 +320,7 @@ class SupabaseAuthSystem {
         } else {
             if (authSection) authSection.style.display = 'block';
             if (userSection) userSection.style.display = 'none';
+            // Don't automatically show auth modal - let user click login button
         }
     }
 
@@ -248,7 +362,14 @@ class SupabaseAuthSystem {
     toggleAuthModal() {
         const modal = document.getElementById('authModal');
         if (modal) {
-            modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+            if (modal.style.display === 'none' || modal.style.display === '') {
+                modal.style.display = 'block';
+                // Reset form to login mode when opening
+                this.isRegistering = false;
+                this.updateAuthForm();
+            } else {
+                modal.style.display = 'none';
+            }
         }
     }
 }
