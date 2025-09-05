@@ -950,7 +950,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    setupEventListeners() {
+    setupGameEventListeners() {
         // Start game button
         const startGameBtn = document.getElementById('startGameBtn');
         if (startGameBtn) {
