@@ -569,6 +569,9 @@ class SupabaseRoomSystem {
             }
 
             this.isHost = true;
+            console.log('=== ROOM CREATED ===');
+            console.log('isHost set to:', this.isHost);
+            console.log('Current room:', this.currentRoom);
 
             this.showNotification(`Room created! Code: ${roomConfig.code}`, 'success');
             
@@ -1020,15 +1023,28 @@ class SupabaseRoomSystem {
         
         const isRoomFull = room.current_players >= room.max_players;
         
+        console.log('=== UPDATE ROOM STATUS ===');
+        console.log('Room:', room);
+        console.log('isHost:', this.isHost);
+        console.log('isRoomFull:', isRoomFull);
+        console.log('current_players:', room.current_players);
+        console.log('max_players:', room.max_players);
+        
         // Update start game button
         const startGameBtn = document.getElementById('startGameBtn');
+        console.log('startGameBtn element:', startGameBtn);
+        
         if (startGameBtn) {
             if (this.isHost && isRoomFull) {
+                console.log('Showing Start Game button');
                 startGameBtn.style.display = 'inline-block';
                 startGameBtn.textContent = 'Start Game';
             } else {
+                console.log('Hiding Start Game button - isHost:', this.isHost, 'isRoomFull:', isRoomFull);
                 startGameBtn.style.display = 'none';
             }
+        } else {
+            console.error('Start Game button element not found!');
         }
         
         // Update status message
@@ -1447,6 +1463,10 @@ class SupabaseRoomSystem {
         if (gameInterface) {
             gameInterface.style.display = 'block';
             console.log('Game interface opened');
+            
+            // Check if Start Game button exists in this modal
+            const startGameBtn = document.getElementById('startGameBtn');
+            console.log('Start Game button in gameInterface:', startGameBtn);
             
             // Initialize the room display with the main circle
             this.initializeRoomDisplay();
