@@ -65,23 +65,350 @@ class SupabaseRoomSystem {
 
     showCreateRoom() {
         console.log('=== SHOW CREATE ROOM ===');
-        // For now, just show a notification
-        this.showNotification('Create room functionality coming soon!', 'info');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            supabaseAuthSystem.showNotification('Please login to create a game room!', 'error');
+            supabaseAuthSystem.toggleAuthModal();
+            return;
+        }
+        
+        // Load the room creation content
+        this.loadRoomCreationContent();
+        
+        const roomModal = document.getElementById('roomModal');
+        if (roomModal) {
+            roomModal.style.display = 'block';
+            console.log('Room creation modal opened');
+        } else {
+            console.error('roomModal not found!');
+        }
     }
 
     showJoinRoom() {
         console.log('=== SHOW JOIN ROOM ===');
-        // For now, just show a notification
-        this.showNotification('Join room functionality coming soon!', 'info');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            supabaseAuthSystem.showNotification('Please login to join a game room!', 'error');
+            supabaseAuthSystem.toggleAuthModal();
+            return;
+        }
+        
+        const joinModal = document.getElementById('joinModal');
+        if (joinModal) {
+            joinModal.style.display = 'block';
+            this.displayActiveRooms();
+            console.log('Join room modal opened');
+        } else {
+            console.error('joinModal not found!');
+        }
+    }
+
+    loadRoomCreationContent() {
+        console.log('=== LOADING ROOM CREATION CONTENT ===');
+        const content = document.getElementById('roomCreationContent');
+        if (!content) {
+            console.error('roomCreationContent not found!');
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="room-presets">
+                <h3 style="color: #ffd700; margin-bottom: 1rem;">Quick Setup</h3>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="classic10">Classic 10 Player</button>
+                    <button class="preset-btn" data-preset="classic10Lady">Classic 10 + Lady</button>
+                    <button class="preset-btn" data-preset="chaos10">Chaos for Merlin</button>
+                    <button class="preset-btn" data-preset="chaos10Lady">Chaos + Lady</button>
+                    <button class="preset-btn" data-preset="custom">Custom Setup</button>
+                </div>
+            </div>
+
+            <div class="room-settings">
+                <h3 style="color: #ffd700; margin-bottom: 1.5rem;">Room Settings</h3>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="playerCount" style="color: #ffd700; display: block; margin-bottom: 0.5rem;">
+                        Number of Players: <span id="playerCountDisplay">5</span>
+                    </label>
+                    <input type="range" id="playerCount" min="5" max="10" value="5" 
+                           onchange="window.supabaseRoomSystem.updatePlayerCount()" style="width: 100%;">
+                </div>
+
+                <div class="role-selection">
+                    <div class="role-column good">
+                        <h4>Good Roles</h4>
+                        <div class="role-option">
+                            <input type="checkbox" id="roleMerlin" checked disabled>
+                            <label for="roleMerlin">Merlin (Required)</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="checkbox" id="rolePercival">
+                            <label for="rolePercival">Percival</label>
+                        </div>
+                    </div>
+                    
+                    <div class="role-column evil">
+                        <h4>Evil Roles</h4>
+                        <div class="role-option">
+                            <input type="checkbox" id="roleAssassin" checked disabled>
+                            <label for="roleAssassin">Assassin (Required)</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="checkbox" id="roleMorgana">
+                            <label for="roleMorgana">Morgana</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="checkbox" id="roleMordred">
+                            <label for="roleMordred">Mordred</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="checkbox" id="roleOberon">
+                            <label for="roleOberon">Oberon</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: #ffd700; margin-bottom: 0.5rem;">Special Options</h4>
+                    <div class="role-option">
+                        <input type="checkbox" id="ladyOfLake">
+                        <label for="ladyOfLake">Enable Lady of the Lake</label>
+                    </div>
+                    <div class="role-option">
+                        <input type="checkbox" id="chaosMode">
+                        <label for="chaosMode">Chaos for Merlin (Fake Oberon)</label>
+                    </div>
+                </div>
+
+                <div class="role-balance">
+                    <p style="color: #ffd700;">Role Distribution:</p>
+                    <p class="good-count">Good: 3 players</p>
+                    <p class="evil-count">Evil: 2 players</p>
+                </div>
+
+                <button class="btn btn-primary" onclick="window.supabaseRoomSystem.createRoom()">Create Room</button>
+            </div>
+        `;
+
+        // Add preset button event listeners
+        const presetButtons = content.querySelectorAll('.preset-btn');
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset;
+                this.loadPreset(preset);
+                
+                // Update active button
+                presetButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Initialize with custom preset
+        this.loadPreset('custom');
+        content.querySelector('[data-preset="custom"]').classList.add('active');
+        
+        console.log('Room creation content loaded successfully');
+    }
+
+    displayActiveRooms() {
+        console.log('=== DISPLAYING ACTIVE ROOMS ===');
+        const container = document.getElementById('activeRoomsList');
+        if (!container) {
+            console.error('activeRoomsList not found!');
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        // For now, show a placeholder message
+        // TODO: Implement actual room fetching from Supabase
+        container.innerHTML = '<p style="color: rgba(255,255,255,0.5);">Loading active rooms...</p>';
+        
+        console.log('Active rooms display initialized');
+    }
+
+    updatePlayerCount() {
+        console.log('=== UPDATE PLAYER COUNT ===');
+        const playerCountInput = document.getElementById('playerCount');
+        const playerCountDisplay = document.getElementById('playerCountDisplay');
+        
+        if (playerCountInput && playerCountDisplay) {
+            const count = parseInt(playerCountInput.value);
+            playerCountDisplay.textContent = count;
+            
+            // Update role balance
+            this.updateRoleBalance(count);
+            console.log('Player count updated to:', count);
+        }
+    }
+
+    updateRoleBalance(playerCount) {
+        console.log('=== UPDATE ROLE BALANCE ===');
+        const goodCount = document.querySelector('.good-count');
+        const evilCount = document.querySelector('.evil-count');
+        
+        if (goodCount && evilCount) {
+            // Calculate role distribution based on player count
+            const evilPlayers = Math.floor(playerCount / 3);
+            const goodPlayers = playerCount - evilPlayers;
+            
+            goodCount.textContent = `Good: ${goodPlayers} players`;
+            evilCount.textContent = `Evil: ${evilPlayers} players`;
+            
+            console.log('Role balance updated:', { goodPlayers, evilPlayers });
+        }
+    }
+
+    loadPreset(presetName) {
+        console.log('=== LOADING PRESET ===', presetName);
+        
+        // Define preset configurations
+        const presets = {
+            'classic10': {
+                playerCount: 10,
+                roles: { percival: true, morgana: true, mordred: true, oberon: true },
+                ladyOfLake: false,
+                chaosMode: false
+            },
+            'classic10Lady': {
+                playerCount: 10,
+                roles: { percival: true, morgana: true, mordred: true, oberon: true },
+                ladyOfLake: true,
+                chaosMode: false
+            },
+            'chaos10': {
+                playerCount: 10,
+                roles: { percival: true, morgana: true, mordred: true, oberon: true },
+                ladyOfLake: false,
+                chaosMode: true
+            },
+            'chaos10Lady': {
+                playerCount: 10,
+                roles: { percival: true, morgana: true, mordred: true, oberon: true },
+                ladyOfLake: true,
+                chaosMode: true
+            },
+            'custom': {
+                playerCount: 5,
+                roles: { percival: false, morgana: false, mordred: false, oberon: false },
+                ladyOfLake: false,
+                chaosMode: false
+            }
+        };
+        
+        const preset = presets[presetName];
+        if (!preset) {
+            console.error('Unknown preset:', presetName);
+            return;
+        }
+        
+        // Update player count
+        const playerCountInput = document.getElementById('playerCount');
+        if (playerCountInput) {
+            playerCountInput.value = preset.playerCount;
+            this.updatePlayerCount();
+        }
+        
+        // Update role checkboxes
+        Object.keys(preset.roles).forEach(role => {
+            const checkbox = document.getElementById(`role${role.charAt(0).toUpperCase() + role.slice(1)}`);
+            if (checkbox) {
+                checkbox.checked = preset.roles[role];
+            }
+        });
+        
+        // Update special options
+        const ladyOfLakeCheckbox = document.getElementById('ladyOfLake');
+        const chaosModeCheckbox = document.getElementById('chaosMode');
+        
+        if (ladyOfLakeCheckbox) ladyOfLakeCheckbox.checked = preset.ladyOfLake;
+        if (chaosModeCheckbox) chaosModeCheckbox.checked = preset.chaosMode;
+        
+        console.log('Preset loaded:', preset);
     }
 
     showNotification(message, type = 'info') {
         console.log(`Notification (${type}): ${message}`);
-        // For now, just log to console
-        // TODO: Implement proper notification system
+        // Use the auth system's notification method
+        if (supabaseAuthSystem && supabaseAuthSystem.showNotification) {
+            supabaseAuthSystem.showNotification(message, type);
+        }
     }
 
-    async createRoom(roomConfig) {
+    async createRoom() {
+        console.log('=== CREATE ROOM CALLED ===');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            this.showNotification('Please login to create a room!', 'error');
+            return false;
+        }
+        
+        // Read form data
+        const roomConfig = this.getRoomConfigFromForm();
+        if (!roomConfig) {
+            this.showNotification('Please fill in all required fields!', 'error');
+            return false;
+        }
+        
+        console.log('Room config from form:', roomConfig);
+        
+        // Generate room code
+        roomConfig.code = this.generateRoomCode();
+        
+        // Create room in database
+        return await this.createRoomInDatabase(roomConfig);
+    }
+
+    getRoomConfigFromForm() {
+        console.log('=== GETTING ROOM CONFIG FROM FORM ===');
+        
+        const playerCount = parseInt(document.getElementById('playerCount')?.value);
+        const rolePercival = document.getElementById('rolePercival')?.checked;
+        const roleMorgana = document.getElementById('roleMorgana')?.checked;
+        const roleMordred = document.getElementById('roleMordred')?.checked;
+        const roleOberon = document.getElementById('roleOberon')?.checked;
+        const ladyOfLake = document.getElementById('ladyOfLake')?.checked;
+        const chaosMode = document.getElementById('chaosMode')?.checked;
+        
+        if (!playerCount || playerCount < 5 || playerCount > 10) {
+            console.error('Invalid player count:', playerCount);
+            return null;
+        }
+        
+        const config = {
+            maxPlayers: playerCount,
+            roles: {
+                merlin: true, // Always required
+                percival: rolePercival,
+                assassin: true, // Always required
+                morgana: roleMorgana,
+                mordred: roleMordred,
+                oberon: roleOberon,
+                loyalServants: Math.max(0, playerCount - 2 - (rolePercival ? 1 : 0) - (roleMorgana ? 1 : 0) - (roleMordred ? 1 : 0) - (roleOberon ? 1 : 0)),
+                minions: 0
+            },
+            ladyOfLake: ladyOfLake,
+            chaosForMerlin: chaosMode
+        };
+        
+        console.log('Room config created:', config);
+        return config;
+    }
+
+    generateRoomCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        console.log('Generated room code:', result);
+        return result;
+    }
+
+    async createRoomInDatabase(roomConfig) {
         try {
             const user = supabaseAuthSystem.getCurrentUser();
             if (!user) {
@@ -117,9 +444,17 @@ class SupabaseRoomSystem {
             this.isHost = true;
 
             this.showNotification(`Room created! Code: ${roomConfig.code}`, 'success');
+            
+            // Close the room creation modal
+            const roomModal = document.getElementById('roomModal');
+            if (roomModal) {
+                roomModal.style.display = 'none';
+            }
+            
+            // Show room interface (placeholder for now)
             this.showRoomInterface();
             
-            // Subscribe to room updates
+            // Subscribe to room updates (placeholder for now)
             this.subscribeToRoomUpdates(room.id);
 
             return true;
@@ -609,6 +944,52 @@ class SupabaseRoomSystem {
                 notification.parentNode.removeChild(notification);
             }
         }, 3000);
+    }
+
+    async addPlayerToRoom(roomId, user) {
+        console.log('=== ADDING PLAYER TO ROOM ===');
+        console.log('Room ID:', roomId);
+        console.log('User:', user);
+        
+        try {
+            const { data, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .insert({
+                    room_id: roomId,
+                    player_id: user.id,
+                    player_name: user.profile?.display_name || user.email,
+                    player_avatar: user.profile?.avatar || '👤',
+                    is_host: true // First player is always host
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error adding player to room:', error);
+                this.showNotification('Failed to add player to room: ' + error.message, 'error');
+                return false;
+            }
+
+            console.log('Player added to room successfully:', data);
+            return true;
+        } catch (error) {
+            console.error('Exception adding player to room:', error);
+            this.showNotification('Failed to add player to room.', 'error');
+            return false;
+        }
+    }
+
+    showRoomInterface() {
+        console.log('=== SHOWING ROOM INTERFACE ===');
+        // For now, just show a notification
+        this.showNotification('Room interface coming soon!', 'info');
+    }
+
+    subscribeToRoomUpdates(roomId) {
+        console.log('=== SUBSCRIBING TO ROOM UPDATES ===');
+        console.log('Room ID:', roomId);
+        // For now, just log
+        // TODO: Implement real-time subscriptions
     }
 }
 

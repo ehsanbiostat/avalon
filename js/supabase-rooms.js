@@ -65,14 +65,44 @@ class SupabaseRoomSystem {
 
     showCreateRoom() {
         console.log('=== SHOW CREATE ROOM ===');
-        // For now, just show a notification
-        this.showNotification('Create room functionality coming soon!', 'info');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            supabaseAuthSystem.showNotification('Please login to create a game room!', 'error');
+            supabaseAuthSystem.toggleAuthModal();
+            return;
+        }
+        
+        // Load the room creation content
+        this.loadRoomCreationContent();
+        
+        const roomModal = document.getElementById('roomModal');
+        if (roomModal) {
+            roomModal.style.display = 'block';
+            console.log('Room creation modal opened');
+        } else {
+            console.error('roomModal not found!');
+        }
     }
 
     showJoinRoom() {
         console.log('=== SHOW JOIN ROOM ===');
-        // For now, just show a notification
-        this.showNotification('Join room functionality coming soon!', 'info');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            supabaseAuthSystem.showNotification('Please login to join a game room!', 'error');
+            supabaseAuthSystem.toggleAuthModal();
+            return;
+        }
+        
+        const joinModal = document.getElementById('joinModal');
+        if (joinModal) {
+            joinModal.style.display = 'block';
+            this.displayActiveRooms();
+            console.log('Join room modal opened');
+        } else {
+            console.error('joinModal not found!');
+        }
     }
 
     showNotification(message, type = 'info') {
