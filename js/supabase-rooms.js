@@ -18,16 +18,20 @@ class SupabaseRoomSystem {
         console.log('Setting up setTimeout for event listeners...');
         setTimeout(() => {
             console.log('setTimeout callback executing...');
+            console.log('About to call setupEventListeners...');
             try {
                 this.setupEventListeners();
+                console.log('setupEventListeners completed successfully');
             } catch (error) {
                 console.error('Error in setupEventListeners:', error);
+                console.error('Error stack:', error.stack);
             }
         }, 100);
     }
 
     setupEventListeners() {
         console.log('=== SETTING UP ROOM EVENT LISTENERS ===');
+        console.log('Method is being called!');
         console.log('Document ready state:', document.readyState);
         console.log('All elements with createRoomBtn ID:', document.querySelectorAll('#createRoomBtn'));
         console.log('All elements with joinRoomBtn ID:', document.querySelectorAll('#joinRoomBtn'));
