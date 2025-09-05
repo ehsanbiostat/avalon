@@ -340,18 +340,49 @@ class SupabaseRoomSystem {
     }
 
     async addPlayerToRoom(roomId, user) {
-        const { error } = await this.supabase
-            .from(TABLES.ROOM_PLAYERS)
-            .insert({
-                room_id: roomId,
-                player_id: user.id,
-                player_name: user.profile?.display_name || user.email,
-                player_avatar: user.profile?.avatar || '👤'
-            });
+        console.log('=== ADDING PLAYER TO ROOM ===');
+        console.log('Room ID:', roomId);
+        console.log('User:', user);
+        
+        try {
+            // First check if player is already in the room
+            const { data: existingPlayer, error: checkError } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', roomId)
+                .eq('player_id', user.id)
+                .single();
 
-        if (error) {
-            console.error('Error adding player to room:', error);
-            throw error;
+            if (existingPlayer) {
+                console.log('Player already in room:', existingPlayer);
+                return true; // Player already exists, that's fine
+            }
+
+            // If not found, add the player
+            const { data, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .insert({
+                    room_id: roomId,
+                    player_id: user.id,
+                    player_name: user.profile?.display_name || user.email,
+                    player_avatar: user.profile?.avatar || '👤',
+                    is_host: true // First player is always host
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error adding player to room:', error);
+                this.showNotification('Failed to add player to room: ' + error.message, 'error');
+                return false;
+            }
+
+            console.log('Player added to room successfully:', data);
+            return true;
+        } catch (error) {
+            console.error('Exception adding player to room:', error);
+            this.showNotification('Failed to add player to room.', 'error');
+            return false;
         }
     }
 
@@ -569,19 +600,17 @@ class SupabaseRoomSystem {
             roomModal.style.display = 'none';
         }
         
-        // Show the game lobby modal
-        const gameLobby = document.getElementById('gameLobby');
-        if (gameLobby) {
-            gameLobby.style.display = 'block';
-            console.log('Game lobby modal opened');
+        // Show the game interface (main circle) instead of lobby
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            gameInterface.style.display = 'block';
+            console.log('Game interface opened');
             
-            // Update the lobby with room information
-            this.updateLobbyDisplay();
+            // Initialize the room display with the main circle
+            this.initializeRoomDisplay();
         } else {
-            console.error('gameLobby modal not found!');
+            console.error('gameInterface modal not found!');
         }
-        
-        this.initializeRoomDisplay();
     }
 
     closeRoomInterface() {

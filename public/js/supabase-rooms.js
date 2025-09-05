@@ -1051,6 +1051,20 @@ class SupabaseRoomSystem {
         console.log('User:', user);
         
         try {
+            // First check if player is already in the room
+            const { data: existingPlayer, error: checkError } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', roomId)
+                .eq('player_id', user.id)
+                .single();
+
+            if (existingPlayer) {
+                console.log('Player already in room:', existingPlayer);
+                return true; // Player already exists, that's fine
+            }
+
+            // If not found, add the player
             const { data, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .insert({
@@ -1087,16 +1101,16 @@ class SupabaseRoomSystem {
             roomModal.style.display = 'none';
         }
         
-        // Show the game lobby modal
-        const gameLobby = document.getElementById('gameLobby');
-        if (gameLobby) {
-            gameLobby.style.display = 'block';
-            console.log('Game lobby modal opened');
+        // Show the game interface (main circle) instead of lobby
+        const gameInterface = document.getElementById('gameInterface');
+        if (gameInterface) {
+            gameInterface.style.display = 'block';
+            console.log('Game interface opened');
             
-            // Update the lobby with room information
-            this.updateLobbyDisplay();
+            // Initialize the room display with the main circle
+            this.initializeRoomDisplay();
         } else {
-            console.error('gameLobby modal not found!');
+            console.error('gameInterface modal not found!');
         }
     }
 
