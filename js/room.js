@@ -483,15 +483,26 @@ class RoomSystem {
         
         this.updateLobbyDisplay();
         
-        // Show start button for host
+        // Show start button for host only when room is full
         const startGameBtn = document.getElementById('startGameBtn');
         const debugStartBtn = document.getElementById('debugStartBtn');
         const waitingMessage = document.getElementById('waitingMessage');
         
+        const room = this.currentRoom;
+        const isRoomFull = room && room.players.length >= room.maxPlayers;
+        const isDebugMode = room && room.players.length === 1;
+        
         if (this.isHost) {
-            if (startGameBtn) startGameBtn.style.display = 'inline-block';
-            if (debugStartBtn) debugStartBtn.style.display = 'inline-block';
-            if (waitingMessage) waitingMessage.style.display = 'none';
+            // Show start button only if room is full or in debug mode
+            if (startGameBtn) {
+                startGameBtn.style.display = (isRoomFull || isDebugMode) ? 'inline-block' : 'none';
+            }
+            if (debugStartBtn) {
+                debugStartBtn.style.display = isDebugMode ? 'inline-block' : 'none';
+            }
+            if (waitingMessage) {
+                waitingMessage.style.display = (isRoomFull || isDebugMode) ? 'none' : 'block';
+            }
         } else {
             if (startGameBtn) startGameBtn.style.display = 'none';
             if (debugStartBtn) debugStartBtn.style.display = 'none';
@@ -530,11 +541,15 @@ class RoomSystem {
         // Update settings display
         this.updateLobbySettings(room);
         
-        // Check if game started
-        if (room.status === 'playing') {
+        // Check if game started or role distribution began
+        if (room.status === 'playing' || room.status === 'role_distribution') {
             this.stopLobbyPolling();
             if (window.gameSystem) {
-                window.gameSystem.startGame(room);
+                if (room.status === 'role_distribution') {
+                    window.gameSystem.startRoleDistribution(room);
+                } else {
+                    window.gameSystem.startGame(room);
+                }
             }
         }
     }
@@ -587,14 +602,14 @@ class RoomSystem {
             return;
         }
         
-        // Update room status
-        room.status = 'playing';
+        // Update room status to role distribution
+        room.status = 'role_distribution';
         this.gameRooms[room.code] = room;
         localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
         
-        // Start the actual game
+        // Start role distribution phase
         if (window.gameSystem) {
-            window.gameSystem.startGame(room);
+            window.gameSystem.startRoleDistribution(room);
         }
     }
 

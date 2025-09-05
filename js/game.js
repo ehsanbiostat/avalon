@@ -64,6 +64,79 @@ class GameSystem {
         }
     }
 
+    startRoleDistribution(roomConfig) {
+        console.log('=== STARTING ROLE DISTRIBUTION ===');
+        this.currentGame = roomConfig;
+        
+        // Check if we need to add AI players for testing
+        if (roomConfig.players.length === 1) {
+            this.players = this.addAIPlayers(roomConfig);
+            authSystem.showNotification('Debug mode: Added AI players for testing', 'info');
+        } else {
+            this.players = roomConfig.players;
+        }
+        
+        // Randomize player positions on the circle
+        this.shufflePlayers();
+        
+        // Randomly select the first mission leader
+        this.currentLeader = Math.floor(Math.random() * this.players.length);
+        console.log('=== RANDOM LEADER SELECTION ===');
+        console.log('Randomly selected leader index:', this.currentLeader);
+        console.log('First mission leader:', this.players[this.currentLeader].name);
+        
+        // Show notification about random leader selection
+        authSystem.showNotification(`🎲 Random leader selected: ${this.players[this.currentLeader].name}`, 'info');
+        
+        // Initialize game state for role distribution
+        this.currentMission = 1;
+        this.missionResults = [];
+        this.selectedPlayers = [];
+        this.votes = [];
+        this.rejectedTeams = 0;
+        this.gamePhase = 'role_distribution';
+        this.chaosForMerlin = roomConfig.chaosForMerlin;
+        this.playerVotes = {}; // Track individual player votes
+        this.votesReceived = 0; // Count how many votes we've received
+        this.missionVotes = {}; // Track mission votes
+        this.missionVotesReceived = 0; // Count mission votes received
+        
+        // Lady of the Lake system
+        this.ladyOfLake = {
+            enabled: roomConfig.ladyOfLake || false,
+            currentHolder: null,
+            previousHolders: [], // Track who has used it
+            usesRemaining: 3,
+            canUseAfterMission: [2, 3, 4] // Missions where it can be used
+        };
+        
+        // Assign roles based on room configuration
+        this.assignRolesFromConfig(roomConfig);
+        
+        // Setup Lady of the Lake if enabled
+        console.log('=== LADY OF LAKE INITIALIZATION ===');
+        console.log('Room config ladyOfLake:', roomConfig.ladyOfLake);
+        console.log('this.ladyOfLake.enabled:', this.ladyOfLake.enabled);
+        console.log('Current leader index:', this.currentLeader);
+        console.log('Total players:', this.players.length);
+        
+        if (this.ladyOfLake.enabled) {
+            const leaderIndex = this.currentLeader;
+            const ladyOfLakeIndex = (leaderIndex + 1) % this.players.length;
+            this.ladyOfLake.currentHolder = this.players[ladyOfLakeIndex].id;
+            console.log('Lady of Lake assigned to:', this.players[ladyOfLakeIndex].name);
+        }
+        
+        // Position players on the game table
+        this.positionPlayers();
+        
+        // Show the game interface
+        this.showGameInterface();
+        
+        // Start role distribution phase
+        this.startRoleDistributionPhase();
+    }
+
     startGame(roomConfig) {
         this.currentGame = roomConfig;
         
@@ -140,7 +213,7 @@ class GameSystem {
         this.positionPlayers();
         
         // Start role distribution phase
-        this.startRoleDistribution();
+        this.startRoleDistributionPhase();
         
         // Initialize rejection counter
         this.updateRejectionCounter();
@@ -326,7 +399,7 @@ class GameSystem {
         this.updateGameStatusPanel();
     }
 
-    startRoleDistribution() {
+    startRoleDistributionPhase() {
         console.log('=== STARTING ROLE DISTRIBUTION PHASE ===');
         console.log('Showing role information to all players...');
         
