@@ -5,6 +5,10 @@ class RoomSystem {
         this.currentRoom = null;
         this.isHost = false;
         this.lobbyPolling = null;
+        this.roomPolling = null;
+        
+        // For testing purposes, also check sessionStorage as a fallback
+        this.loadRoomsFromStorage();
         
         // Predefined game setups
         this.presetConfigs = {
@@ -96,6 +100,24 @@ class RoomSystem {
     initializeRoomSystem() {
         this.setupEventListeners();
         this.loadRoomCreationContent();
+    }
+
+    loadRoomsFromStorage() {
+        // Try localStorage first
+        let rooms = JSON.parse(localStorage.getItem('avalonRooms')) || {};
+        
+        // If no rooms in localStorage, try sessionStorage
+        if (Object.keys(rooms).length === 0) {
+            rooms = JSON.parse(sessionStorage.getItem('avalonRooms')) || {};
+        }
+        
+        this.gameRooms = rooms;
+    }
+
+    saveRoomsToStorage() {
+        // Save to both localStorage and sessionStorage for testing
+        localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
+        sessionStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
     }
 
     setupEventListeners() {
@@ -385,7 +407,7 @@ class RoomSystem {
         
         // Save room to database
         this.gameRooms[roomCode] = roomConfig;
-        localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
+        this.saveRoomsToStorage();
         
         // Join the room as host
         this.currentRoom = roomConfig;
@@ -402,6 +424,9 @@ class RoomSystem {
             authSystem.showNotification('Please enter a room code!', 'error');
             return;
         }
+        
+        // Reload rooms from storage to get latest data
+        this.loadRoomsFromStorage();
         
         const room = this.gameRooms[code];
         
@@ -432,7 +457,7 @@ class RoomSystem {
         // Add player to room
         room.players.push(authSystem.getCurrentUser());
         this.gameRooms[code] = room;
-        localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
+        this.saveRoomsToStorage();
         
         this.currentRoom = room;
         this.isHost = false;
@@ -446,6 +471,9 @@ class RoomSystem {
         if (!container) return;
         
         container.innerHTML = '';
+        
+        // Reload rooms from storage to get latest data
+        this.loadRoomsFromStorage();
         
         const activeRooms = Object.values(this.gameRooms).filter(room => 
             room.status === 'waiting' && 
@@ -684,6 +712,9 @@ class RoomSystem {
     updateRoomDisplay() {
         if (!this.currentRoom) return;
         
+        // Reload rooms from storage to get latest data
+        this.loadRoomsFromStorage();
+        
         const room = this.gameRooms[this.currentRoom.code];
         if (!room) return;
         
@@ -823,7 +854,7 @@ class RoomSystem {
         // Update room status to role distribution
         room.status = 'role_distribution';
         this.gameRooms[room.code] = room;
-        localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
+        this.saveRoomsToStorage();
         
         // Start role distribution phase
         if (window.gameSystem) {
@@ -852,7 +883,7 @@ class RoomSystem {
                 this.gameRooms[room.code] = room;
             }
             
-            localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
+            this.saveRoomsToStorage();
         }
         
         this.currentRoom = null;
