@@ -1070,17 +1070,59 @@ class SupabaseRoomSystem {
                 console.log('Button bounding rect:', rect);
                 console.log('Button is visible:', rect.width > 0 && rect.height > 0);
                 
-                // Force make it visible with proper dimensions
-                startGameBtn.style.visibility = 'visible';
-                startGameBtn.style.opacity = '1';
-                startGameBtn.style.position = 'relative';
-                startGameBtn.style.zIndex = '1000';
-                startGameBtn.style.width = '150px';
-                startGameBtn.style.height = '40px';
-                startGameBtn.style.minWidth = '150px';
-                startGameBtn.style.minHeight = '40px';
-                startGameBtn.style.padding = '10px 20px';
-                startGameBtn.style.margin = '5px';
+                // Try moving the button to a more prominent location
+                const statusMessage = document.getElementById('statusMessage');
+                if (statusMessage && statusMessage.parentElement) {
+                    // Create a new container for the button
+                    let buttonContainer = document.getElementById('startGameButtonContainer');
+                    if (!buttonContainer) {
+                        buttonContainer = document.createElement('div');
+                        buttonContainer.id = 'startGameButtonContainer';
+                        buttonContainer.style.cssText = `
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            z-index: 10000;
+                            background: rgba(0, 0, 0, 0.8);
+                            padding: 20px;
+                            border-radius: 10px;
+                            text-align: center;
+                        `;
+                        document.body.appendChild(buttonContainer);
+                    }
+                    
+                    // Move button to new container
+                    buttonContainer.innerHTML = `
+                        <h3 style="color: white; margin-bottom: 15px;">Room is Full!</h3>
+                        <button class="btn btn-primary" id="startGameBtn" style="
+                            display: inline-block !important;
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                            position: relative !important;
+                            z-index: 10001 !important;
+                            width: 200px !important;
+                            height: 50px !important;
+                            min-width: 200px !important;
+                            min-height: 50px !important;
+                            padding: 15px 30px !important;
+                            margin: 10px !important;
+                            font-size: 18px !important;
+                            font-weight: bold !important;
+                            background: #007bff !important;
+                            color: white !important;
+                            border: none !important;
+                            border-radius: 5px !important;
+                            cursor: pointer !important;
+                        ">Start Game</button>
+                    `;
+                    
+                    // Re-attach event listener to the new button
+                    const newButton = buttonContainer.querySelector('#startGameBtn');
+                    if (newButton) {
+                        newButton.addEventListener('click', () => this.startGame());
+                    }
+                }
                 
                 // Also ensure parent is visible
                 if (gameControls) {
