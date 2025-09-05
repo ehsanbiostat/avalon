@@ -63,10 +63,14 @@ class SupabaseAuthSystem {
         });
 
         // Set up form event listeners
-        this.setupAuthForms();
+        // Add a small delay to ensure DOM is fully ready
+        setTimeout(() => {
+            this.setupAuthForms();
+        }, 100);
     }
 
     setupAuthForms() {
+        console.log('=== SETTING UP AUTH FORMS ===');
         // Get form elements
         const authForm = document.getElementById('authForm');
         const authToggleLink = document.getElementById('authToggleLink');
@@ -74,18 +78,34 @@ class SupabaseAuthSystem {
         const emailGroup = document.getElementById('emailGroup');
         const confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
 
+        console.log('Form elements found:', {
+            authForm: !!authForm,
+            authToggleLink: !!authToggleLink,
+            authSubmitBtn: !!authSubmitBtn,
+            emailGroup: !!emailGroup,
+            confirmPasswordGroup: !!confirmPasswordGroup
+        });
+
         if (authForm) {
+            console.log('Adding submit event listener to authForm');
             authForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                console.log('Auth form submitted!');
                 this.handleAuthSubmit();
             });
+        } else {
+            console.error('authForm not found!');
         }
 
         if (authToggleLink) {
+            console.log('Adding click event listener to authToggleLink');
             authToggleLink.addEventListener('click', (e) => {
                 e.preventDefault();
+                console.log('Auth toggle link clicked!');
                 this.toggleAuthMode();
             });
+        } else {
+            console.error('authToggleLink not found!');
         }
 
         // Close button
