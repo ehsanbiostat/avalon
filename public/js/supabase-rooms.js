@@ -32,10 +32,8 @@ class SupabaseRoomSystem {
     }
 
     setupEventListeners() {
-        console.log('=== SETTING UP ROOM EVENT LISTENERS ===');
-        console.log('Method is being called!');
-        console.log('This is a test log to see if the method is executing');
-        console.log('Document ready state:', document.readyState);
+        // MINIMAL TEST - Just one simple log
+        console.log('MINIMAL TEST: Method is executing!');
         
         // Test if we can find the buttons
         const testBtn = document.getElementById('createRoomBtn');
@@ -44,8 +42,16 @@ class SupabaseRoomSystem {
             console.log('TEST: Button element:', testBtn);
             console.log('TEST: Button text:', testBtn.textContent);
         }
-        console.log('All elements with createRoomBtn ID:', document.querySelectorAll('#createRoomBtn'));
-        console.log('All elements with joinRoomBtn ID:', document.querySelectorAll('#joinRoomBtn'));
+        
+        // Add event listeners
+        if (testBtn) {
+            testBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Create room button clicked!');
+                alert('Create room button clicked!');
+            });
+            console.log('Event listener added to createRoomBtn');
+        }
         
         // Create Room button
         const createRoomBtn = document.getElementById('createRoomBtn');
