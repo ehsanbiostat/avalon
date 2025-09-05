@@ -17,6 +17,36 @@ class SupabaseRoomSystem {
         this.setupEventListeners();
     }
 
+    setupEventListeners() {
+        console.log('=== SETTING UP ROOM EVENT LISTENERS ===');
+        
+        // Create Room button
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        if (createRoomBtn) {
+            console.log('Adding click event listener to createRoomBtn');
+            createRoomBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Create room button clicked!');
+                this.showCreateRoom();
+            });
+        } else {
+            console.error('createRoomBtn not found!');
+        }
+
+        // Join Room button
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        if (joinRoomBtn) {
+            console.log('Adding click event listener to joinRoomBtn');
+            joinRoomBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Join room button clicked!');
+                this.showJoinRoom();
+            });
+        } else {
+            console.error('joinRoomBtn not found!');
+        }
+    }
+
     stopLobbyPolling() {
         // For compatibility with old room system
         // In Supabase version, we use real-time subscriptions instead of polling
@@ -31,6 +61,24 @@ class SupabaseRoomSystem {
     updateLobbyDisplay() {
         // For compatibility with old room system
         console.log('updateLobbyDisplay called (compatibility method)');
+    }
+
+    showCreateRoom() {
+        console.log('=== SHOW CREATE ROOM ===');
+        // For now, just show a notification
+        this.showNotification('Create room functionality coming soon!', 'info');
+    }
+
+    showJoinRoom() {
+        console.log('=== SHOW JOIN ROOM ===');
+        // For now, just show a notification
+        this.showNotification('Join room functionality coming soon!', 'info');
+    }
+
+    showNotification(message, type = 'info') {
+        console.log(`Notification (${type}): ${message}`);
+        // For now, just log to console
+        // TODO: Implement proper notification system
     }
 
     async createRoom(roomConfig) {

@@ -116,6 +116,19 @@ class SupabaseAuthSystem {
             });
         }
 
+        // Login button
+        const authBtn = document.getElementById('authBtn');
+        if (authBtn) {
+            console.log('Adding click event listener to authBtn');
+            authBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Auth button clicked!');
+                this.toggleAuthModal();
+            });
+        } else {
+            console.error('authBtn not found!');
+        }
+
         // Initialize form state
         this.updateAuthForm();
     }
@@ -464,16 +477,24 @@ class SupabaseAuthSystem {
     }
 
     toggleAuthModal() {
+        console.log('=== TOGGLE AUTH MODAL CALLED ===');
         const modal = document.getElementById('authModal');
+        console.log('Modal element:', modal);
+        console.log('Current modal display:', modal?.style.display);
+        
         if (modal) {
             if (modal.style.display === 'none' || modal.style.display === '') {
+                console.log('Opening auth modal');
                 modal.style.display = 'block';
                 // Reset form to login mode when opening
                 this.isRegistering = false;
                 this.updateAuthForm();
             } else {
+                console.log('Closing auth modal');
                 modal.style.display = 'none';
             }
+        } else {
+            console.error('Auth modal not found!');
         }
     }
 }
