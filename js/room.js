@@ -106,18 +106,31 @@ class RoomSystem {
         // Try localStorage first
         let rooms = JSON.parse(localStorage.getItem('avalonRooms')) || {};
         
+        console.log('=== LOADING ROOMS FROM STORAGE ===');
+        console.log('localStorage rooms:', rooms);
+        console.log('localStorage keys:', Object.keys(rooms));
+        
         // If no rooms in localStorage, try sessionStorage
         if (Object.keys(rooms).length === 0) {
             rooms = JSON.parse(sessionStorage.getItem('avalonRooms')) || {};
+            console.log('sessionStorage rooms:', rooms);
+            console.log('sessionStorage keys:', Object.keys(rooms));
         }
         
         this.gameRooms = rooms;
+        console.log('Final gameRooms:', this.gameRooms);
     }
 
     saveRoomsToStorage() {
         // Save to both localStorage and sessionStorage for testing
+        console.log('=== SAVING ROOMS TO STORAGE ===');
+        console.log('Saving rooms:', this.gameRooms);
+        console.log('Room keys being saved:', Object.keys(this.gameRooms));
+        
         localStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
         sessionStorage.setItem('avalonRooms', JSON.stringify(this.gameRooms));
+        
+        console.log('Saved to localStorage and sessionStorage');
     }
 
     setupEventListeners() {
@@ -370,6 +383,10 @@ class RoomSystem {
         const playerCount = parseInt(document.getElementById('playerCount')?.value || 5);
         const roomCode = this.generateRoomCode();
         
+        console.log('=== CREATING ROOM ===');
+        console.log('Generated room code:', roomCode);
+        console.log('Player count:', playerCount);
+        
         const roomConfig = {
             code: roomCode,
             host: authSystem.getCurrentUser().name,
@@ -391,6 +408,8 @@ class RoomSystem {
             createdAt: new Date().toISOString()
         };
         
+        console.log('Room config created:', roomConfig);
+        
         // Validate role distribution
         const evilCount = Math.ceil(playerCount / 3);
         const goodCount = playerCount - evilCount;
@@ -406,7 +425,9 @@ class RoomSystem {
         }
         
         // Save room to database
+        console.log('Saving room to gameRooms object...');
         this.gameRooms[roomCode] = roomConfig;
+        console.log('gameRooms after saving:', this.gameRooms);
         this.saveRoomsToStorage();
         
         // Join the room as host
@@ -428,12 +449,20 @@ class RoomSystem {
         // Reload rooms from storage to get latest data
         this.loadRoomsFromStorage();
         
+        console.log('=== JOINING ROOM BY CODE ===');
+        console.log('Entered code:', code);
+        console.log('Available rooms:', Object.keys(this.gameRooms));
+        console.log('All rooms data:', this.gameRooms);
+        
         const room = this.gameRooms[code];
         
         if (!room) {
+            console.log('Room not found in gameRooms object');
             authSystem.showNotification('Room not found! Please check the code.', 'error');
             return;
         }
+        
+        console.log('Found room:', room);
         
         if (room.status !== 'waiting') {
             authSystem.showNotification('This game has already started!', 'error');
@@ -475,10 +504,16 @@ class RoomSystem {
         // Reload rooms from storage to get latest data
         this.loadRoomsFromStorage();
         
+        console.log('=== DISPLAYING ACTIVE ROOMS ===');
+        console.log('All rooms in storage:', this.gameRooms);
+        console.log('Room keys:', Object.keys(this.gameRooms));
+        
         const activeRooms = Object.values(this.gameRooms).filter(room => 
             room.status === 'waiting' && 
             new Date() - new Date(room.createdAt) < 3600000 // 1 hour timeout
         );
+        
+        console.log('Active rooms after filtering:', activeRooms);
         
         if (activeRooms.length === 0) {
             container.innerHTML = '<p style="color: rgba(255,255,255,0.5);">No active rooms available. Create one!</p>';
