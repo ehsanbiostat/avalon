@@ -15,8 +15,14 @@ class SupabaseRoomSystem {
         this.lobbyPolling = null; // For compatibility with old room system
         
         // Add a small delay to ensure DOM is fully ready
+        console.log('Setting up setTimeout for event listeners...');
         setTimeout(() => {
-            this.setupEventListeners();
+            console.log('setTimeout callback executing...');
+            try {
+                this.setupEventListeners();
+            } catch (error) {
+                console.error('Error in setupEventListeners:', error);
+            }
         }, 100);
     }
 

@@ -1,11 +1,13 @@
 // Main Application
 class AvalonApp {
     constructor() {
+        console.log('=== AVALON APP CONSTRUCTOR ===');
         this.currentSection = 'home';
         this.initializeApp();
     }
 
     initializeApp() {
+        console.log('=== INITIALIZING APP ===');
         this.setupNavigation();
         this.setupGlobalEventListeners();
         this.initializeSystems();
@@ -13,12 +15,16 @@ class AvalonApp {
     }
 
     setupNavigation() {
+        console.log('=== SETTING UP NAVIGATION ===');
         // Navigation links
         const navLinks = document.querySelectorAll('.nav-link[data-section]');
+        console.log('Found nav links:', navLinks.length);
         navLinks.forEach(link => {
+            console.log('Adding click listener to nav link:', link.dataset.section);
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const section = link.dataset.section;
+                console.log('Nav link clicked:', section);
                 this.showSection(section);
             });
         });
@@ -26,9 +32,13 @@ class AvalonApp {
         // Brand click to go home
         const brandElement = document.querySelector('.nav-brand');
         if (brandElement) {
+            console.log('Adding click listener to brand element');
             brandElement.addEventListener('click', () => {
+                console.log('Brand clicked, going to home');
                 this.showSection('home');
             });
+        } else {
+            console.log('Brand element not found');
         }
     }
 
