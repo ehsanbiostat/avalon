@@ -860,16 +860,40 @@ class SupabaseRoomSystem {
                     left: computedStyle.left
                 });
                 
+                // Check parent container
+                const gameControls = startGameBtn.parentElement;
+                const gameControlsStyle = window.getComputedStyle(gameControls);
+                console.log('Parent game-controls styles:', {
+                    display: gameControlsStyle.display,
+                    visibility: gameControlsStyle.visibility,
+                    opacity: gameControlsStyle.opacity,
+                    width: gameControlsStyle.width,
+                    height: gameControlsStyle.height
+                });
+                
                 // Check if button is actually visible
                 const rect = startGameBtn.getBoundingClientRect();
                 console.log('Button bounding rect:', rect);
                 console.log('Button is visible:', rect.width > 0 && rect.height > 0);
                 
-                // Force make it visible
+                // Force make it visible with proper dimensions
                 startGameBtn.style.visibility = 'visible';
                 startGameBtn.style.opacity = '1';
                 startGameBtn.style.position = 'relative';
                 startGameBtn.style.zIndex = '1000';
+                startGameBtn.style.width = '150px';
+                startGameBtn.style.height = '40px';
+                startGameBtn.style.minWidth = '150px';
+                startGameBtn.style.minHeight = '40px';
+                startGameBtn.style.padding = '10px 20px';
+                startGameBtn.style.margin = '5px';
+                
+                // Also ensure parent is visible
+                if (gameControls) {
+                    gameControls.style.display = 'flex';
+                    gameControls.style.visibility = 'visible';
+                    gameControls.style.opacity = '1';
+                }
             } else {
                 console.log('Hiding Start Game button - isHost:', this.isHost, 'isRoomFull:', isRoomFull);
                 startGameBtn.style.display = 'none';
