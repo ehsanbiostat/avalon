@@ -1,5 +1,6 @@
 // Supabase Room Management System
 console.log('=== LOADING SUPABASE ROOMS SYSTEM ===');
+console.log('Script is being executed!');
 import { supabaseAuthSystem } from './supabase-auth.js';
 import { TABLES, GAME_STATUS } from '../supabase-config.js';
 console.log('Supabase rooms system imports loaded');
@@ -19,7 +20,7 @@ class SupabaseRoomSystem {
         setTimeout(() => {
             console.log('setTimeout callback executing...');
             try {
-                this.setupEventListeners();
+        this.setupEventListeners();
             } catch (error) {
                 console.error('Error in setupEventListeners:', error);
             }
