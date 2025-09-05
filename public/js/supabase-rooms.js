@@ -14,14 +14,21 @@ class SupabaseRoomSystem {
         this.roomSubscription = null;
         this.lobbyPolling = null; // For compatibility with old room system
         
-        this.setupEventListeners();
+        // Add a small delay to ensure DOM is fully ready
+        setTimeout(() => {
+            this.setupEventListeners();
+        }, 100);
     }
 
     setupEventListeners() {
         console.log('=== SETTING UP ROOM EVENT LISTENERS ===');
+        console.log('Document ready state:', document.readyState);
+        console.log('All elements with createRoomBtn ID:', document.querySelectorAll('#createRoomBtn'));
+        console.log('All elements with joinRoomBtn ID:', document.querySelectorAll('#joinRoomBtn'));
         
         // Create Room button
         const createRoomBtn = document.getElementById('createRoomBtn');
+        console.log('createRoomBtn element:', createRoomBtn);
         if (createRoomBtn) {
             console.log('Adding click event listener to createRoomBtn');
             createRoomBtn.addEventListener('click', (e) => {
@@ -35,6 +42,7 @@ class SupabaseRoomSystem {
 
         // Join Room button
         const joinRoomBtn = document.getElementById('joinRoomBtn');
+        console.log('joinRoomBtn element:', joinRoomBtn);
         if (joinRoomBtn) {
             console.log('Adding click event listener to joinRoomBtn');
             joinRoomBtn.addEventListener('click', (e) => {
