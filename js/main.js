@@ -70,13 +70,13 @@ class AvalonApp {
 
     initializeSystems() {
         // Initialize all systems in the correct order
-        // Auth system is already initialized
-        // Room system is already initialized
+        // Supabase auth system is already initialized
+        // Supabase room system is already initialized
         // Game system is already initialized
         
         // Set up global references
-        window.authSystem = authSystem;
-        window.roomSystem = roomSystem;
+        window.authSystem = window.supabaseAuthSystem;
+        window.roomSystem = window.supabaseRoomSystem;
         window.gameSystem = gameSystem;
         
         // Initialize any additional features
