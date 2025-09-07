@@ -630,7 +630,21 @@ class SupabaseRoomSystem {
                         this.showRoleInformation();
                     }).catch(error => {
                         console.error('Error in refreshRoomData:', error);
+                        // Fallback: try to show role information anyway
+                        console.log('Attempting fallback role information display...');
+                        this.showRoleInformation();
                     });
+                    
+                    // Additional fallback: try again after a short delay
+                    setTimeout(() => {
+                        console.log('Fallback: Attempting role distribution after delay...');
+                        this.refreshRoomData().then(() => {
+                            console.log('Fallback: Room data refreshed, showing role information');
+                            this.showRoleInformation();
+                        }).catch(error => {
+                            console.error('Fallback: Error in refreshRoomData:', error);
+                        });
+                    }, 2000);
                 } else {
                     console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
                 }
@@ -1053,17 +1067,7 @@ class SupabaseRoomSystem {
                 .from(TABLES.ROOM_PLAYERS)
                 .select(`
                     *,
-                    game_rooms (
-                        *,
-                        room_players (
-                            id,
-                            player_id,
-                            player_name,
-                            player_avatar,
-                            is_host,
-                            joined_at
-                        )
-                    )
+                    game_rooms (*)
                 `)
                 .eq('player_id', user.id)
                 .eq('game_rooms.status', GAME_STATUS.WAITING)
@@ -1083,8 +1087,6 @@ class SupabaseRoomSystem {
                 
                 // Set current room data
                 this.currentRoom = playerRoom.game_rooms;
-                this.currentRoom.players = playerRoom.game_rooms.room_players || [];
-                this.currentRoom.current_players = this.currentRoom.players.length;
                 this.isHost = playerRoom.is_host;
                 
                 // Show room interface
