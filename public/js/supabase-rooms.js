@@ -14,6 +14,7 @@ class SupabaseRoomSystem {
         this.isHost = false;
         this.roomSubscription = null;
         this.lobbyPolling = null; // For compatibility with old room system
+        this.roleInformationShown = false; // Flag to prevent multiple role popups
         
         // Add a small delay to ensure DOM is fully ready
         console.log('Setting up setTimeout for event listeners...');
@@ -1368,6 +1369,7 @@ class SupabaseRoomSystem {
         });
         
         console.log('Roles assigned:', players.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
+        console.log('Role assignments array:', roleAssignments);
     }
 
     selectRandomMissionLeader() {
@@ -1385,6 +1387,12 @@ class SupabaseRoomSystem {
 
     showRoleInformation() {
         console.log('=== SHOWING ROLE INFORMATION ===');
+        
+        // Check if role information has already been shown
+        if (this.roleInformationShown) {
+            console.log('Role information already shown, skipping');
+            return;
+        }
         
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser) {
@@ -1405,6 +1413,7 @@ class SupabaseRoomSystem {
         console.log('Current player found:', currentPlayer);
         console.log('Player role:', currentPlayer.role);
         console.log('Player alignment:', currentPlayer.alignment);
+        console.log('All player roles:', this.currentRoom.players.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
         
         // Create role information modal
         const modal = document.createElement('div');
@@ -1422,11 +1431,21 @@ class SupabaseRoomSystem {
                     <p><strong>Description:</strong> ${roleInfo.description}</p>
                     ${roleInfo.specialInfo ? `<p><strong>Special Information:</strong> ${roleInfo.specialInfo}</p>` : ''}
                 </div>
-                <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()">I Understand</button>
+                <button class="btn btn-primary" id="understandRoleBtn">I Understand</button>
             </div>
         `;
         
         document.body.appendChild(modal);
+        
+        // Add event listener for the understand button
+        const understandBtn = document.getElementById('understandRoleBtn');
+        if (understandBtn) {
+            understandBtn.addEventListener('click', () => {
+                console.log('Role information understood, setting flag');
+                this.roleInformationShown = true;
+                modal.remove();
+            });
+        }
     }
 
     getRoleInformation(player) {
@@ -1717,9 +1736,7 @@ class SupabaseRoomSystem {
             
             // Refresh room data to get updated player roles
             this.refreshRoomData().then(() => {
-                console.log('Room data refreshed, showing role information');
-                // Show role information to current player
-                this.showRoleInformation();
+                console.log('Room data refreshed after game start');
             });
         } else {
             console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
@@ -1773,34 +1790,8 @@ class SupabaseRoomSystem {
             if (playersChanged || statusChanged) {
                 console.log('Room data changed, updating display');
                 this.updateRoomDisplay();
-                
-                // Check if we need to show role information
-                console.log('Checking room status for role distribution...');
-                console.log('room.status:', room.status);
-                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
-                console.log('Status match:', room.status === GAME_STATUS.ROLE_DISTRIBUTION);
-                
-                if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-                    console.log('Room status is ROLE_DISTRIBUTION, showing role information');
-                    this.showRoleInformation();
-                } else {
-                    console.log('Room status is not ROLE_DISTRIBUTION, not showing role information');
-                }
             } else {
                 console.log('No changes detected, skipping display update');
-                
-                // Even if no changes, check if we need to show role information
-                console.log('Checking room status for role distribution (no changes)...');
-                console.log('room.status:', room.status);
-                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
-                console.log('Status match:', room.status === GAME_STATUS.ROLE_DISTRIBUTION);
-                
-                if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-                    console.log('No changes but room status is ROLE_DISTRIBUTION, showing role information');
-                    this.showRoleInformation();
-                } else {
-                    console.log('No changes and room status is not ROLE_DISTRIBUTION, not showing role information');
-                }
             }
             
         } catch (error) {
