@@ -1610,6 +1610,8 @@ class SupabaseRoomSystem {
             // Refresh room data to get updated player roles
             this.refreshRoomData().then(() => {
                 console.log('Room data refreshed after game start');
+                // Show role information to current player
+                this.showRoleInformation();
             });
         } else {
             console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
