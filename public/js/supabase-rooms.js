@@ -1773,8 +1773,34 @@ class SupabaseRoomSystem {
             if (playersChanged || statusChanged) {
                 console.log('Room data changed, updating display');
                 this.updateRoomDisplay();
+                
+                // Check if we need to show role information
+                console.log('Checking room status for role distribution...');
+                console.log('room.status:', room.status);
+                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
+                console.log('Status match:', room.status === GAME_STATUS.ROLE_DISTRIBUTION);
+                
+                if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                    console.log('Room status is ROLE_DISTRIBUTION, showing role information');
+                    this.showRoleInformation();
+                } else {
+                    console.log('Room status is not ROLE_DISTRIBUTION, not showing role information');
+                }
             } else {
                 console.log('No changes detected, skipping display update');
+                
+                // Even if no changes, check if we need to show role information
+                console.log('Checking room status for role distribution (no changes)...');
+                console.log('room.status:', room.status);
+                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
+                console.log('Status match:', room.status === GAME_STATUS.ROLE_DISTRIBUTION);
+                
+                if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                    console.log('No changes but room status is ROLE_DISTRIBUTION, showing role information');
+                    this.showRoleInformation();
+                } else {
+                    console.log('No changes and room status is not ROLE_DISTRIBUTION, not showing role information');
+                }
             }
             
         } catch (error) {
