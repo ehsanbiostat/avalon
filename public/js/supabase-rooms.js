@@ -1311,11 +1311,67 @@ class SupabaseRoomSystem {
             // Save roles to database so all players can receive them
             await this.saveRolesToDatabase();
             
+            // Wait a moment for database to be fully updated and then verify
+            console.log('Waiting for database to be fully updated...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Verify roles are actually stored before showing role information
+            await this.verifyRolesStored();
+            
             // Show role information to current player
             this.showRoleInformation();
             
         } catch (error) {
             console.error('Exception in startRoleDistribution:', error);
+        }
+    }
+
+    async verifyRolesStored() {
+        console.log('=== VERIFYING ROLES ARE STORED ===');
+        
+        try {
+            // Fetch all players from database to verify roles are stored
+            const { data: players, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('player_id, player_name, role, alignment')
+                .eq('room_id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error verifying roles:', error);
+                return false;
+            }
+            
+            console.log('Players from database:', players);
+            
+            // Check if any player has null role or alignment
+            const playersWithNullRoles = players.filter(p => !p.role || !p.alignment);
+            
+            if (playersWithNullRoles.length > 0) {
+                console.warn('Some players still have null roles:', playersWithNullRoles);
+                console.log('Waiting additional time for database consistency...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Try one more time
+                const { data: retryPlayers, error: retryError } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .select('player_id, player_name, role, alignment')
+                    .eq('room_id', this.currentRoom.id);
+                
+                if (!retryError && retryPlayers) {
+                    const retryNullRoles = retryPlayers.filter(p => !p.role || !p.alignment);
+                    if (retryNullRoles.length > 0) {
+                        console.error('Roles still not stored after retry:', retryNullRoles);
+                        return false;
+                    }
+                }
+            }
+            
+            console.log('✅ All roles verified and stored in database');
+            return true;
+            
+        } catch (error) {
+            console.error('Exception verifying roles:', error);
+            return false;
         }
     }
 
@@ -1603,6 +1659,50 @@ class SupabaseRoomSystem {
             console.log('Player role:', currentPlayer.role);
             console.log('Player alignment:', currentPlayer.alignment);
             console.log('All players in database:', roomPlayers.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
+            
+            // Check if roles are still null (race condition)
+            if (!currentPlayer.role || !currentPlayer.alignment) {
+                console.warn('⚠️ Role information is null - waiting for roles to be stored...');
+                console.log('Current player role data:', { role: currentPlayer.role, alignment: currentPlayer.alignment });
+                
+                // Wait and retry up to 3 times
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    console.log(`Retry attempt ${attempt}/3 - waiting 1 second...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Fetch fresh data again
+                    const { data: retryPlayers, error: retryError } = await this.supabase
+                        .from(TABLES.ROOM_PLAYERS)
+                        .select('*')
+                        .eq('room_id', this.currentRoom.id);
+                    
+                    if (retryError) {
+                        console.error('Error in retry fetch:', retryError);
+                        continue;
+                    }
+                    
+                    const retryCurrentPlayer = retryPlayers.find(p => p.player_id === currentUser.id);
+                    console.log(`Retry ${attempt} - Player role:`, retryCurrentPlayer?.role, 'alignment:', retryCurrentPlayer?.alignment);
+                    
+                    if (retryCurrentPlayer && retryCurrentPlayer.role && retryCurrentPlayer.alignment) {
+                        console.log('✅ Roles found on retry, updating current player data');
+                        currentPlayer.role = retryCurrentPlayer.role;
+                        currentPlayer.alignment = retryCurrentPlayer.alignment;
+                        roomPlayers = retryPlayers; // Update the full list
+                        break;
+                    }
+                }
+                
+                // Final check - if still null, show error
+                if (!currentPlayer.role || !currentPlayer.alignment) {
+                    console.error('❌ Roles still null after retries - showing error message');
+                    this.showNotification('Role information is not ready yet. Please wait a moment and refresh the page.', 'error');
+                    this.showingRoleInformation = false;
+                    return;
+                }
+            }
+            
+            console.log('✅ Role information ready:', { role: currentPlayer.role, alignment: currentPlayer.alignment });
             
             // Update local room data with fresh database data
             this.currentRoom.players = roomPlayers;
