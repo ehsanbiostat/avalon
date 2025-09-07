@@ -949,6 +949,12 @@ class SupabaseRoomSystem {
         
         const isRoomFull = room.current_players >= room.max_players;
         
+        // Browser detection for debugging
+        const userAgent = navigator.userAgent;
+        const isOpera = userAgent.includes('Opera') || userAgent.includes('OPR');
+        const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
+        console.log('Browser info:', { userAgent, isOpera, isSafari });
+        
         console.log('=== UPDATE ROOM STATUS ===');
         console.log('Room:', room);
         console.log('isHost:', this.isHost);
@@ -973,14 +979,51 @@ class SupabaseRoomSystem {
         console.log('startGameBtn element:', startGameBtn);
         
         if (startGameBtn) {
-            // Check if current user is host from database
-            const isHost = await this.isCurrentUserHost();
-            console.log('Database check - isHost:', isHost);
+            // Check if current user is host from database with fallback
+            let isHost = false;
+            
+            // Use synchronous check for Opera/Safari to avoid async issues
+            if (isOpera || isSafari) {
+                console.log('Using synchronous host check for Opera/Safari');
+                isHost = this.isCurrentUserHostSync();
+            } else {
+                try {
+                    isHost = await this.isCurrentUserHost();
+                    console.log('Database check - isHost:', isHost);
+                } catch (error) {
+                    console.error('Error checking host status:', error);
+                    // Fallback to synchronous check
+                    isHost = this.isCurrentUserHostSync();
+                    console.log('Fallback to sync check:', isHost);
+                }
+            }
+            
+            console.log('Final isHost value:', isHost, 'isRoomFull:', isRoomFull);
             
             if (isHost && isRoomFull) {
                 console.log('Showing Start Game button');
+                
+                // More robust DOM manipulation for Opera/Safari
                 startGameBtn.style.display = 'inline-block';
+                startGameBtn.style.visibility = 'visible';
+                startGameBtn.style.opacity = '1';
                 startGameBtn.textContent = 'Start Game';
+                
+                // Force reflow for Opera/Safari
+                startGameBtn.offsetHeight;
+                
+                // Additional retry for Opera/Safari if button still not visible
+                if (isOpera || isSafari) {
+                    setTimeout(() => {
+                        const computedStyle = window.getComputedStyle(startGameBtn);
+                        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+                            console.log('Retrying button visibility for Opera/Safari');
+                            startGameBtn.style.display = 'inline-block';
+                            startGameBtn.style.visibility = 'visible';
+                            startGameBtn.style.opacity = '1';
+                        }
+                    }, 100);
+                }
                 
                 // Debug button visibility
                 const computedStyle = window.getComputedStyle(startGameBtn);
@@ -1695,6 +1738,20 @@ class SupabaseRoomSystem {
             console.error('Exception checking host status:', error);
             return false;
         }
+    }
+
+    // Synchronous fallback for host check (for browser compatibility)
+    isCurrentUserHostSync() {
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser || !this.currentRoom) return false;
+        
+        // Check if we have the host info in current room data
+        if (this.currentRoom.host_id) {
+            return this.currentRoom.host_id === currentUser.id;
+        }
+        
+        // Fallback to local isHost
+        return this.isHost;
     }
 
     getRoleInformation(player) {
