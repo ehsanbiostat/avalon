@@ -1123,17 +1123,8 @@ class SupabaseRoomSystem {
             console.error('Start Game button element not found!');
         }
         
-        // Update status message
-        const statusMessage = document.getElementById('statusMessage');
-        if (statusMessage) {
-            if (isRoomFull) {
-                statusMessage.textContent = 'Room is full! Ready to start.';
-                statusMessage.className = 'status-message ready';
-            } else {
-                statusMessage.textContent = `Waiting for ${room.max_players - room.current_players} more players...`;
-                statusMessage.className = 'status-message waiting';
-            }
-        }
+        // Update status message from database or calculate if needed
+        await this.updateAndDisplayRoomStatusMessage(room, isRoomFull);
     }
 
     setupGameEventListeners() {
@@ -1198,11 +1189,8 @@ class SupabaseRoomSystem {
             }
 
             // Update status message
-            const statusMessage = document.getElementById('statusMessage');
-            if (statusMessage) {
-                statusMessage.textContent = 'Game starting... Role distribution in progress.';
-                statusMessage.className = 'status-message ready';
-            }
+            // Update status message in database
+            await this.updateRoomStatusMessage('Game starting... Role distribution in progress.', 'playing');
 
             // Start role distribution for all players
             this.startRoleDistribution();
@@ -1529,7 +1517,7 @@ class SupabaseRoomSystem {
             document.body.appendChild(modal);
             
             // Add event listener for the understand button with comprehensive debugging
-            setTimeout(() => {
+        setTimeout(() => {
                 const understandBtn = document.getElementById('understandRoleBtn');
                 console.log('=== DEBUGGING UNDERSTAND BUTTON ===');
                 console.log('Looking for understand button:', understandBtn);
@@ -1774,6 +1762,144 @@ class SupabaseRoomSystem {
         return this.isHost;
     }
 
+    // Database-driven room state management methods
+    async updateRoomStatusMessage(message, type = 'waiting') {
+        if (!this.currentRoom) return;
+        
+        try {
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    status_message: message,
+                    status_message_type: type
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating room status message:', error);
+            } else {
+                console.log('Updated room status message:', message, 'type:', type);
+                // Update local cache
+                this.currentRoom.status_message = message;
+                this.currentRoom.status_message_type = type;
+            }
+        } catch (error) {
+            console.error('Exception updating room status message:', error);
+        }
+    }
+
+    async updateRoomGameState(gameState) {
+        if (!this.currentRoom) return;
+        
+        try {
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ game_state: gameState })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating room game state:', error);
+            } else {
+                console.log('Updated room game state:', gameState);
+                // Update local cache
+                this.currentRoom.game_state = gameState;
+            }
+        } catch (error) {
+            console.error('Exception updating room game state:', error);
+        }
+    }
+
+    async updateRoomDisplayState(displayState) {
+        if (!this.currentRoom) return;
+        
+        try {
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ display_state: displayState })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating room display state:', error);
+            } else {
+                console.log('Updated room display state:', displayState);
+                // Update local cache
+                this.currentRoom.display_state = displayState;
+            }
+        } catch (error) {
+            console.error('Exception updating room display state:', error);
+        }
+    }
+
+    // Get current room state from database (ensures consistency)
+    async getRoomState() {
+        if (!this.currentRoom) return null;
+        
+        try {
+            const { data, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select('status_message, status_message_type, game_state, display_state, state_updated_at')
+                .eq('id', this.currentRoom.id)
+                .single();
+            
+            if (error) {
+                console.error('Error getting room state:', error);
+                return null;
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Exception getting room state:', error);
+            return null;
+        }
+    }
+
+    // Update and display room status message (database-driven)
+    async updateAndDisplayRoomStatusMessage(room, isRoomFull) {
+        let message, messageType;
+        
+        // Calculate appropriate status message
+        if (room.status === 'waiting') {
+            if (isRoomFull) {
+                message = 'Room is full! Ready to start.';
+                messageType = 'ready';
+            } else {
+                const playersNeeded = room.max_players - room.current_players;
+                message = `Waiting for ${playersNeeded} more player${playersNeeded === 1 ? '' : 's'}...`;
+                messageType = 'waiting';
+            }
+        } else if (room.status === 'role_distribution') {
+            message = 'Game starting... Role distribution in progress.';
+            messageType = 'playing';
+        } else if (room.status === 'playing') {
+            message = 'Game in progress...';
+            messageType = 'playing';
+        } else if (room.status === 'finished') {
+            message = 'Game finished!';
+            messageType = 'finished';
+        } else {
+            message = 'Unknown status';
+            messageType = 'waiting';
+        }
+        
+        // Update database with new status message (only if different)
+        if (room.status_message !== message || room.status_message_type !== messageType) {
+            await this.updateRoomStatusMessage(message, messageType);
+        }
+        
+        // Display the status message from database (ensures consistency)
+        this.displayStatusMessage(room.status_message || message, room.status_message_type || messageType);
+    }
+
+    // Display status message in UI
+    displayStatusMessage(message, messageType) {
+        const statusMessage = document.getElementById('statusMessage');
+        if (statusMessage) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${messageType}`;
+            console.log('Displayed status message:', message, 'type:', messageType);
+        }
+    }
+
     getRoleInformation(player) {
         const roleInfo = {
             merlin: {
@@ -1986,11 +2112,8 @@ class SupabaseRoomSystem {
             }
             
             // Update status message
-            const statusMessage = document.getElementById('statusMessage');
-            if (statusMessage) {
-                statusMessage.textContent = 'Game starting... Role distribution in progress.';
-                statusMessage.className = 'status-message ready';
-            }
+            // Update status message in database
+            await this.updateRoomStatusMessage('Game starting... Role distribution in progress.', 'playing');
             
             // Refresh room data to get updated player roles
             this.refreshRoomData().then(() => {
@@ -2009,7 +2132,7 @@ class SupabaseRoomSystem {
         try {
             console.log('=== REFRESHING ROOM DATA ===');
             
-            // Fetch updated room data with players
+            // Fetch updated room data with players and state information
             const { data: room, error } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select(`
@@ -2022,7 +2145,8 @@ class SupabaseRoomSystem {
                         is_host,
                         joined_at,
                         role,
-                        alignment
+                        alignment,
+                        has_role_seen
                     )
                 `)
                 .eq('id', this.currentRoom.id)
