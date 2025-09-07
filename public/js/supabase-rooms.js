@@ -818,13 +818,25 @@ class SupabaseRoomSystem {
                 id: room.id, 
                 current_players: room.current_players, 
                 max_players: room.max_players, 
-                status: room.status 
+                status: room.status,
+                status_message: room.status_message
             });
             console.log('Players data from DB:', players.length, players.map(p => p.player_name));
+            
+            // Preserve the status message that was just updated locally
+            const preservedStatusMessage = this.currentRoom.status_message;
+            const preservedStatusMessageType = this.currentRoom.status_message_type;
             
             this.currentRoom = room;
             this.currentRoom.players = players;
             this.currentRoom.current_players = players.length; // Update player count
+            
+            // Restore the preserved status message if it was more recent
+            if (preservedStatusMessage && preservedStatusMessage !== room.status_message) {
+                console.log('Preserving local status message:', preservedStatusMessage);
+                this.currentRoom.status_message = preservedStatusMessage;
+                this.currentRoom.status_message_type = preservedStatusMessageType;
+            }
 
             // Update UI
             this.setupRoomInterface();
@@ -2249,6 +2261,10 @@ class SupabaseRoomSystem {
                 console.log('Old message:', this.currentRoom.status_message);
                 console.log('New message:', data.status_message);
                 console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+                
+                // Immediately update the status message display
+                console.log('Immediately updating status message display');
+                this.displayStatusMessage(data.status_message, data.status_message_type || 'waiting');
             }
             
             // Only update if state actually changed
