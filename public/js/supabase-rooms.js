@@ -785,6 +785,16 @@ class SupabaseRoomSystem {
                 return;
             }
 
+            // Debug logging for synchronization issues
+            console.log('=== UPDATE ROOM DISPLAY ===');
+            console.log('Room data from DB:', { 
+                id: room.id, 
+                current_players: room.current_players, 
+                max_players: room.max_players, 
+                status: room.status 
+            });
+            console.log('Players data from DB:', players.length, players.map(p => p.player_name));
+            
             this.currentRoom = room;
             this.currentRoom.players = players;
             this.currentRoom.current_players = players.length; // Update player count
@@ -895,16 +905,17 @@ class SupabaseRoomSystem {
         const gameTable = document.getElementById('gameTable');
         if (!gameTable) return;
         
-        // Only clear and recreate if player count changed (performance optimization)
-        const existingPlayers = gameTable.querySelectorAll('.player-slot');
-        if (existingPlayers.length !== room.players.length) {
-            console.log('Player count changed, recreating player slots');
-            gameTable.innerHTML = '';
-        } else {
-            // Just update existing player positions if count is same
-            console.log('Player count same, updating positions only');
-            return this.updateExistingPlayerPositions();
-        }
+        // Debug logging for synchronization issues
+        console.log('=== POSITIONING PLAYERS ON CIRCLE ===');
+        console.log('Room players:', room.players.length);
+        console.log('Room current_players:', room.current_players);
+        console.log('Room max_players:', room.max_players);
+        console.log('Room status:', room.status);
+        console.log('Players data:', room.players.map(p => ({ name: p.player_name, id: p.player_id })));
+        
+        // Always clear and recreate player slots to ensure synchronization
+        console.log('Recreating player slots for room state sync');
+        gameTable.innerHTML = '';
         
         // Circle dimensions (game table is 600x600px)
         const circleWidth = 600;
