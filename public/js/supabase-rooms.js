@@ -1626,11 +1626,13 @@ class SupabaseRoomSystem {
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser) {
             console.log('No current user found');
+            this.showingRoleInformation = false; // Reset flag
             return;
         }
         
         if (!this.currentRoom) {
             console.log('No current room found');
+            this.showingRoleInformation = false; // Reset flag
             return;
         }
         
@@ -1638,13 +1640,14 @@ class SupabaseRoomSystem {
             // Fetch fresh role data directly from database
             console.log('Fetching fresh role data from database...');
             console.log('Room ID:', this.currentRoom.id);
-            const { data: roomPlayers, error } = await this.supabase
+            let { data: roomPlayers, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('*')
                 .eq('room_id', this.currentRoom.id);
             
             if (error) {
                 console.error('Error fetching role data:', error);
+                this.showingRoleInformation = false; // Reset flag
                 return;
             }
             
@@ -1652,6 +1655,7 @@ class SupabaseRoomSystem {
             const currentPlayer = roomPlayers.find(p => p.player_id === currentUser.id);
             if (!currentPlayer) {
                 console.log('Current player not found in database');
+                this.showingRoleInformation = false; // Reset flag
                 return;
             }
             
