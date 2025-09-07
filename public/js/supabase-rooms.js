@@ -1837,7 +1837,7 @@ class SupabaseRoomSystem {
         try {
             console.log('Checking for existing room for user:', user.id);
             
-            // Find if user is in any active room
+            // Find if user is in any room
             const { data: playerRoom, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select(`
@@ -1845,7 +1845,6 @@ class SupabaseRoomSystem {
                     game_rooms (*)
                 `)
                 .eq('player_id', user.id)
-                .eq('game_rooms.status', GAME_STATUS.WAITING)
                 .single();
 
             if (error) {
@@ -1859,6 +1858,12 @@ class SupabaseRoomSystem {
 
             if (playerRoom && playerRoom.game_rooms) {
                 console.log('Found existing room:', playerRoom.game_rooms);
+                
+                // Check if room is in waiting status
+                if (playerRoom.game_rooms.status !== GAME_STATUS.WAITING) {
+                    console.log('Room is not in waiting status, current status:', playerRoom.game_rooms.status);
+                    return;
+                }
                 
                 // Set current room data
                 this.currentRoom = playerRoom.game_rooms;
