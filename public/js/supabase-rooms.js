@@ -1720,6 +1720,16 @@ class SupabaseRoomSystem {
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser || !this.currentRoom) return false;
         
+        // First try to use already loaded room_players data (more efficient)
+        if (this.currentRoom.players && Array.isArray(this.currentRoom.players)) {
+            const currentPlayerData = this.currentRoom.players.find(p => p.player_id === currentUser.id);
+            if (currentPlayerData) {
+                console.log('Using loaded room_players data for host check:', currentPlayerData.is_host);
+                return currentPlayerData.is_host || false;
+            }
+        }
+        
+        // Fallback to database query if room_players data not available
         try {
             const { data, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
@@ -1733,6 +1743,7 @@ class SupabaseRoomSystem {
                 return false;
             }
             
+            console.log('Using database query for host check:', data?.is_host);
             return data?.is_host || false;
         } catch (error) {
             console.error('Exception checking host status:', error);
@@ -1745,12 +1756,21 @@ class SupabaseRoomSystem {
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser || !this.currentRoom) return false;
         
+        // First try to use already loaded room_players data
+        if (this.currentRoom.players && Array.isArray(this.currentRoom.players)) {
+            const currentPlayerData = this.currentRoom.players.find(p => p.player_id === currentUser.id);
+            if (currentPlayerData && currentPlayerData.hasOwnProperty('is_host')) {
+                console.log('Using loaded room_players data for sync host check:', currentPlayerData.is_host);
+                return currentPlayerData.is_host || false;
+            }
+        }
+        
         // Check if we have the host info in current room data
         if (this.currentRoom.host_id) {
             return this.currentRoom.host_id === currentUser.id;
         }
         
-        // Fallback to local isHost
+        // Fallback to local isHost (should now be accurate due to refreshRoomData fix)
         return this.isHost;
     }
 
@@ -2025,6 +2045,13 @@ class SupabaseRoomSystem {
             this.currentRoom = room;
             this.currentRoom.players = newPlayers;
             this.currentRoom.current_players = newPlayers.length;
+            
+            // CRITICAL FIX: Update host status when room data is refreshed
+            const currentUser = supabaseAuthSystem.getCurrentUser();
+            if (currentUser) {
+                this.isHost = room.host_id === currentUser.id;
+                console.log('Updated isHost status:', this.isHost, 'for user:', currentUser.email);
+            }
             
             // Only update display if there are actual changes
             if (playersChanged || statusChanged) {
