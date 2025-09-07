@@ -447,6 +447,18 @@ class SupabaseAuthSystem {
         return this.isLoggedIn;
     }
 
+    getUserStats() {
+        // Return null for now since we're not tracking stats in Supabase version
+        // This prevents the error but doesn't break functionality
+        return null;
+    }
+
+    updateStatsDisplay(stats) {
+        // Placeholder method to prevent errors
+        // Stats functionality can be implemented later if needed
+        console.log('Stats display update requested:', stats);
+    }
+
     updateUI() {
         console.log('=== UPDATE UI CALLED ===');
         console.log('Is logged in:', this.isLoggedIn);

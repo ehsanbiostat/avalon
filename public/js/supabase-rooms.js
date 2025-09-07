@@ -2243,6 +2243,14 @@ class SupabaseRoomSystem {
             // Create a hash of the current state to detect changes
             const stateHash = this.createStateHash(data);
             
+            // Check for status message changes specifically
+            if (data.status_message !== this.currentRoom.status_message) {
+                console.log('=== STATUS MESSAGE CHANGE DETECTED IN POLLING ===');
+                console.log('Old message:', this.currentRoom.status_message);
+                console.log('New message:', data.status_message);
+                console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+            }
+            
             // Only update if state actually changed
             if (stateHash !== this.lastStateHash) {
                 console.log('Room state changed, updating display');
@@ -2658,7 +2666,11 @@ class SupabaseRoomSystem {
                 table: 'game_rooms',
                 filter: `id=eq.${roomId}`
             }, async (payload) => {
+                console.log('=== REAL-TIME ROOM STATUS CHANGE RECEIVED ===');
                 console.log('Room status changed:', payload);
+                console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+                console.log('Payload new status:', payload.new.status);
+                console.log('Payload new status_message:', payload.new.status_message);
                 await this.handleRoomStatusChange(payload);
             })
             .subscribe();
