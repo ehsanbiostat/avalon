@@ -1842,17 +1842,7 @@ class SupabaseRoomSystem {
                 .from(TABLES.ROOM_PLAYERS)
                 .select(`
                     *,
-                    game_rooms (
-                        *,
-                        room_players (
-                            id,
-                            player_id,
-                            player_name,
-                            player_avatar,
-                            is_host,
-                            joined_at
-                        )
-                    )
+                    game_rooms (*)
                 `)
                 .eq('player_id', user.id)
                 .eq('game_rooms.status', GAME_STATUS.WAITING)
@@ -1872,9 +1862,22 @@ class SupabaseRoomSystem {
                 
                 // Set current room data
                 this.currentRoom = playerRoom.game_rooms;
-                this.currentRoom.players = playerRoom.game_rooms.room_players || [];
-                this.currentRoom.current_players = this.currentRoom.players.length;
                 this.isHost = playerRoom.is_host;
+                
+                // Fetch room players separately
+                const { data: roomPlayers, error: playersError } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .select('*')
+                    .eq('room_id', this.currentRoom.id);
+                
+                if (playersError) {
+                    console.error('Error fetching room players:', playersError);
+                    this.currentRoom.players = [];
+                } else {
+                    this.currentRoom.players = roomPlayers || [];
+                }
+                
+                this.currentRoom.current_players = this.currentRoom.players.length;
                 
                 // Show room interface
                 this.showRoomInterface();
