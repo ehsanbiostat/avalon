@@ -1248,6 +1248,21 @@ class SupabaseRoomSystem {
         const roles = this.currentRoom.roles;
         const playerCount = players.length;
         
+        // Define correct evil/good distribution for each player count
+        const evilCounts = {
+            5: 2,  // 2 evil, 3 good
+            6: 2,  // 2 evil, 4 good
+            7: 3,  // 3 evil, 4 good
+            8: 3,  // 3 evil, 5 good
+            9: 3,  // 3 evil, 6 good
+            10: 4  // 4 evil, 6 good
+        };
+        
+        const evilCount = evilCounts[playerCount] || Math.floor(playerCount / 2);
+        const goodCount = playerCount - evilCount;
+        
+        console.log(`Player count: ${playerCount}, Evil: ${evilCount}, Good: ${goodCount}`);
+        
         // Create role assignments
         const roleAssignments = [];
         
@@ -1261,20 +1276,26 @@ class SupabaseRoomSystem {
         if (roles.mordred) roleAssignments.push({ role: 'mordred', alignment: 'evil' });
         if (roles.oberon) roleAssignments.push({ role: 'oberon', alignment: 'evil' });
         
-        // Add loyal servants (good players)
-        const goodRoles = roleAssignments.filter(r => r.alignment === 'good').length;
-        const evilRoles = roleAssignments.filter(r => r.alignment === 'evil').length;
-        const loyalServants = Math.max(0, playerCount - goodRoles - evilRoles);
+        // Count current good and evil roles
+        let currentGood = roleAssignments.filter(r => r.alignment === 'good').length;
+        let currentEvil = roleAssignments.filter(r => r.alignment === 'evil').length;
         
+        // Add loyal servants (good players) to reach target good count
+        const loyalServants = Math.max(0, goodCount - currentGood);
         for (let i = 0; i < loyalServants; i++) {
             roleAssignments.push({ role: 'loyal_servant', alignment: 'good' });
         }
         
-        // Add minions (evil players)
-        const minions = Math.max(0, playerCount - roleAssignments.length);
+        // Add minions (evil players) to reach target evil count
+        const minions = Math.max(0, evilCount - currentEvil);
         for (let i = 0; i < minions; i++) {
             roleAssignments.push({ role: 'minion', alignment: 'evil' });
         }
+        
+        // Verify we have the correct counts
+        const finalGood = roleAssignments.filter(r => r.alignment === 'good').length;
+        const finalEvil = roleAssignments.filter(r => r.alignment === 'evil').length;
+        console.log(`Final counts - Good: ${finalGood}, Evil: ${finalEvil}`);
         
         // Shuffle role assignments
         for (let i = roleAssignments.length - 1; i > 0; i--) {
