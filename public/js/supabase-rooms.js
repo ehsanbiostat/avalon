@@ -533,7 +533,8 @@ class SupabaseRoomSystem {
                     roles: roomConfig.roles,
                     lady_of_lake: roomConfig.ladyOfLake,
                     chaos_for_merlin: roomConfig.chaosForMerlin,
-                    status: GAME_STATUS.WAITING
+                    status: GAME_STATUS.WAITING,
+                    is_public: true // Explicitly set as public room
                 })
                 .select()
                 .single();
@@ -811,6 +812,10 @@ class SupabaseRoomSystem {
 
     async getActiveRooms() {
         try {
+            console.log('=== FETCHING ACTIVE ROOMS ===');
+            console.log('Filtering for status:', GAME_STATUS.WAITING);
+            console.log('Filtering for is_public: true');
+            
             const { data: rooms, error } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select('*')
@@ -824,6 +829,30 @@ class SupabaseRoomSystem {
                 return [];
             }
 
+            console.log('Found rooms:', rooms?.length || 0);
+            console.log('Room details:', rooms);
+            
+            // If no rooms found, let's check if there are rooms without is_public set
+            if (!rooms || rooms.length === 0) {
+                console.log('No public rooms found, checking for rooms without is_public...');
+                const { data: allRooms, error: allError } = await this.supabase
+                    .from(TABLES.GAME_ROOMS)
+                    .select('*')
+                    .eq('status', GAME_STATUS.WAITING)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                
+                if (!allError && allRooms) {
+                    console.log('All waiting rooms (including non-public):', allRooms.length);
+                    console.log('Room statuses:', allRooms.map(r => ({ 
+                        code: r.code, 
+                        status: r.status, 
+                        is_public: r.is_public,
+                        created_at: r.created_at 
+                    })));
+                }
+            }
+            
             return rooms || [];
         } catch (error) {
             console.error('Error fetching active rooms:', error);
