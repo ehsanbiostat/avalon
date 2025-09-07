@@ -537,7 +537,7 @@ class SupabaseRoomSystem {
             }
 
             // Add host as first player
-            await this.addPlayerToRoom(room.id, user);
+            await this.addPlayerToRoom(room.id, user, true);
 
             // Fetch the complete room data with players
             const { data: completeRoom, error: fetchError } = await this.supabase
@@ -636,7 +636,7 @@ class SupabaseRoomSystem {
             }
 
             // Add player to room
-            await this.addPlayerToRoom(room.id, user);
+            await this.addPlayerToRoom(room.id, user, false);
 
             this.currentRoom = room;
             this.isHost = room.host_id === user.id;
@@ -654,7 +654,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    async addPlayerToRoom(roomId, user) {
+    async addPlayerToRoom(roomId, user, isHost = false) {
         // Ensure user profile exists before adding to room
         await this.ensureUserProfile(user);
         
@@ -664,7 +664,8 @@ class SupabaseRoomSystem {
                 room_id: roomId,
                 player_id: user.id,
                 player_name: user.profile?.display_name || user.email,
-                player_avatar: user.profile?.avatar || '👤'
+                player_avatar: user.profile?.avatar || '👤',
+                is_host: isHost
             });
 
         if (error) {
@@ -1209,12 +1210,24 @@ class SupabaseRoomSystem {
 
     async saveRolesToDatabase() {
         console.log('=== SAVING ROLES TO DATABASE ===');
-        console.log('Players to save:', this.currentRoom.players.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
+        console.log('Room ID:', this.currentRoom.id);
+        console.log('Players to save:', this.currentRoom.players.map(p => ({ 
+            name: p.player_name, 
+            id: p.player_id, 
+            role: p.role, 
+            alignment: p.alignment 
+        })));
         
         try {
             // Update each player's role in the database
             for (const player of this.currentRoom.players) {
-                console.log(`Saving role for ${player.player_name}: ${player.role} (${player.alignment})`);
+                console.log(`Saving role for ${player.player_name} (ID: ${player.player_id}): ${player.role} (${player.alignment})`);
+                
+                if (!player.role || !player.alignment) {
+                    console.error(`Player ${player.player_name} has missing role data:`, player);
+                    continue;
+                }
+                
                 const { error } = await this.supabase
                     .from(TABLES.ROOM_PLAYERS)
                     .update({
