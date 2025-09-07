@@ -785,18 +785,6 @@ class SupabaseRoomSystem {
                 return;
             }
 
-            // Get latest room data
-            const { data: room, error: roomError } = await this.supabase
-                .from(TABLES.GAME_ROOMS)
-                .select('*')
-                .eq('id', this.currentRoom.id)
-                .single();
-
-            if (roomError) {
-                console.error('Error fetching room:', roomError);
-                return;
-            }
-
             // Get room players
             const { data: players, error: playersError } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
