@@ -579,7 +579,7 @@ class SupabaseRoomSystem {
             }
             
             // Show room interface
-            this.showRoomInterface();
+            await this.showRoomInterface();
             
             // Subscribe to room updates
             this.subscribeToRoomUpdates(room.id);
@@ -630,7 +630,7 @@ class SupabaseRoomSystem {
                 this.showNotification('You are already in this room!', 'info');
                 this.currentRoom = room;
                 this.isHost = room.host_id === user.id;
-                this.showRoomInterface();
+                await this.showRoomInterface();
                 this.subscribeToRoomUpdates(room.id);
                 return true;
             }
@@ -642,7 +642,7 @@ class SupabaseRoomSystem {
             this.isHost = room.host_id === user.id;
 
             this.showNotification(`Joined room ${roomCode}!`, 'success');
-            this.showRoomInterface();
+            await this.showRoomInterface();
             
             // Subscribe to room updates
             this.subscribeToRoomUpdates(room.id);
@@ -783,7 +783,7 @@ class SupabaseRoomSystem {
             // Update UI
             this.setupRoomInterface();
             this.positionPlayersOnCircle();
-            this.updateRoomStatus();
+            await this.updateRoomStatus();
         } catch (error) {
             console.error('Error updating room display:', error);
         }
@@ -829,10 +829,10 @@ class SupabaseRoomSystem {
         });
     }
 
-    initializeRoomDisplay() {
+    async initializeRoomDisplay() {
         this.setupRoomInterface();
         this.positionPlayersOnCircle();
-        this.updateRoomStatus();
+        await this.updateRoomStatus();
         this.setupGameEventListeners();
     }
 
@@ -943,7 +943,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    updateRoomStatus() {
+    async updateRoomStatus() {
         const room = this.currentRoom;
         if (!room) return;
         
@@ -1823,7 +1823,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    showRoomInterface() {
+    async showRoomInterface() {
         console.log('=== SHOWING ROOM INTERFACE ===');
         
         // Hide the room creation modal
@@ -1843,7 +1843,7 @@ class SupabaseRoomSystem {
             console.log('Start Game button in gameInterface:', startGameBtn);
             
             // Initialize the room display with the main circle
-            this.initializeRoomDisplay();
+            await this.initializeRoomDisplay();
         } else {
             console.error('gameInterface modal not found!');
         }
@@ -2090,7 +2090,7 @@ class SupabaseRoomSystem {
                     this.currentRoom.current_players = this.currentRoom.players.length;
                     
                     // Show room interface
-                    this.showRoomInterface();
+                    await this.showRoomInterface();
                     
                     // Subscribe to room updates
                     this.subscribeToRoomUpdates(this.currentRoom.id);
