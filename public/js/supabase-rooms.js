@@ -1326,7 +1326,7 @@ class SupabaseRoomSystem {
         console.log('Mission leader selected:', missionLeader.player_name);
     }
 
-    showRoleInformation() {
+    async showRoleInformation() {
         console.log('=== SHOWING ROLE INFORMATION ===');
         
         // Check if role information has already been shown
@@ -1341,51 +1341,77 @@ class SupabaseRoomSystem {
             return;
         }
         
-        console.log('Current user:', currentUser);
-        console.log('Current room players:', this.currentRoom.players);
-        
-        // Find current player's role
-        const currentPlayer = this.currentRoom.players.find(p => p.player_id === currentUser.id);
-        if (!currentPlayer) {
-            console.log('Current player not found in room players');
+        if (!this.currentRoom) {
+            console.log('No current room found');
             return;
         }
         
-        console.log('Current player found:', currentPlayer);
-        console.log('Player role:', currentPlayer.role);
-        console.log('Player alignment:', currentPlayer.alignment);
-        console.log('All player roles:', this.currentRoom.players.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
-        
-        // Create role information modal
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.id = 'roleModal';
-        modal.style.display = 'block';
-        
-        const roleInfo = this.getRoleInformation(currentPlayer);
-        
-        modal.innerHTML = `
-            <div class="modal-content">
-                <h2>Your Role: ${roleInfo.roleName}</h2>
-                <div class="role-description">
-                    <p><strong>Alignment:</strong> ${roleInfo.alignment}</p>
-                    <p><strong>Description:</strong> ${roleInfo.description}</p>
-                    ${roleInfo.specialInfo ? `<p><strong>Special Information:</strong> ${roleInfo.specialInfo}</p>` : ''}
+        try {
+            // Fetch fresh role data directly from database
+            console.log('Fetching fresh role data from database...');
+            const { data: roomPlayers, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error fetching role data:', error);
+                return;
+            }
+            
+            // Find current player's role from database
+            const currentPlayer = roomPlayers.find(p => p.player_id === currentUser.id);
+            if (!currentPlayer) {
+                console.log('Current player not found in database');
+                return;
+            }
+            
+            console.log('Current player found in database:', currentPlayer);
+            console.log('Player role:', currentPlayer.role);
+            console.log('Player alignment:', currentPlayer.alignment);
+            
+            // Update local room data with fresh database data
+            this.currentRoom.players = roomPlayers;
+            
+            // Create role information modal
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.id = 'roleModal';
+            modal.style.display = 'block';
+            
+            const roleInfo = this.getRoleInformation(currentPlayer);
+            
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h2>Your Role: ${roleInfo.roleName}</h2>
+                    <div class="role-description">
+                        <p><strong>Alignment:</strong> ${roleInfo.alignment}</p>
+                        <p><strong>Description:</strong> ${roleInfo.description}</p>
+                        ${roleInfo.specialInfo ? `<p><strong>Special Information:</strong> ${roleInfo.specialInfo}</p>` : ''}
+                    </div>
+                    <button class="btn btn-primary" id="understandRoleBtn">I Understand</button>
                 </div>
-                <button class="btn btn-primary" id="understandRoleBtn">I Understand</button>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Add event listener for the understand button
-        const understandBtn = document.getElementById('understandRoleBtn');
-        if (understandBtn) {
-            understandBtn.addEventListener('click', () => {
-                console.log('Role information understood, setting flag');
-                this.roleInformationShown = true;
-                modal.remove();
-            });
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add event listener for the understand button with better error handling
+            setTimeout(() => {
+                const understandBtn = document.getElementById('understandRoleBtn');
+                console.log('Looking for understand button:', understandBtn);
+                if (understandBtn) {
+                    understandBtn.addEventListener('click', () => {
+                        console.log('Role information understood, setting flag');
+                        this.roleInformationShown = true;
+                        modal.remove();
+                    });
+                } else {
+                    console.error('Understand button not found!');
+                }
+            }, 100);
+            
+        } catch (error) {
+            console.error('Exception in showRoleInformation:', error);
         }
     }
 
