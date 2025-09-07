@@ -692,7 +692,8 @@ class SupabaseRoomSystem {
             }
 
             // If host is leaving, transfer host or delete room
-            if (this.isHost) {
+            const isHost = await this.isCurrentUserHost();
+            if (isHost) {
                 await this.handleHostLeaving();
             }
 
@@ -972,7 +973,11 @@ class SupabaseRoomSystem {
         console.log('startGameBtn element:', startGameBtn);
         
         if (startGameBtn) {
-            if (this.isHost && isRoomFull) {
+            // Check if current user is host from database
+            const isHost = await this.isCurrentUserHost();
+            console.log('Database check - isHost:', isHost);
+            
+            if (isHost && isRoomFull) {
                 console.log('Showing Start Game button');
                 startGameBtn.style.display = 'inline-block';
                 startGameBtn.textContent = 'Start Game';
@@ -1068,7 +1073,7 @@ class SupabaseRoomSystem {
                     gameControls.style.opacity = '1';
                 }
             } else {
-                console.log('Hiding Start Game button - isHost:', this.isHost, 'isRoomFull:', isRoomFull);
+                console.log('Hiding Start Game button - isHost:', isHost, 'isRoomFull:', isRoomFull);
                 startGameBtn.style.display = 'none';
             }
         } else {
@@ -1105,7 +1110,14 @@ class SupabaseRoomSystem {
     async startGame() {
         console.log('=== STARTING GAME ===');
         
-        if (!this.currentRoom || !this.isHost) {
+        if (!this.currentRoom) {
+            this.showNotification('No room available!', 'error');
+            return;
+        }
+        
+        // Check if current user is host from database
+        const isHost = await this.isCurrentUserHost();
+        if (!isHost) {
             this.showNotification('Only the room host can start the game!', 'error');
             return;
         }
@@ -1657,6 +1669,31 @@ class SupabaseRoomSystem {
             }
         } catch (error) {
             console.error('Exception clearing role seen flags:', error);
+        }
+    }
+
+    // Check if current user is the host by querying the database
+    async isCurrentUserHost() {
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser || !this.currentRoom) return false;
+        
+        try {
+            const { data, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('is_host')
+                .eq('room_id', this.currentRoom.id)
+                .eq('player_id', currentUser.id)
+                .single();
+            
+            if (error) {
+                console.error('Error checking host status:', error);
+                return false;
+            }
+            
+            return data?.is_host || false;
+        } catch (error) {
+            console.error('Exception checking host status:', error);
+            return false;
         }
     }
 
