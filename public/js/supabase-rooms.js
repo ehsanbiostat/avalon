@@ -1160,25 +1160,51 @@ class SupabaseRoomSystem {
     async startRoleDistribution() {
         console.log('=== STARTING ROLE DISTRIBUTION ===');
         
-        if (!this.currentRoom || !this.currentRoom.players) {
-            console.error('No room or players available for role distribution');
+        if (!this.currentRoom) {
+            console.error('No room available for role distribution');
             return;
         }
 
-        // Randomize player positions
-        this.randomizePlayerPositions();
-        
-        // Assign roles based on room configuration
-        this.assignRoles();
-        
-        // Select random mission leader
-        this.selectRandomMissionLeader();
-        
-        // Save roles to database so all players can receive them
-        await this.saveRolesToDatabase();
-        
-        // Show role information to current player
-        this.showRoleInformation();
+        try {
+            // Fetch all players from database to ensure we have complete data
+            console.log('Fetching all players from database...');
+            const { data: allPlayers, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error fetching players for role distribution:', error);
+                return;
+            }
+            
+            if (!allPlayers || allPlayers.length === 0) {
+                console.error('No players found in database');
+                return;
+            }
+            
+            // Update current room with all players
+            this.currentRoom.players = allPlayers;
+            console.log('All players fetched:', allPlayers.map(p => ({ name: p.player_name, id: p.player_id })));
+
+            // Randomize player positions
+            this.randomizePlayerPositions();
+            
+            // Assign roles based on room configuration
+            this.assignRoles();
+            
+            // Select random mission leader
+            this.selectRandomMissionLeader();
+            
+            // Save roles to database so all players can receive them
+            await this.saveRolesToDatabase();
+            
+            // Show role information to current player
+            this.showRoleInformation();
+            
+        } catch (error) {
+            console.error('Exception in startRoleDistribution:', error);
+        }
     }
 
     async saveRolesToDatabase() {
@@ -1249,6 +1275,10 @@ class SupabaseRoomSystem {
         const players = this.currentRoom.players;
         const roles = this.currentRoom.roles;
         const playerCount = players.length;
+        
+        console.log('Players array:', players);
+        console.log('Player count:', playerCount);
+        console.log('Roles config:', roles);
         
         // Define correct evil/good distribution for each player count
         const evilCounts = {
@@ -1351,6 +1381,7 @@ class SupabaseRoomSystem {
         try {
             // Fetch fresh role data directly from database
             console.log('Fetching fresh role data from database...');
+            console.log('Room ID:', this.currentRoom.id);
             const { data: roomPlayers, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('*')
@@ -1399,7 +1430,7 @@ class SupabaseRoomSystem {
             document.body.appendChild(modal);
             
             // Add event listener for the understand button with better error handling
-            setTimeout(() => {
+        setTimeout(() => {
                 const understandBtn = document.getElementById('understandRoleBtn');
                 console.log('Looking for understand button:', understandBtn);
                 if (understandBtn) {
