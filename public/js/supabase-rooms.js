@@ -1166,6 +1166,9 @@ class SupabaseRoomSystem {
             return;
         }
 
+        // Clear any previous role seen flags for this room
+        this.clearRoleSeenFlags();
+
         try {
             // Fetch all players from database to ensure we have complete data
             console.log('Fetching all players from database...');
@@ -1400,8 +1403,8 @@ class SupabaseRoomSystem {
     async showRoleInformation() {
         console.log('=== SHOWING ROLE INFORMATION ===');
         
-        // Check if role information has already been shown
-        if (this.roleInformationShown) {
+        // Check if role information has already been shown (in memory or localStorage)
+        if (this.roleInformationShown || this.hasSeenRoleInformation()) {
             console.log('Role information already shown, skipping');
             return;
         }
@@ -1469,13 +1472,15 @@ class SupabaseRoomSystem {
             document.body.appendChild(modal);
             
             // Add event listener for the understand button with better error handling
-        setTimeout(() => {
+            setTimeout(() => {
                 const understandBtn = document.getElementById('understandRoleBtn');
                 console.log('Looking for understand button:', understandBtn);
                 if (understandBtn) {
-                    understandBtn.addEventListener('click', () => {
+                    understandBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         console.log('Role information understood, setting flag');
                         this.roleInformationShown = true;
+                        this.markRoleInformationAsSeen();
                         modal.remove();
                     });
                 } else {
@@ -1486,6 +1491,43 @@ class SupabaseRoomSystem {
         } catch (error) {
             console.error('Exception in showRoleInformation:', error);
         }
+    }
+
+    // Helper methods for localStorage persistence
+    hasSeenRoleInformation() {
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser || !this.currentRoom) return false;
+        
+        const key = `role_seen_${this.currentRoom.id}_${currentUser.id}`;
+        return localStorage.getItem(key) === 'true';
+    }
+
+    markRoleInformationAsSeen() {
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser || !this.currentRoom) return;
+        
+        const key = `role_seen_${this.currentRoom.id}_${currentUser.id}`;
+        localStorage.setItem(key, 'true');
+        console.log('Marked role information as seen for user:', currentUser.email);
+    }
+
+    clearRoleSeenFlags() {
+        if (!this.currentRoom) return;
+        
+        // Clear all role seen flags for this room
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(`role_seen_${this.currentRoom.id}_`)) {
+                keysToRemove.push(key);
+            }
+        }
+        
+        keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+        });
+        
+        console.log(`Cleared ${keysToRemove.length} role seen flags for room ${this.currentRoom.id}`);
     }
 
     getRoleInformation(player) {
