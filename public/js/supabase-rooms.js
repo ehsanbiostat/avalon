@@ -1228,19 +1228,29 @@ class SupabaseRoomSystem {
                     continue;
                 }
                 
-                const { error } = await this.supabase
+                const { data, error } = await this.supabase
                     .from(TABLES.ROOM_PLAYERS)
                     .update({
                         role: player.role,
                         alignment: player.alignment
                     })
                     .eq('room_id', this.currentRoom.id)
-                    .eq('player_id', player.player_id);
+                    .eq('player_id', player.player_id)
+                    .select();
 
                 if (error) {
                     console.error(`Error updating role for player ${player.player_name}:`, error);
                 } else {
                     console.log(`Successfully updated role for ${player.player_name}: ${player.role} (${player.alignment})`);
+                    console.log(`Database response:`, data);
+                    
+                    // Verify the update actually worked
+                    if (data && data.length > 0) {
+                        const updatedPlayer = data[0];
+                        console.log(`Verification - Updated player role: ${updatedPlayer.role}, alignment: ${updatedPlayer.alignment}`);
+                    } else {
+                        console.error(`WARNING: No data returned from update for ${player.player_name}`);
+                    }
                 }
             }
 
@@ -1258,6 +1268,22 @@ class SupabaseRoomSystem {
                 console.error('Error updating room with mission data:', roomError);
             } else {
                 console.log('Room updated with mission leader and player roles');
+            }
+            
+            // Verify all roles were saved correctly by fetching from database
+            console.log('=== VERIFYING ROLES IN DATABASE ===');
+            const { data: verifyData, error: verifyError } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', this.currentRoom.id);
+            
+            if (verifyError) {
+                console.error('Error verifying roles:', verifyError);
+            } else {
+                console.log('Database verification - All players in room:');
+                verifyData.forEach(player => {
+                    console.log(`${player.player_name}: role=${player.role}, alignment=${player.alignment}`);
+                });
             }
 
         } catch (error) {
