@@ -1332,6 +1332,9 @@ class SupabaseRoomSystem {
             // Update status message to indicate role distribution
             await this.updateRoomStatusMessage('Roles are being distributed... Please check your role information.', 'playing');
 
+            // Force immediate update for all players via polling
+            await this.immediateRoomStateUpdate();
+
             // Start role distribution for all players
             this.startRoleDistribution();
 
@@ -2310,8 +2313,13 @@ class SupabaseRoomSystem {
     async immediateRoomStateUpdate() {
         if (!this.currentRoom) return;
         
-        console.log('Performing immediate room state update');
+        console.log('=== PERFORMING IMMEDIATE ROOM STATE UPDATE ===');
+        console.log('Current room ID:', this.currentRoom.id);
+        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+        
         await this.fastRoomStateCheck();
+        
+        console.log('Immediate room state update completed');
     }
 
 
@@ -2670,10 +2678,18 @@ class SupabaseRoomSystem {
         console.log('=== HANDLING ROOM STATUS CHANGE ===');
         console.log('Payload:', payload);
         console.log('New status:', payload.new.status);
+        console.log('New status_message:', payload.new.status_message);
+        console.log('New status_message_type:', payload.new.status_message_type);
         console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
         
         // Update local room data
         this.currentRoom = payload.new;
+        
+        // Always update status message display when room data changes
+        if (payload.new.status_message) {
+            console.log('Updating status message from real-time update:', payload.new.status_message);
+            this.displayStatusMessage(payload.new.status_message, payload.new.status_message_type || 'waiting');
+        }
         
         // Check if game started (role distribution)
         if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
@@ -2686,9 +2702,11 @@ class SupabaseRoomSystem {
                 buttonContainer.remove();
             }
             
-            // Update status message
-            // Update status message in database
-            await this.updateRoomStatusMessage('Roles are being distributed... Please check your role information.', 'playing');
+            // Hide start game button for non-host players
+            const startGameBtn = document.getElementById('startGameBtn');
+            if (startGameBtn) {
+                startGameBtn.style.display = 'none';
+            }
             
             // Trigger immediate state update for all players
             await this.immediateRoomStateUpdate();
