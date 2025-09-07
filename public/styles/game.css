@@ -38,6 +38,13 @@
     margin: 1rem 0;
     font-size: 1.1rem;
     font-weight: bold;
+    display: block !important; /* Force display for all browsers */
+    visibility: visible !important; /* Force visibility for all browsers */
+    opacity: 1 !important; /* Force opacity for all browsers */
+    position: relative; /* Ensure proper positioning */
+    z-index: 10; /* Ensure it's above other elements */
+    width: 100%; /* Full width */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .status-message.waiting {
@@ -69,10 +76,12 @@
 .game-content {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - min(15vh, 200px)); /* Responsive height calculation */
+    min-height: calc(100vh - min(15vh, 200px)); /* Use min-height instead of height */
     gap: min(2vw, 2vh, 2rem); /* Responsive gap */
     padding: min(1vw, 1vh, 1rem); /* Responsive padding */
     box-sizing: border-box;
+    overflow-y: auto; /* Allow vertical scrolling if needed */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Mission Track */
@@ -818,8 +827,9 @@
     }
     
     .game-content {
-        height: calc(100vh - min(10vh, 150px));
+        min-height: calc(100vh - min(10vh, 150px));
         gap: min(1vw, 1vh, 1rem);
+        overflow-y: auto;
     }
     
     .mission-track {

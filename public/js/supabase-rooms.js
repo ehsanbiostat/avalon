@@ -104,9 +104,16 @@ class SupabaseRoomSystem {
         const handleResize = () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                console.log('Window resized - recalculating player positions');
+                console.log('Window resized - recalculating player positions and ensuring status message visibility');
                 if (this.currentRoom && this.currentRoom.players) {
                     this.positionPlayersOnCircle();
+                }
+                
+                // Ensure status message is visible after resize
+                const statusMessage = document.getElementById('statusMessage');
+                if (statusMessage && statusMessage.textContent) {
+                    console.log('Re-ensuring status message visibility after resize');
+                    this.displayStatusMessage(statusMessage.textContent, statusMessage.className.split(' ')[1] || 'waiting');
                 }
             }, 250); // 250ms debounce
         };
@@ -2363,17 +2370,32 @@ class SupabaseRoomSystem {
             statusMessage.textContent = message;
             statusMessage.className = `status-message ${messageType}`;
             
-            // Ensure the message is visible
+            // Force visibility for all browsers
             statusMessage.style.display = 'block';
             statusMessage.style.visibility = 'visible';
             statusMessage.style.opacity = '1';
+            statusMessage.style.position = 'relative';
+            statusMessage.style.zIndex = '10';
+            statusMessage.style.width = '100%';
+            statusMessage.style.boxSizing = 'border-box';
+            
+            // Ensure the message is scrollable into view
+            setTimeout(() => {
+                statusMessage.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'nearest',
+                    inline: 'nearest'
+                });
+            }, 100);
             
             console.log('Status message updated:', {
                 textContent: statusMessage.textContent,
                 className: statusMessage.className,
                 display: statusMessage.style.display,
                 visibility: statusMessage.style.visibility,
-                opacity: statusMessage.style.opacity
+                opacity: statusMessage.style.opacity,
+                position: statusMessage.style.position,
+                zIndex: statusMessage.style.zIndex
             });
         } else {
             console.error('Status message element not found!');
