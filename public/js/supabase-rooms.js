@@ -792,11 +792,10 @@ class SupabaseRoomSystem {
                 return;
             }
 
-            this.currentRoom = room;
-            this.currentRoom.players = players;
-            this.currentRoom.current_players = players.length; // Update player count
-
-            // Update UI
+            // Use existing room data instead of making new queries (performance fix)
+            console.log('Updating room display with existing data');
+            
+            // Update UI with current room data
             this.setupRoomInterface();
             this.positionPlayersOnCircle();
             await this.updateRoomStatus();
@@ -1843,33 +1842,12 @@ class SupabaseRoomSystem {
         }
     }
 
-    // Smart room state check - CPU optimized with minimal queries
+    // Smart room state check - balanced approach (working updates + some optimization)
     async smartRoomStateCheck() {
         if (!this.currentRoom) return;
         
         try {
-            // First, do a lightweight check for state_updated_at only
-            const { data: timestampData, error: timestampError } = await this.supabase
-                .from(TABLES.GAME_ROOMS)
-                .select('state_updated_at')
-                .eq('id', this.currentRoom.id)
-                .single();
-            
-            if (timestampError) {
-                console.error('Error checking room timestamp:', timestampError);
-                return;
-            }
-            
-            // Only fetch full data if timestamp changed (major CPU optimization)
-            const lastUpdate = this.currentRoom.state_updated_at;
-            if (timestampData.state_updated_at === lastUpdate) {
-                // No changes, skip expensive operations
-                return;
-            }
-            
-            console.log('Room state updated, fetching changes');
-            
-            // Only fetch essential fields for speed
+            // Fetch room data (simplified but working)
             const { data, error } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select(`
@@ -1899,11 +1877,11 @@ class SupabaseRoomSystem {
                 return;
             }
             
-            // Create a lightweight hash of only critical fields
+            // Create a hash to detect changes
             const stateHash = this.createLightweightStateHash(data);
             
-            // Only update if state actually changed
-            if (stateHash !== this.lastStateHash) {
+            // Update if state changed or if this is the first check
+            if (stateHash !== this.lastStateHash || this.lastStateHash === null) {
                 console.log('Room state changed, updating display');
                 this.lastStateHash = stateHash;
                 this.lastActivity = Date.now(); // Mark activity
@@ -2315,8 +2293,7 @@ class SupabaseRoomSystem {
             })
             .subscribe();
 
-        // Also set up polling as backup
-        this.startRoomPolling(roomId);
+        // Note: Using smart polling instead of backup polling for better performance
     }
 
     handleRoomPlayersChange(payload) {
