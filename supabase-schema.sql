@@ -53,6 +53,11 @@ CREATE TABLE public.room_players (
     position INTEGER, -- Position on the game circle
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_ready BOOLEAN DEFAULT FALSE,
+    is_host BOOLEAN DEFAULT FALSE,
+    
+    -- Role and alignment (assigned during role distribution)
+    role TEXT CHECK (role IN ('merlin', 'assassin', 'percival', 'morgana', 'mordred', 'oberon', 'loyal_servant', 'minion')),
+    alignment TEXT CHECK (alignment IN ('good', 'evil')),
     
     UNIQUE(room_id, player_id)
 );
@@ -226,3 +231,10 @@ $$ language 'plpgsql';
 CREATE TRIGGER calculate_win_rate_trigger
     BEFORE INSERT OR UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION calculate_win_rate();
+
+-- Indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_room_players_role ON public.room_players(role);
+CREATE INDEX IF NOT EXISTS idx_room_players_alignment ON public.room_players(alignment);
+CREATE INDEX IF NOT EXISTS idx_room_players_is_host ON public.room_players(is_host);
+CREATE INDEX IF NOT EXISTS idx_game_rooms_status ON public.game_rooms(status);
+CREATE INDEX IF NOT EXISTS idx_game_rooms_code ON public.game_rooms(code);
