@@ -786,20 +786,25 @@ class SupabaseRoomSystem {
             gameTable.innerHTML = '';
         }
         
-        // Position players on the circle
+        // Circle dimensions (game table is 600x600px)
+        const circleWidth = 600;
+        const circleHeight = 600;
+        const centerX = circleWidth / 2; // 300px
+        const centerY = circleHeight / 2; // 300px
+        const radius = (circleWidth / 2) - 60; // 240px (leave space for player slots)
+        
+        // Position actual players on the circle
         room.players.forEach((player, index) => {
-            const angle = (index * 2 * Math.PI) / room.max_players;
-            const radius = 200;
-            const centerX = 300;
-            const centerY = 300;
+            // Calculate angle: start from top (12 o'clock) and distribute evenly
+            const angle = (index * 2 * Math.PI) / room.players.length - Math.PI / 2;
             
             const x = centerX + radius * Math.cos(angle);
             const y = centerY + radius * Math.sin(angle);
             
             const playerSlot = document.createElement('div');
             playerSlot.className = 'player-slot';
-            playerSlot.style.left = `${x}px`;
-            playerSlot.style.top = `${y}px`;
+            playerSlot.style.left = `${x - 40}px`; // Center the slot (slot width is 80px)
+            playerSlot.style.top = `${y - 55}px`; // Center the slot (slot height is 110px)
             playerSlot.setAttribute('data-player-id', player.player_id);
             
             playerSlot.innerHTML = `
@@ -814,18 +819,16 @@ class SupabaseRoomSystem {
         
         // Add empty slots for remaining players
         for (let i = room.players.length; i < room.max_players; i++) {
-            const angle = (i * 2 * Math.PI) / room.max_players;
-            const radius = 200;
-            const centerX = 300;
-            const centerY = 300;
+            // Calculate angle: start from top (12 o'clock) and distribute evenly
+            const angle = (i * 2 * Math.PI) / room.max_players - Math.PI / 2;
             
             const x = centerX + radius * Math.cos(angle);
             const y = centerY + radius * Math.sin(angle);
             
             const emptySlot = document.createElement('div');
             emptySlot.className = 'player-slot empty-slot';
-            emptySlot.style.left = `${x}px`;
-            emptySlot.style.top = `${y}px`;
+            emptySlot.style.left = `${x - 40}px`; // Center the slot
+            emptySlot.style.top = `${y - 55}px`; // Center the slot
             
             emptySlot.innerHTML = `
                 <div class="player-avatar">?</div>
