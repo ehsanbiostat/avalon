@@ -37,8 +37,11 @@
     width: 95vw;
     height: 95vh;
     padding: 2rem;
-    overflow: hidden; /* Prevent scrollbar issues */
+    overflow-y: auto; /* Allow vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
     box-sizing: border-box; /* Include padding in dimensions */
+    display: flex;
+    flex-direction: column;
 }
 
 .close {
