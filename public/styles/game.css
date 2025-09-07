@@ -388,6 +388,34 @@
     }
 }
 
+/* Mission Leader Token */
+.mission-leader-token {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(3vw, 3vh, 30px);
+    height: min(3vw, 3vh, 30px);
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    border: 2px solid #ff6b35;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: min(1.2vw, 1.2vh, 1.2rem);
+    font-weight: bold;
+    color: #ff6b35;
+    z-index: 10;
+    box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.1); }
+    100% { transform: translateX(-50%) scale(1); }
+}
+
 /* Center Display */
 .center-display {
     position: absolute;

@@ -1030,9 +1030,13 @@ class SupabaseRoomSystem {
             playerSlot.style.top = `${y - slotHeight / 2}px`; // Center the slot
             playerSlot.setAttribute('data-player-id', player.player_id);
             
+            // Check if this player is the mission leader
+            const isMissionLeader = this.currentRoom.mission_leader === player.player_id;
+            
             playerSlot.innerHTML = `
                 <div class="player-avatar">${player.player_avatar}</div>
                 <div class="player-name">${player.player_name}</div>
+                ${isMissionLeader ? '<div class="mission-leader-token">👑</div>' : ''}
             `;
             
             if (gameTable) {
@@ -1325,16 +1329,110 @@ class SupabaseRoomSystem {
                 startGameBtn.style.display = 'none';
             }
 
-            // Update status message
-            // Update status message in database
-            await this.updateRoomStatusMessage('Game starting... Role distribution in progress.', 'playing');
+            // Update status message to indicate role distribution
+            await this.updateRoomStatusMessage('Roles are being distributed... Please check your role information.', 'playing');
 
             // Start role distribution for all players
             this.startRoleDistribution();
 
+            // Start monitoring for all players to see their roles
+            this.monitorRoleDistributionCompletion();
+
         } catch (error) {
             console.error('Exception starting game:', error);
             this.showNotification('Failed to start game.', 'error');
+        }
+    }
+
+    async monitorRoleDistributionCompletion() {
+        console.log('=== MONITORING ROLE DISTRIBUTION COMPLETION ===');
+        
+        const checkCompletion = async () => {
+            try {
+                // Check if all players have seen their roles
+                const { data: players, error } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .select('player_id, player_name, has_role_seen')
+                    .eq('room_id', this.currentRoom.id);
+                
+                if (error) {
+                    console.error('Error checking role completion:', error);
+                    return;
+                }
+                
+                console.log('Players role seen status:', players.map(p => ({ 
+                    name: p.player_name, 
+                    has_seen: p.has_role_seen 
+                })));
+                
+                // Check if all players have seen their roles
+                const allPlayersSeenRoles = players.every(p => p.has_role_seen === true);
+                
+                if (allPlayersSeenRoles) {
+                    console.log('✅ All players have seen their roles - starting actual game!');
+                    
+                    // Update status message
+                    await this.updateRoomStatusMessage('All players ready! Starting game...', 'ready');
+                    
+                    // Wait a moment for the message to be seen
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Start the actual game
+                    await this.startActualGame();
+                } else {
+                    console.log('⏳ Still waiting for players to see their roles...');
+                    // Check again in 2 seconds
+                    setTimeout(checkCompletion, 2000);
+                }
+                
+            } catch (error) {
+                console.error('Error in role distribution monitoring:', error);
+            }
+        };
+        
+        // Start checking
+        checkCompletion();
+    }
+
+    async startActualGame() {
+        console.log('=== STARTING ACTUAL GAME ===');
+        
+        try {
+            // 1. Randomize player positions
+            this.randomizePlayerPositions();
+            
+            // 2. Select random mission leader
+            this.selectRandomMissionLeader();
+            
+            // 3. Update room status to PLAYING
+            const { error: updateError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    status: GAME_STATUS.PLAYING,
+                    mission_leader: this.currentRoom.mission_leader,
+                    current_mission: this.currentRoom.current_mission,
+                    players: this.currentRoom.players
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (updateError) {
+                console.error('Error updating room to playing status:', updateError);
+                return;
+            }
+            
+            // Update local room status
+            this.currentRoom.status = GAME_STATUS.PLAYING;
+            
+            // Update status message
+            await this.updateRoomStatusMessage('Game started! Mission 1 begins.', 'playing');
+            
+            // Update the display
+            this.positionPlayersOnCircle();
+            
+            console.log('✅ Game successfully started!');
+            
+        } catch (error) {
+            console.error('Error starting actual game:', error);
         }
     }
 
@@ -1371,14 +1469,8 @@ class SupabaseRoomSystem {
             this.currentRoom.players = allPlayers;
             console.log('All players fetched:', allPlayers.map(p => ({ name: p.player_name, id: p.player_id })));
 
-            // Randomize player positions
-            this.randomizePlayerPositions();
-            
-            // Assign roles based on room configuration
+            // Assign roles based on room configuration (but don't randomize positions yet)
             this.assignRoles();
-            
-            // Select random mission leader
-            this.selectRandomMissionLeader();
             
             // Save roles to database so all players can receive them
             await this.saveRolesToDatabase();
