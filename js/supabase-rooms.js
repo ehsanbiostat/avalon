@@ -618,8 +618,11 @@ class SupabaseRoomSystem {
                         statusMessage.className = 'status-message ready';
                     }
                     
-                    // Start role distribution
-                    this.startRoleDistribution();
+                    // Refresh room data to get updated player roles, then show role information
+                    this.refreshRoomData().then(() => {
+                        console.log('Room data refreshed, showing role information');
+                        this.showRoleInformation();
+                    });
                 }
             })
             .subscribe();
@@ -1661,6 +1664,62 @@ class SupabaseRoomSystem {
             return []; // Oberon doesn't know other evil players
         }
         return this.currentRoom.players.filter(p => p.alignment === 'evil' && p.player_id !== player.player_id);
+    }
+
+    async refreshRoomData() {
+        if (!this.currentRoom) return;
+        
+        try {
+            console.log('=== REFRESHING ROOM DATA ===');
+            
+            // Fetch updated room data with players
+            const { data: room, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    *,
+                    room_players (
+                        id,
+                        player_id,
+                        player_name,
+                        player_avatar,
+                        is_host,
+                        joined_at,
+                        role,
+                        alignment
+                    )
+                `)
+                .eq('id', this.currentRoom.id)
+                .single();
+
+            if (error) {
+                console.error('Error refreshing room data:', error);
+                return;
+            }
+
+            console.log('Updated room data:', room);
+            
+            // Check if there are actual changes before updating
+            const newPlayers = room.room_players || [];
+            const currentPlayers = this.currentRoom.players || [];
+            const playersChanged = JSON.stringify(newPlayers) !== JSON.stringify(currentPlayers);
+            const statusChanged = room.status !== this.currentRoom.status;
+            
+            // Update current room
+            this.currentRoom = room;
+            this.currentRoom.players = newPlayers;
+            this.currentRoom.current_players = newPlayers.length;
+            
+            // Only update display if there are actual changes
+            if (playersChanged || statusChanged) {
+                console.log('Room data changed, updating display');
+                this.updateRoomDisplay();
+            } else {
+                console.log('No changes detected, skipping display update');
+            }
+            
+        } catch (error) {
+            console.error('Exception refreshing room data:', error);
+        }
     }
 }
 
