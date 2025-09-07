@@ -1901,6 +1901,12 @@ class SupabaseRoomSystem {
                     // Show notification
                     this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
                     
+                    // Check if room is already in role distribution status
+                    if (this.currentRoom.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                        console.log('Room is already in role distribution, showing role information');
+                        this.showRoleInformation();
+                    }
+                    
                     console.log('Successfully restored room state');
                     return; // Exit after finding the first waiting room
                 } else {
