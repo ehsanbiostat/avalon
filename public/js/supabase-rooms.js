@@ -1681,37 +1681,27 @@ class SupabaseRoomSystem {
                         console.log('Role information understood, setting flag');
                         this.roleInformationShown = true;
                         
-                        try {
-                            console.log('Calling markRoleInformationAsSeen...');
-                            await this.markRoleInformationAsSeen();
-                            console.log('markRoleInformationAsSeen completed successfully');
-                        } catch (error) {
-                            console.error('Error in markRoleInformationAsSeen:', error);
-                        }
-                        
-                        console.log('Removing modal...');
+                        // Remove modal immediately to prevent double-clicks
+                        console.log('Removing modal immediately...');
                         modal.remove();
                         console.log('Modal removed successfully');
                         
                         // Reset flag to allow future calls
                         this.showingRoleInformation = false;
+                        
+                        // Handle database update asynchronously (don't await)
+                        console.log('Calling markRoleInformationAsSeen asynchronously...');
+                        this.markRoleInformationAsSeen().then(() => {
+                            console.log('markRoleInformationAsSeen completed successfully');
+                        }).catch((error) => {
+                            console.error('Error in markRoleInformationAsSeen:', error);
+                        });
                     };
                     
-                    // Add multiple event listeners for better compatibility
-                    understandBtn.addEventListener('click', handleButtonClick, true); // Use capture phase
-                    understandBtn.addEventListener('mousedown', handleButtonClick, true);
-                    understandBtn.addEventListener('touchend', handleButtonClick, true); // For mobile
+                    // Add only click event listener to avoid double-firing
+                    understandBtn.addEventListener('click', handleButtonClick, true);
                     
-                    // Also add mousedown and mouseup listeners for debugging
-                    understandBtn.addEventListener('mousedown', (e) => {
-                        console.log('Button mousedown event fired');
-                    });
-                    
-                    understandBtn.addEventListener('mouseup', (e) => {
-                        console.log('Button mouseup event fired');
-                    });
-                    
-                    // Add event delegation to the modal as backup
+                    // Add event delegation to the modal as backup (but only for click events)
                     modal.addEventListener('click', (e) => {
                         if (e.target.id === 'understandRoleBtn' || e.target.closest('#understandRoleBtn')) {
                             console.log('Modal click delegation triggered');
