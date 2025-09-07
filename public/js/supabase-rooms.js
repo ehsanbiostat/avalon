@@ -16,6 +16,12 @@ class SupabaseRoomSystem {
         this.lobbyPolling = null; // For compatibility with old room system
         this.roleInformationShown = false; // Flag to prevent multiple role popups
         
+        // Fast polling system for real-time updates
+        this.fastPolling = null;
+        this.pollingInterval = 1000; // Start with 1 second
+        this.lastStateHash = null;
+        this.pollingActive = false;
+        
         // Add a small delay to ensure DOM is fully ready
         console.log('Setting up setTimeout for event listeners...');
         setTimeout(() => {
@@ -581,8 +587,8 @@ class SupabaseRoomSystem {
             // Show room interface
             await this.showRoomInterface();
             
-            // Subscribe to room updates
-            this.subscribeToRoomUpdates(room.id);
+            // Start fast polling for real-time updates
+            this.startFastPolling();
 
             return true;
         } catch (error) {
@@ -631,7 +637,7 @@ class SupabaseRoomSystem {
                 this.currentRoom = room;
                 this.isHost = room.host_id === user.id;
                 await this.showRoomInterface();
-                this.subscribeToRoomUpdates(room.id);
+                this.startFastPolling();
                 return true;
             }
 
@@ -644,8 +650,8 @@ class SupabaseRoomSystem {
             this.showNotification(`Joined room ${roomCode}!`, 'success');
             await this.showRoomInterface();
             
-            // Subscribe to room updates
-            this.subscribeToRoomUpdates(room.id);
+            // Start fast polling for real-time updates
+            this.startFastPolling();
 
             return true;
         } catch (error) {
@@ -697,7 +703,10 @@ class SupabaseRoomSystem {
                 await this.handleHostLeaving();
             }
 
-            // Unsubscribe from room updates
+            // Stop fast polling
+            this.stopFastPolling();
+            
+            // Unsubscribe from room updates (backup)
             if (this.roomSubscription) {
                 this.roomSubscription.unsubscribe();
                 this.roomSubscription = null;
@@ -1762,6 +1771,141 @@ class SupabaseRoomSystem {
         return this.isHost;
     }
 
+    // Fast polling system for real-time updates
+    startFastPolling() {
+        if (this.pollingActive || !this.currentRoom) return;
+        
+        console.log('Starting fast polling for room:', this.currentRoom.id);
+        this.pollingActive = true;
+        this.pollingInterval = 1000; // Start with 1 second
+        
+        const poll = async () => {
+            if (!this.pollingActive || !this.currentRoom) return;
+            
+            try {
+                await this.fastRoomStateCheck();
+            } catch (error) {
+                console.error('Error in fast polling:', error);
+            }
+            
+            // Schedule next poll
+            if (this.pollingActive) {
+                this.fastPolling = setTimeout(poll, this.pollingInterval);
+            }
+        };
+        
+        // Start polling immediately
+        poll();
+    }
+
+    stopFastPolling() {
+        console.log('Stopping fast polling');
+        this.pollingActive = false;
+        if (this.fastPolling) {
+            clearTimeout(this.fastPolling);
+            this.fastPolling = null;
+        }
+    }
+
+    // Fast room state check - optimized for speed
+    async fastRoomStateCheck() {
+        if (!this.currentRoom) return;
+        
+        try {
+            // Only fetch essential fields for speed
+            const { data, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    id,
+                    status,
+                    current_players,
+                    max_players,
+                    status_message,
+                    status_message_type,
+                    state_updated_at,
+                    room_players (
+                        id,
+                        player_id,
+                        player_name,
+                        player_avatar,
+                        is_host,
+                        role,
+                        alignment,
+                        has_role_seen
+                    )
+                `)
+                .eq('id', this.currentRoom.id)
+                .single();
+            
+            if (error) {
+                console.error('Error in fast room state check:', error);
+                return;
+            }
+            
+            // Create a hash of the current state to detect changes
+            const stateHash = this.createStateHash(data);
+            
+            // Only update if state actually changed
+            if (stateHash !== this.lastStateHash) {
+                console.log('Room state changed, updating display');
+                this.lastStateHash = stateHash;
+                
+                // Update local room data
+                this.currentRoom.status = data.status;
+                this.currentRoom.current_players = data.current_players;
+                this.currentRoom.status_message = data.status_message;
+                this.currentRoom.status_message_type = data.status_message_type;
+                this.currentRoom.players = data.room_players || [];
+                
+                // Update host status
+                const currentUser = supabaseAuthSystem.getCurrentUser();
+                if (currentUser) {
+                    this.isHost = data.room_players?.find(p => p.player_id === currentUser.id)?.is_host || false;
+                }
+                
+                // Update UI
+                await this.updateRoomDisplay();
+                
+                // Check for role distribution
+                if (data.status === 'role_distribution' && !this.roleInformationShown) {
+                    this.showRoleInformation();
+                }
+            }
+            
+        } catch (error) {
+            console.error('Exception in fast room state check:', error);
+        }
+    }
+
+    // Create a hash of room state to detect changes efficiently
+    createStateHash(roomData) {
+        const state = {
+            status: roomData.status,
+            current_players: roomData.current_players,
+            status_message: roomData.status_message,
+            status_message_type: roomData.status_message_type,
+            players: roomData.room_players?.map(p => ({
+                id: p.id,
+                player_id: p.player_id,
+                player_name: p.player_name,
+                is_host: p.is_host,
+                role: p.role,
+                alignment: p.alignment,
+                has_role_seen: p.has_role_seen
+            })) || []
+        };
+        
+        return JSON.stringify(state);
+    }
+
+    // Immediate room state update for critical actions
+    async immediateRoomStateUpdate() {
+        if (!this.currentRoom) return;
+        
+        console.log('Performing immediate room state update');
+        await this.fastRoomStateCheck();
+    }
+
     // Database-driven room state management methods
     async updateRoomStatusMessage(message, type = 'waiting') {
         if (!this.currentRoom) return;
@@ -2115,12 +2259,11 @@ class SupabaseRoomSystem {
             // Update status message in database
             await this.updateRoomStatusMessage('Game starting... Role distribution in progress.', 'playing');
             
-            // Refresh room data to get updated player roles
-            this.refreshRoomData().then(() => {
-                console.log('Room data refreshed after game start');
-                // Show role information to current player
-                this.showRoleInformation();
-            });
+            // Trigger immediate state update for all players
+            await this.immediateRoomStateUpdate();
+            
+            // Show role information to current player
+            this.showRoleInformation();
         } else {
             console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
         }
