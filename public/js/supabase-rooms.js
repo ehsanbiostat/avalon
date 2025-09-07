@@ -16,11 +16,18 @@ class SupabaseRoomSystem {
         this.lobbyPolling = null; // For compatibility with old room system
         this.roleInformationShown = false; // Flag to prevent multiple role popups
         
-        // Fast polling system for real-time updates
+        // Smart polling system for real-time updates (CPU optimized)
         this.fastPolling = null;
-        this.pollingInterval = 1000; // Start with 1 second
+        this.pollingInterval = 2000; // Start with 2 seconds (less CPU intensive)
         this.lastStateHash = null;
         this.pollingActive = false;
+        this.pollingCount = 0;
+        this.lastActivity = Date.now();
+        this.adaptiveInterval = 2000; // Adaptive interval
+        this.isTabActive = true;
+        
+        // Pause polling when tab is not active (major CPU optimization)
+        this.setupTabVisibilityHandling();
         
         // Add a small delay to ensure DOM is fully ready
         console.log('Setting up setTimeout for event listeners...');
@@ -1771,26 +1778,35 @@ class SupabaseRoomSystem {
         return this.isHost;
     }
 
-    // Fast polling system for real-time updates
+    // Smart polling system for real-time updates (CPU optimized)
     startFastPolling() {
         if (this.pollingActive || !this.currentRoom) return;
         
-        console.log('Starting fast polling for room:', this.currentRoom.id);
+        console.log('Starting smart polling for room:', this.currentRoom.id);
         this.pollingActive = true;
-        this.pollingInterval = 1000; // Start with 1 second
+        this.pollingCount = 0;
+        this.lastActivity = Date.now();
+        this.adaptiveInterval = 2000; // Start with 2 seconds
         
         const poll = async () => {
             if (!this.pollingActive || !this.currentRoom) return;
             
             try {
-                await this.fastRoomStateCheck();
+                await this.smartRoomStateCheck();
+                this.pollingCount++;
+                
+                // Adaptive polling: slow down if no activity
+                this.adjustPollingInterval();
+                
             } catch (error) {
-                console.error('Error in fast polling:', error);
+                console.error('Error in smart polling:', error);
+                // Increase interval on errors to reduce CPU load
+                this.adaptiveInterval = Math.min(this.adaptiveInterval * 1.5, 10000);
             }
             
-            // Schedule next poll
+            // Schedule next poll with adaptive interval
             if (this.pollingActive) {
-                this.fastPolling = setTimeout(poll, this.pollingInterval);
+                this.fastPolling = setTimeout(poll, this.adaptiveInterval);
             }
         };
         
@@ -1799,7 +1815,7 @@ class SupabaseRoomSystem {
     }
 
     stopFastPolling() {
-        console.log('Stopping fast polling');
+        console.log('Stopping smart polling');
         this.pollingActive = false;
         if (this.fastPolling) {
             clearTimeout(this.fastPolling);
@@ -1807,11 +1823,52 @@ class SupabaseRoomSystem {
         }
     }
 
-    // Fast room state check - optimized for speed
-    async fastRoomStateCheck() {
+    // Adaptive polling interval adjustment (CPU optimization)
+    adjustPollingInterval() {
+        const now = Date.now();
+        const timeSinceActivity = now - this.lastActivity;
+        
+        // If no activity for 30 seconds, slow down polling
+        if (timeSinceActivity > 30000) {
+            this.adaptiveInterval = Math.min(this.adaptiveInterval * 1.2, 8000); // Max 8 seconds
+        }
+        // If recent activity, speed up polling
+        else if (timeSinceActivity < 5000) {
+            this.adaptiveInterval = Math.max(this.adaptiveInterval * 0.9, 1000); // Min 1 second
+        }
+        
+        // Log polling stats every 10 polls to monitor CPU usage
+        if (this.pollingCount % 10 === 0) {
+            console.log(`Polling stats: count=${this.pollingCount}, interval=${this.adaptiveInterval}ms, timeSinceActivity=${timeSinceActivity}ms`);
+        }
+    }
+
+    // Smart room state check - CPU optimized with minimal queries
+    async smartRoomStateCheck() {
         if (!this.currentRoom) return;
         
         try {
+            // First, do a lightweight check for state_updated_at only
+            const { data: timestampData, error: timestampError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select('state_updated_at')
+                .eq('id', this.currentRoom.id)
+                .single();
+            
+            if (timestampError) {
+                console.error('Error checking room timestamp:', timestampError);
+                return;
+            }
+            
+            // Only fetch full data if timestamp changed (major CPU optimization)
+            const lastUpdate = this.currentRoom.state_updated_at;
+            if (timestampData.state_updated_at === lastUpdate) {
+                // No changes, skip expensive operations
+                return;
+            }
+            
+            console.log('Room state updated, fetching changes');
+            
             // Only fetch essential fields for speed
             const { data, error } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
@@ -1838,17 +1895,18 @@ class SupabaseRoomSystem {
                 .single();
             
             if (error) {
-                console.error('Error in fast room state check:', error);
+                console.error('Error in smart room state check:', error);
                 return;
             }
             
-            // Create a hash of the current state to detect changes
-            const stateHash = this.createStateHash(data);
+            // Create a lightweight hash of only critical fields
+            const stateHash = this.createLightweightStateHash(data);
             
             // Only update if state actually changed
             if (stateHash !== this.lastStateHash) {
                 console.log('Room state changed, updating display');
                 this.lastStateHash = stateHash;
+                this.lastActivity = Date.now(); // Mark activity
                 
                 // Update local room data
                 this.currentRoom.status = data.status;
@@ -1856,6 +1914,7 @@ class SupabaseRoomSystem {
                 this.currentRoom.status_message = data.status_message;
                 this.currentRoom.status_message_type = data.status_message_type;
                 this.currentRoom.players = data.room_players || [];
+                this.currentRoom.state_updated_at = data.state_updated_at;
                 
                 // Update host status
                 const currentUser = supabaseAuthSystem.getCurrentUser();
@@ -1873,11 +1932,24 @@ class SupabaseRoomSystem {
             }
             
         } catch (error) {
-            console.error('Exception in fast room state check:', error);
+            console.error('Exception in smart room state check:', error);
         }
     }
 
-    // Create a hash of room state to detect changes efficiently
+    // Create a lightweight hash of only critical fields (CPU optimized)
+    createLightweightStateHash(roomData) {
+        // Only hash the most critical fields to reduce CPU usage
+        const criticalState = {
+            status: roomData.status,
+            current_players: roomData.current_players,
+            status_message: roomData.status_message,
+            player_count: roomData.room_players?.length || 0
+        };
+        
+        return JSON.stringify(criticalState);
+    }
+
+    // Create a hash of room state to detect changes efficiently (legacy - kept for compatibility)
     createStateHash(roomData) {
         const state = {
             status: roomData.status,
@@ -1903,7 +1975,27 @@ class SupabaseRoomSystem {
         if (!this.currentRoom) return;
         
         console.log('Performing immediate room state update');
-        await this.fastRoomStateCheck();
+        this.lastActivity = Date.now(); // Mark activity for adaptive polling
+        await this.smartRoomStateCheck();
+    }
+
+    // Setup tab visibility handling to pause polling when tab is not active
+    setupTabVisibilityHandling() {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('Tab hidden, pausing polling to save CPU');
+                this.isTabActive = false;
+                if (this.pollingActive) {
+                    this.stopFastPolling();
+                }
+            } else {
+                console.log('Tab visible, resuming polling');
+                this.isTabActive = true;
+                if (this.currentRoom && !this.pollingActive) {
+                    this.startFastPolling();
+                }
+            }
+        });
     }
 
     // Database-driven room state management methods
@@ -2475,3 +2567,4 @@ const supabaseRoomSystem = new SupabaseRoomSystem();
 window.supabaseRoomSystem = supabaseRoomSystem;
 
 export default supabaseRoomSystem;
+
