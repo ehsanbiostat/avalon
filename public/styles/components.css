@@ -388,17 +388,84 @@
     }
 }
 
-/* Responsive Design for Components */
+/* Comprehensive Responsive Design for Components */
+
+/* Large screens */
+@media (min-width: 1920px) {
+    .modal-content.fullscreen {
+        padding: min(3vw, 3vh, 3rem);
+    }
+    
+    .modal-content {
+        max-width: 90vw;
+        max-height: 90vh;
+    }
+}
+
+/* Desktop screens */
+@media (min-width: 1200px) and (max-width: 1919px) {
+    .modal-content.fullscreen {
+        padding: min(2.5vw, 2.5vh, 2.5rem);
+    }
+}
+
+/* Tablet screens */
+@media (min-width: 769px) and (max-width: 1199px) {
+    .modal-content.fullscreen {
+        padding: min(2vw, 2vh, 2rem);
+    }
+    
+    .modal-content {
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+}
+
+/* Mobile screens */
 @media (max-width: 768px) {
     .modal-content {
-        padding: 2rem;
+        padding: min(1.5vw, 1.5vh, 1.5rem);
         width: 95%;
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+    
+    .modal-content.fullscreen {
+        padding: min(1vw, 1vh, 1rem);
+        width: 98vw;
+        height: 98vh;
     }
     
     .lobby-content {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
+    
+    .game-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .room-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .modal-content {
+        padding: min(1vw, 1vh, 1rem);
+        width: 98%;
+    }
+    
+    .modal-content.fullscreen {
+        padding: min(0.5vw, 0.5vh, 0.5rem);
+        width: 99vw;
+        height: 99vh;
+    }
+}
     
     .role-selection {
         grid-template-columns: 1fr;

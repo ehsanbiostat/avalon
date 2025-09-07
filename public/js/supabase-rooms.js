@@ -918,12 +918,13 @@ class SupabaseRoomSystem {
         console.log('Recreating player slots for room state sync');
         gameTable.innerHTML = '';
         
-        // Circle dimensions (game table is 600x600px)
-        const circleWidth = 600;
-        const circleHeight = 600;
-        const centerX = circleWidth / 2; // 300px
-        const centerY = circleHeight / 2; // 300px
-        const radius = (circleWidth / 2) - 60; // 240px (leave space for player slots)
+        // Responsive circle dimensions based on actual game table size
+        const gameTableRect = gameTable.getBoundingClientRect();
+        const circleWidth = gameTableRect.width;
+        const circleHeight = gameTableRect.height;
+        const centerX = circleWidth / 2;
+        const centerY = circleHeight / 2;
+        const radius = (circleWidth / 2) - (circleWidth * 0.1); // 10% margin for player slots
         
         // Position actual players on the circle
         room.players.forEach((player, index) => {
@@ -935,8 +936,13 @@ class SupabaseRoomSystem {
             
             const playerSlot = document.createElement('div');
             playerSlot.className = 'player-slot';
-            playerSlot.style.left = `${x - 40}px`; // Center the slot (slot width is 80px)
-            playerSlot.style.top = `${y - 55}px`; // Center the slot (slot height is 110px)
+            
+            // Calculate responsive slot dimensions
+            const slotWidth = Math.min(circleWidth * 0.13, 80); // 13% of circle width, max 80px
+            const slotHeight = Math.min(circleHeight * 0.18, 110); // 18% of circle height, max 110px
+            
+            playerSlot.style.left = `${x - slotWidth / 2}px`; // Center the slot
+            playerSlot.style.top = `${y - slotHeight / 2}px`; // Center the slot
             playerSlot.setAttribute('data-player-id', player.player_id);
             
             playerSlot.innerHTML = `
@@ -1392,12 +1398,13 @@ class SupabaseRoomSystem {
         const gameTable = document.getElementById('gameTable');
         if (!gameTable) return;
         
-        // Circle dimensions (same as positionPlayersOnCircle)
-        const circleWidth = 600;
-        const circleHeight = 600;
+        // Responsive circle dimensions (same as positionPlayersOnCircle)
+        const gameTableRect = gameTable.getBoundingClientRect();
+        const circleWidth = gameTableRect.width;
+        const circleHeight = gameTableRect.height;
         const centerX = circleWidth / 2;
         const centerY = circleHeight / 2;
-        const radius = (circleWidth / 2) - 60;
+        const radius = (circleWidth / 2) - (circleWidth * 0.1);
         
         // Update positions of existing players
         room.players.forEach((player, index) => {
@@ -1407,8 +1414,12 @@ class SupabaseRoomSystem {
             
             const playerSlot = gameTable.querySelector(`[data-player-id="${player.player_id}"]`);
             if (playerSlot) {
-                playerSlot.style.left = `${x - 40}px`;
-                playerSlot.style.top = `${y - 55}px`;
+                // Calculate responsive slot dimensions
+                const slotWidth = Math.min(circleWidth * 0.13, 80);
+                const slotHeight = Math.min(circleHeight * 0.18, 110);
+                
+                playerSlot.style.left = `${x - slotWidth / 2}px`;
+                playerSlot.style.top = `${y - slotHeight / 2}px`;
             }
         });
     }
