@@ -92,10 +92,6 @@ class SupabaseRoomSystem {
         console.log('stopLobbyPolling called (compatibility method)');
     }
 
-    updatePlayerCount() {
-        // For compatibility with old room system
-        console.log('updatePlayerCount called (compatibility method)');
-    }
 
     updateLobbyDisplay() {
         // For compatibility with old room system
@@ -748,76 +744,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    async startGame() {
-        if (!this.isHost || !this.currentRoom) {
-            this.showNotification('Only the host can start the game!', 'error');
-            return;
-        }
 
-        if (this.currentRoom.current_players < this.currentRoom.max_players) {
-            this.showNotification(`Need ${this.currentRoom.max_players - this.currentRoom.current_players} more players!`, 'warning');
-            return;
-        }
-
-        try {
-            // Update room status
-            const { error } = await this.supabase
-                .from(TABLES.GAME_ROOMS)
-                .update({
-                    status: GAME_STATUS.ROLE_DISTRIBUTION,
-                    started_at: new Date().toISOString()
-                })
-                .eq('id', this.currentRoom.id);
-
-            if (error) {
-                this.showNotification('Failed to start game.', 'error');
-                return;
-            }
-
-            // Start the game
-            if (window.gameSystem) {
-                window.gameSystem.startRoleDistribution(this.currentRoom);
-            }
-        } catch (error) {
-            this.showNotification('Failed to start game.', 'error');
-        }
-    }
-
-    subscribeToRoomUpdates(roomId) {
-        if (this.roomSubscription) {
-            this.roomSubscription.unsubscribe();
-        }
-
-        this.roomSubscription = this.supabase
-            .channel(`room-${roomId}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: TABLES.ROOM_PLAYERS,
-                filter: `room_id=eq.${roomId}`
-            }, (payload) => {
-                console.log('Room players updated:', payload);
-                this.updateRoomDisplay();
-            })
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: TABLES.GAME_ROOMS,
-                filter: `id=eq.${roomId}`
-            }, (payload) => {
-                console.log('Room updated:', payload);
-                this.currentRoom = payload.new;
-                this.updateRoomDisplay();
-                
-                // Check if game started
-                if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-                    if (window.gameSystem) {
-                        window.gameSystem.startRoleDistribution(payload.new);
-                    }
-                }
-            })
-            .subscribe();
-    }
 
     async updateRoomDisplay() {
         if (!this.currentRoom) return;
@@ -883,16 +810,6 @@ class SupabaseRoomSystem {
     }
 
     // UI Methods (similar to original room system)
-    showRoomInterface() {
-        this.closeAllModals();
-        
-        const gameInterface = document.getElementById('gameInterface');
-        if (gameInterface) {
-            gameInterface.style.display = 'block';
-        }
-        
-        this.initializeRoomDisplay();
-    }
 
     closeRoomInterface() {
         const gameInterface = document.getElementById('gameInterface');
@@ -1527,22 +1444,6 @@ class SupabaseRoomSystem {
         return [merlin, morgana].filter(Boolean);
     }
 
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
-        
-        // Add to page
-        document.body.appendChild(notification);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 3000);
-    }
 
 
     async ensureUserProfile(user) {
