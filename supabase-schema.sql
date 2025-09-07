@@ -31,6 +31,11 @@ CREATE TABLE public.game_rooms (
     lady_of_lake BOOLEAN DEFAULT FALSE,
     chaos_for_merlin BOOLEAN DEFAULT FALSE,
     
+    -- Game state
+    current_mission INTEGER DEFAULT 1,
+    mission_leader UUID REFERENCES public.profiles(id),
+    players JSONB DEFAULT '[]', -- Store complete player data with roles
+    
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     started_at TIMESTAMP WITH TIME ZONE,
