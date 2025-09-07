@@ -15,6 +15,7 @@ class SupabaseRoomSystem {
         this.roomSubscription = null;
         this.lobbyPolling = null; // For compatibility with old room system
         this.roleInformationShown = false; // Flag to prevent multiple role popups
+        this.showingRoleInformation = false; // Flag to prevent multiple calls to showRoleInformation
         
         // Fast polling system for real-time updates
         this.fastPolling = null;
@@ -1504,11 +1505,27 @@ class SupabaseRoomSystem {
     async showRoleInformation() {
         console.log('=== SHOWING ROLE INFORMATION ===');
         
+        // Prevent multiple simultaneous calls
+        if (this.showingRoleInformation) {
+            console.log('Already showing role information, skipping');
+            return;
+        }
+        
         // Check if role information has already been shown (in memory or database)
         if (this.roleInformationShown || await this.hasSeenRoleInformation()) {
             console.log('Role information already shown, skipping');
             return;
         }
+        
+        // Check if modal already exists to prevent duplicates
+        const existingModal = document.getElementById('roleModal');
+        if (existingModal) {
+            console.log('Role modal already exists, removing it first');
+            existingModal.remove();
+        }
+        
+        // Set flag to prevent multiple calls
+        this.showingRoleInformation = true;
         
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser) {
@@ -1597,13 +1614,25 @@ class SupabaseRoomSystem {
                 if (understandBtn) {
                     console.log('Button found, adding event listener...');
                     
-                    // Create a robust click handler function
+                    // Create a robust click handler function with click prevention
+                    let isProcessing = false;
                     const handleButtonClick = async (e) => {
                         console.log('=== BUTTON CLICKED ===');
                         console.log('Event:', e);
                         console.log('Event target:', e.target);
                         console.log('Event currentTarget:', e.currentTarget);
                         console.log('Event type:', e.type);
+                        
+                        // Prevent multiple clicks
+                        if (isProcessing) {
+                            console.log('Already processing click, ignoring');
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            return;
+                        }
+                        
+                        isProcessing = true;
                         
                         e.preventDefault();
                         e.stopPropagation();
@@ -1623,6 +1652,9 @@ class SupabaseRoomSystem {
                         console.log('Removing modal...');
                         modal.remove();
                         console.log('Modal removed successfully');
+                        
+                        // Reset flag to allow future calls
+                        this.showingRoleInformation = false;
                     };
                     
                     // Add multiple event listeners for better compatibility
@@ -1658,6 +1690,8 @@ class SupabaseRoomSystem {
             
         } catch (error) {
             console.error('Exception in showRoleInformation:', error);
+            // Reset flag in case of error
+            this.showingRoleInformation = false;
         }
     }
 
