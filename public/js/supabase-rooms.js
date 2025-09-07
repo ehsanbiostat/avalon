@@ -794,7 +794,7 @@ class SupabaseRoomSystem {
 
             // Use existing room data instead of making new queries (performance fix)
             console.log('Updating room display with existing data');
-            
+
             // Update UI with current room data
             this.setupRoomInterface();
             this.positionPlayersOnCircle();
@@ -897,10 +897,19 @@ class SupabaseRoomSystem {
         const room = this.currentRoom;
         if (!room || !room.players) return;
         
-        // Clear existing players
+        // Get game table
         const gameTable = document.getElementById('gameTable');
-        if (gameTable) {
+        if (!gameTable) return;
+        
+        // Only clear and recreate if player count changed (performance optimization)
+        const existingPlayers = gameTable.querySelectorAll('.player-slot');
+        if (existingPlayers.length !== room.players.length) {
+            console.log('Player count changed, recreating player slots');
             gameTable.innerHTML = '';
+        } else {
+            // Just update existing player positions if count is same
+            console.log('Player count same, updating positions only');
+            return this.updateExistingPlayerPositions();
         }
         
         // Circle dimensions (game table is 600x600px)
@@ -1071,7 +1080,7 @@ class SupabaseRoomSystem {
                 console.log('Button is visible:', rect.width > 0 && rect.height > 0);
                 
                 // Try moving the button to a more prominent location
-                const statusMessage = document.getElementById('statusMessage');
+        const statusMessage = document.getElementById('statusMessage');
                 if (statusMessage && statusMessage.parentElement) {
                     // Create a new container for the button
                     let buttonContainer = document.getElementById('startGameButtonContainer');
@@ -1367,6 +1376,35 @@ class SupabaseRoomSystem {
         
         // Update the display
         this.positionPlayersOnCircle();
+    }
+
+    // Update existing player positions without recreating elements (performance optimization)
+    updateExistingPlayerPositions() {
+        const room = this.currentRoom;
+        if (!room || !room.players) return;
+        
+        const gameTable = document.getElementById('gameTable');
+        if (!gameTable) return;
+        
+        // Circle dimensions (same as positionPlayersOnCircle)
+        const circleWidth = 600;
+        const circleHeight = 600;
+        const centerX = circleWidth / 2;
+        const centerY = circleHeight / 2;
+        const radius = (circleWidth / 2) - 60;
+        
+        // Update positions of existing players
+        room.players.forEach((player, index) => {
+            const angle = (index * 2 * Math.PI) / room.players.length - Math.PI / 2;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            
+            const playerSlot = gameTable.querySelector(`[data-player-id="${player.player_id}"]`);
+            if (playerSlot) {
+                playerSlot.style.left = `${x - 40}px`;
+                playerSlot.style.top = `${y - 55}px`;
+            }
+        });
     }
 
     assignRoles() {
