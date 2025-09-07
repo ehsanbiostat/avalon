@@ -2073,9 +2073,9 @@ class SupabaseRoomSystem {
                 schema: 'public',
                 table: 'game_rooms',
                 filter: `id=eq.${roomId}`
-            }, (payload) => {
+            }, async (payload) => {
                 console.log('Room status changed:', payload);
-                this.handleRoomStatusChange(payload);
+                await this.handleRoomStatusChange(payload);
             })
             .subscribe();
 
@@ -2091,7 +2091,7 @@ class SupabaseRoomSystem {
         this.refreshRoomData();
     }
 
-    handleRoomStatusChange(payload) {
+    async handleRoomStatusChange(payload) {
         console.log('=== HANDLING ROOM STATUS CHANGE ===');
         console.log('Payload:', payload);
         console.log('New status:', payload.new.status);
