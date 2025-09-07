@@ -5,6 +5,12 @@
     box-sizing: border-box;
 }
 
+html, body {
+    overflow-x: hidden; /* Prevent horizontal scrollbar */
+    scroll-behavior: smooth; /* Smooth scrolling */
+    contain: layout; /* Prevent layout shifts */
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -30,8 +36,8 @@ body::before {
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-20px) scale(1.05); }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
 }
 
 /* Navigation */

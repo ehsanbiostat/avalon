@@ -152,15 +152,17 @@
     box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 50px rgba(255, 215, 0, 0.1);
     flex-shrink: 0;
     overflow: visible; /* Ensure player names are not clipped */
+    contain: layout style; /* Prevent layout shifts */
+    will-change: auto; /* Optimize for animations */
 }
 
 .game-table::before {
     content: '';
     position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
+    top: -25%;
+    left: -25%;
+    width: 150%;
+    height: 150%;
     background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
     animation: rotate 20s linear infinite;
     pointer-events: none;
