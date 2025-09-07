@@ -785,18 +785,6 @@ class SupabaseRoomSystem {
                 return;
             }
 
-            // Get room players
-            const { data: players, error: playersError } = await this.supabase
-                .from(TABLES.ROOM_PLAYERS)
-                .select('*')
-                .eq('room_id', this.currentRoom.id)
-                .order('joined_at', { ascending: true });
-
-            if (playersError) {
-                console.error('Error fetching players:', playersError);
-                return;
-            }
-
             this.currentRoom = room;
             this.currentRoom.players = players;
             this.currentRoom.current_players = players.length; // Update player count
