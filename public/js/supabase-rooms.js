@@ -1449,11 +1449,13 @@ class SupabaseRoomSystem {
             // Update local room data with fresh database data
             this.currentRoom.players = roomPlayers;
             
-            // Create role information modal
+            // Create role information modal with high z-index and pointer events
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.id = 'roleModal';
             modal.style.display = 'block';
+            modal.style.zIndex = '10001'; // Higher than notifications
+            modal.style.pointerEvents = 'auto';
             
             const roleInfo = this.getRoleInformation(currentPlayer);
             
@@ -1482,19 +1484,29 @@ class SupabaseRoomSystem {
                 console.log('Button style:', understandBtn?.style);
                 console.log('Modal element:', modal);
                 console.log('Modal display style:', modal?.style?.display);
+                console.log('Modal z-index:', modal?.style?.zIndex);
+                console.log('Modal pointer-events:', modal?.style?.pointerEvents);
+                
+                // Check for overlapping elements
+                const rect = understandBtn.getBoundingClientRect();
+                const elementAtPoint = document.elementFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
+                console.log('Element at button center:', elementAtPoint);
+                console.log('Is element at point the button?', elementAtPoint === understandBtn);
                 
                 if (understandBtn) {
                     console.log('Button found, adding event listener...');
                     
-                    // Add multiple event listeners to debug
-                    understandBtn.addEventListener('click', async (e) => {
+                    // Create a robust click handler function
+                    const handleButtonClick = async (e) => {
                         console.log('=== BUTTON CLICKED ===');
                         console.log('Event:', e);
                         console.log('Event target:', e.target);
                         console.log('Event currentTarget:', e.currentTarget);
+                        console.log('Event type:', e.type);
                         
                         e.preventDefault();
                         e.stopPropagation();
+                        e.stopImmediatePropagation();
                         
                         console.log('Role information understood, setting flag');
                         this.roleInformationShown = true;
@@ -1510,7 +1522,12 @@ class SupabaseRoomSystem {
                         console.log('Removing modal...');
                         modal.remove();
                         console.log('Modal removed successfully');
-                    });
+                    };
+                    
+                    // Add multiple event listeners for better compatibility
+                    understandBtn.addEventListener('click', handleButtonClick, true); // Use capture phase
+                    understandBtn.addEventListener('mousedown', handleButtonClick, true);
+                    understandBtn.addEventListener('touchend', handleButtonClick, true); // For mobile
                     
                     // Also add mousedown and mouseup listeners for debugging
                     understandBtn.addEventListener('mousedown', (e) => {
@@ -1520,6 +1537,14 @@ class SupabaseRoomSystem {
                     understandBtn.addEventListener('mouseup', (e) => {
                         console.log('Button mouseup event fired');
                     });
+                    
+                    // Add event delegation to the modal as backup
+                    modal.addEventListener('click', (e) => {
+                        if (e.target.id === 'understandRoleBtn' || e.target.closest('#understandRoleBtn')) {
+                            console.log('Modal click delegation triggered');
+                            handleButtonClick(e);
+                        }
+                    }, true);
                     
                     console.log('Event listeners added successfully');
                 } else {
