@@ -2335,6 +2335,9 @@ class SupabaseRoomSystem {
                 // Update local cache
                 this.currentRoom.status_message = message;
                 this.currentRoom.status_message_type = type;
+                
+                // Immediately update the display
+                this.displayStatusMessage(message, type);
             }
         } catch (error) {
             console.error('Exception updating room status message:', error);
@@ -2450,14 +2453,23 @@ class SupabaseRoomSystem {
         console.log('Status message element:', statusMessage);
         console.log('Message:', message);
         console.log('Message type:', messageType);
+        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
         
         if (statusMessage) {
             statusMessage.textContent = message;
             statusMessage.className = `status-message ${messageType}`;
             
+            // Force visibility
+            statusMessage.style.display = 'block';
+            statusMessage.style.visibility = 'visible';
+            statusMessage.style.opacity = '1';
+            
             console.log('Status message updated:', {
                 textContent: statusMessage.textContent,
-                className: statusMessage.className
+                className: statusMessage.className,
+                display: statusMessage.style.display,
+                visibility: statusMessage.style.visibility,
+                opacity: statusMessage.style.opacity
             });
         } else {
             console.error('Status message element not found!');
@@ -2676,7 +2688,7 @@ class SupabaseRoomSystem {
             
             // Update status message
             // Update status message in database
-            await this.updateRoomStatusMessage('Game starting... Role distribution in progress.', 'playing');
+            await this.updateRoomStatusMessage('Roles are being distributed... Please check your role information.', 'playing');
             
             // Trigger immediate state update for all players
             await this.immediateRoomStateUpdate();
