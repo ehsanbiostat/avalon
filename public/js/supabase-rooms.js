@@ -1167,7 +1167,7 @@ class SupabaseRoomSystem {
         }
 
         // Clear any previous role seen flags for this room
-        this.clearRoleSeenFlags();
+        await this.clearRoleSeenFlags();
 
         try {
             // Fetch all players from database to ensure we have complete data
@@ -1403,8 +1403,8 @@ class SupabaseRoomSystem {
     async showRoleInformation() {
         console.log('=== SHOWING ROLE INFORMATION ===');
         
-        // Check if role information has already been shown (in memory or localStorage)
-        if (this.roleInformationShown || this.hasSeenRoleInformation()) {
+        // Check if role information has already been shown (in memory or database)
+        if (this.roleInformationShown || await this.hasSeenRoleInformation()) {
             console.log('Role information already shown, skipping');
             return;
         }
@@ -1476,11 +1476,11 @@ class SupabaseRoomSystem {
                 const understandBtn = document.getElementById('understandRoleBtn');
                 console.log('Looking for understand button:', understandBtn);
                 if (understandBtn) {
-                    understandBtn.addEventListener('click', (e) => {
+                    understandBtn.addEventListener('click', async (e) => {
                         e.preventDefault();
                         console.log('Role information understood, setting flag');
                         this.roleInformationShown = true;
-                        this.markRoleInformationAsSeen();
+                        await this.markRoleInformationAsSeen();
                         modal.remove();
                     });
                 } else {
@@ -1493,41 +1493,69 @@ class SupabaseRoomSystem {
         }
     }
 
-    // Helper methods for localStorage persistence
-    hasSeenRoleInformation() {
+    // Helper methods for database-based role seen tracking
+    async hasSeenRoleInformation() {
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser || !this.currentRoom) return false;
         
-        const key = `role_seen_${this.currentRoom.id}_${currentUser.id}`;
-        return localStorage.getItem(key) === 'true';
+        try {
+            const { data, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('has_role_seen')
+                .eq('room_id', this.currentRoom.id)
+                .eq('player_id', currentUser.id)
+                .single();
+            
+            if (error) {
+                console.error('Error checking role seen status:', error);
+                return false;
+            }
+            
+            return data?.has_role_seen || false;
+        } catch (error) {
+            console.error('Exception checking role seen status:', error);
+            return false;
+        }
     }
 
-    markRoleInformationAsSeen() {
+    async markRoleInformationAsSeen() {
         const currentUser = supabaseAuthSystem.getCurrentUser();
         if (!currentUser || !this.currentRoom) return;
         
-        const key = `role_seen_${this.currentRoom.id}_${currentUser.id}`;
-        localStorage.setItem(key, 'true');
-        console.log('Marked role information as seen for user:', currentUser.email);
+        try {
+            const { error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .update({ has_role_seen: true })
+                .eq('room_id', this.currentRoom.id)
+                .eq('player_id', currentUser.id);
+            
+            if (error) {
+                console.error('Error marking role as seen:', error);
+            } else {
+                console.log('Marked role information as seen for user:', currentUser.email);
+            }
+        } catch (error) {
+            console.error('Exception marking role as seen:', error);
+        }
     }
 
-    clearRoleSeenFlags() {
+    async clearRoleSeenFlags() {
         if (!this.currentRoom) return;
         
-        // Clear all role seen flags for this room
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(`role_seen_${this.currentRoom.id}_`)) {
-                keysToRemove.push(key);
+        try {
+            const { error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .update({ has_role_seen: false })
+                .eq('room_id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error clearing role seen flags:', error);
+            } else {
+                console.log(`Cleared role seen flags for all players in room ${this.currentRoom.id}`);
             }
+        } catch (error) {
+            console.error('Exception clearing role seen flags:', error);
         }
-        
-        keysToRemove.forEach(key => {
-            localStorage.removeItem(key);
-        });
-        
-        console.log(`Cleared ${keysToRemove.length} role seen flags for room ${this.currentRoom.id}`);
     }
 
     getRoleInformation(player) {
