@@ -1471,20 +1471,62 @@ class SupabaseRoomSystem {
             
             document.body.appendChild(modal);
             
-            // Add event listener for the understand button with better error handling
+            // Add event listener for the understand button with comprehensive debugging
             setTimeout(() => {
                 const understandBtn = document.getElementById('understandRoleBtn');
+                console.log('=== DEBUGGING UNDERSTAND BUTTON ===');
                 console.log('Looking for understand button:', understandBtn);
+                console.log('Button element:', understandBtn);
+                console.log('Button text content:', understandBtn?.textContent);
+                console.log('Button disabled:', understandBtn?.disabled);
+                console.log('Button style:', understandBtn?.style);
+                console.log('Modal element:', modal);
+                console.log('Modal display style:', modal?.style?.display);
+                
                 if (understandBtn) {
+                    console.log('Button found, adding event listener...');
+                    
+                    // Add multiple event listeners to debug
                     understandBtn.addEventListener('click', async (e) => {
+                        console.log('=== BUTTON CLICKED ===');
+                        console.log('Event:', e);
+                        console.log('Event target:', e.target);
+                        console.log('Event currentTarget:', e.currentTarget);
+                        
                         e.preventDefault();
+                        e.stopPropagation();
+                        
                         console.log('Role information understood, setting flag');
                         this.roleInformationShown = true;
-                        await this.markRoleInformationAsSeen();
+                        
+                        try {
+                            console.log('Calling markRoleInformationAsSeen...');
+                            await this.markRoleInformationAsSeen();
+                            console.log('markRoleInformationAsSeen completed successfully');
+                        } catch (error) {
+                            console.error('Error in markRoleInformationAsSeen:', error);
+                        }
+                        
+                        console.log('Removing modal...');
                         modal.remove();
+                        console.log('Modal removed successfully');
                     });
+                    
+                    // Also add mousedown and mouseup listeners for debugging
+                    understandBtn.addEventListener('mousedown', (e) => {
+                        console.log('Button mousedown event fired');
+                    });
+                    
+                    understandBtn.addEventListener('mouseup', (e) => {
+                        console.log('Button mouseup event fired');
+                    });
+                    
+                    console.log('Event listeners added successfully');
                 } else {
                     console.error('Understand button not found!');
+                    console.log('Available elements with ID containing "understand":', 
+                        document.querySelectorAll('[id*="understand"]'));
+                    console.log('All buttons in modal:', modal.querySelectorAll('button'));
                 }
             }, 100);
             
@@ -1519,20 +1561,35 @@ class SupabaseRoomSystem {
     }
 
     async markRoleInformationAsSeen() {
+        console.log('=== MARKING ROLE AS SEEN ===');
         const currentUser = supabaseAuthSystem.getCurrentUser();
-        if (!currentUser || !this.currentRoom) return;
+        console.log('Current user:', currentUser);
+        console.log('Current room:', this.currentRoom);
+        
+        if (!currentUser || !this.currentRoom) {
+            console.log('Missing user or room, returning early');
+            return;
+        }
         
         try {
-            const { error } = await this.supabase
+            console.log('Updating database with has_role_seen = true');
+            console.log('Room ID:', this.currentRoom.id);
+            console.log('Player ID:', currentUser.id);
+            
+            const { data, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .update({ has_role_seen: true })
                 .eq('room_id', this.currentRoom.id)
-                .eq('player_id', currentUser.id);
+                .eq('player_id', currentUser.id)
+                .select();
+            
+            console.log('Database response:', { data, error });
             
             if (error) {
                 console.error('Error marking role as seen:', error);
             } else {
-                console.log('Marked role information as seen for user:', currentUser.email);
+                console.log('Successfully marked role information as seen for user:', currentUser.email);
+                console.log('Updated data:', data);
             }
         } catch (error) {
             console.error('Exception marking role as seen:', error);
