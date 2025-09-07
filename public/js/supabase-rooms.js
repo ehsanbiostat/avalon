@@ -1837,63 +1837,75 @@ class SupabaseRoomSystem {
         try {
             console.log('Checking for existing room for user:', user.id);
             
-            // Find if user is in any room
-            const { data: playerRoom, error } = await this.supabase
+            // Find if user is in any room (without join)
+            const { data: playerRooms, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
-                .select(`
-                    *,
-                    game_rooms (*)
-                `)
-                .eq('player_id', user.id)
-                .single();
+                .select('*')
+                .eq('player_id', user.id);
 
             if (error) {
-                if (error.code === 'PGRST116') {
-                    console.log('User is not in any active room');
-                    return;
-                }
                 console.error('Error checking for existing room:', error);
                 return;
             }
 
-            if (playerRoom && playerRoom.game_rooms) {
-                console.log('Found existing room:', playerRoom.game_rooms);
+            if (!playerRooms || playerRooms.length === 0) {
+                console.log('User is not in any room');
+                return;
+            }
+
+            // Check each room the user is in
+            for (const playerRoom of playerRooms) {
+                console.log('Checking room:', playerRoom.room_id);
+                
+                // Get the room data
+                const { data: room, error: roomError } = await this.supabase
+                    .from(TABLES.GAME_ROOMS)
+                    .select('*')
+                    .eq('id', playerRoom.room_id)
+                    .single();
+                
+                if (roomError) {
+                    console.error('Error fetching room data:', roomError);
+                    continue;
+                }
                 
                 // Check if room is in waiting status
-                if (playerRoom.game_rooms.status !== GAME_STATUS.WAITING) {
-                    console.log('Room is not in waiting status, current status:', playerRoom.game_rooms.status);
-                    return;
-                }
-                
-                // Set current room data
-                this.currentRoom = playerRoom.game_rooms;
-                this.isHost = playerRoom.is_host;
-                
-                // Fetch room players separately
-                const { data: roomPlayers, error: playersError } = await this.supabase
-                    .from(TABLES.ROOM_PLAYERS)
-                    .select('*')
-                    .eq('room_id', this.currentRoom.id);
-                
-                if (playersError) {
-                    console.error('Error fetching room players:', playersError);
-                    this.currentRoom.players = [];
+                if (room.status === GAME_STATUS.WAITING) {
+                    console.log('Found active waiting room:', room);
+                    
+                    // Set current room data
+                    this.currentRoom = room;
+                    this.isHost = playerRoom.is_host;
+                    
+                    // Fetch room players separately
+                    const { data: roomPlayers, error: playersError } = await this.supabase
+                        .from(TABLES.ROOM_PLAYERS)
+                        .select('*')
+                        .eq('room_id', this.currentRoom.id);
+                    
+                    if (playersError) {
+                        console.error('Error fetching room players:', playersError);
+                        this.currentRoom.players = [];
+                    } else {
+                        this.currentRoom.players = roomPlayers || [];
+                    }
+                    
+                    this.currentRoom.current_players = this.currentRoom.players.length;
+                    
+                    // Show room interface
+                    this.showRoomInterface();
+                    
+                    // Subscribe to room updates
+                    this.subscribeToRoomUpdates(this.currentRoom.id);
+                    
+                    // Show notification
+                    this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
+                    
+                    console.log('Successfully restored room state');
+                    return; // Exit after finding the first waiting room
                 } else {
-                    this.currentRoom.players = roomPlayers || [];
+                    console.log('Room is not in waiting status, current status:', room.status);
                 }
-                
-                this.currentRoom.current_players = this.currentRoom.players.length;
-                
-                // Show room interface
-                this.showRoomInterface();
-                
-                // Subscribe to room updates
-                this.subscribeToRoomUpdates(this.currentRoom.id);
-                
-                // Show notification
-                this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
-                
-                console.log('Successfully restored room state');
             }
             
         } catch (error) {
