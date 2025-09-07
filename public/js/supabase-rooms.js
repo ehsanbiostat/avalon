@@ -1183,10 +1183,12 @@ class SupabaseRoomSystem {
 
     async saveRolesToDatabase() {
         console.log('=== SAVING ROLES TO DATABASE ===');
+        console.log('Players to save:', this.currentRoom.players.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
         
         try {
             // Update each player's role in the database
             for (const player of this.currentRoom.players) {
+                console.log(`Saving role for ${player.player_name}: ${player.role} (${player.alignment})`);
                 const { error } = await this.supabase
                     .from(TABLES.ROOM_PLAYERS)
                     .update({
@@ -1199,7 +1201,7 @@ class SupabaseRoomSystem {
                 if (error) {
                     console.error(`Error updating role for player ${player.player_name}:`, error);
                 } else {
-                    console.log(`Updated role for ${player.player_name}: ${player.role} (${player.alignment})`);
+                    console.log(`Successfully updated role for ${player.player_name}: ${player.role} (${player.alignment})`);
                 }
             }
 
@@ -1369,6 +1371,7 @@ class SupabaseRoomSystem {
             console.log('Current player found in database:', currentPlayer);
             console.log('Player role:', currentPlayer.role);
             console.log('Player alignment:', currentPlayer.alignment);
+            console.log('All players in database:', roomPlayers.map(p => ({ name: p.player_name, role: p.role, alignment: p.alignment })));
             
             // Update local room data with fresh database data
             this.currentRoom.players = roomPlayers;
