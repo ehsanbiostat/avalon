@@ -1600,7 +1600,26 @@ class SupabaseRoomSystem {
             console.log('Updating database with has_role_seen = true');
             console.log('Room ID:', this.currentRoom.id);
             console.log('Player ID:', currentUser.id);
+            console.log('Current user email:', currentUser.email);
+            console.log('Is current user the host?', this.currentRoom.host_id === currentUser.id);
             
+            // First, let's check if the user can read their own record
+            console.log('Checking if user can read their own record...');
+            const { data: readData, error: readError } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', this.currentRoom.id)
+                .eq('player_id', currentUser.id)
+                .single();
+            
+            console.log('Read test result:', { readData, readError });
+            
+            if (readError) {
+                console.error('User cannot read their own record - RLS issue:', readError);
+                return;
+            }
+            
+            // Now try the update
             const { data, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .update({ has_role_seen: true })
@@ -1612,6 +1631,7 @@ class SupabaseRoomSystem {
             
             if (error) {
                 console.error('Error marking role as seen:', error);
+                console.error('Error details:', error.message, error.details, error.hint);
             } else {
                 console.log('Successfully marked role information as seen for user:', currentUser.email);
                 console.log('Updated data:', data);
