@@ -596,13 +596,18 @@ class SupabaseRoomSystem {
                 table: TABLES.GAME_ROOMS,
                 filter: `id=eq.${roomId}`
             }, (payload) => {
-                console.log('Room updated:', payload);
+                console.log('=== ROOM STATUS CHANGE RECEIVED ===');
+                console.log('Payload:', payload);
+                console.log('New status:', payload.new.status);
+                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
+                console.log('Current user:', supabaseAuthSystem.getCurrentUser());
+                
                 this.currentRoom = payload.new;
                 this.updateRoomDisplay();
                 
                 // Check if game started
                 if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-                    console.log('Game started! Role distribution beginning...');
+                    console.log('=== GAME STARTED - ROLE DISTRIBUTION BEGINNING ===');
                     
                     // Remove any existing button overlay
                     const buttonContainer = document.getElementById('startGameButtonContainer');
@@ -619,10 +624,15 @@ class SupabaseRoomSystem {
                     }
                     
                     // Refresh room data to get updated player roles, then show role information
+                    console.log('Calling refreshRoomData...');
                     this.refreshRoomData().then(() => {
                         console.log('Room data refreshed, showing role information');
                         this.showRoleInformation();
+                    }).catch(error => {
+                        console.error('Error in refreshRoomData:', error);
                     });
+                } else {
+                    console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
                 }
             })
             .subscribe();
@@ -1560,17 +1570,25 @@ class SupabaseRoomSystem {
         
         console.log('Current user:', currentUser);
         console.log('Current room players:', this.currentRoom.players);
+        console.log('Current room players length:', this.currentRoom.players.length);
         
         // Find current player's role
         const currentPlayer = this.currentRoom.players.find(p => p.player_id === currentUser.id);
         if (!currentPlayer) {
             console.log('Current player not found in room players');
+            console.log('Looking for player_id:', currentUser.id);
+            console.log('Available player_ids:', this.currentRoom.players.map(p => p.player_id));
             return;
         }
         
         console.log('Current player found:', currentPlayer);
         console.log('Player role:', currentPlayer.role);
         console.log('Player alignment:', currentPlayer.alignment);
+        
+        if (!currentPlayer.role) {
+            console.log('Player role is null/undefined - role distribution may not be complete');
+            return;
+        }
         
         // Create role information modal
         const modal = document.createElement('div');
@@ -1671,6 +1689,8 @@ class SupabaseRoomSystem {
         
         try {
             console.log('=== REFRESHING ROOM DATA ===');
+            console.log('Current room ID:', this.currentRoom.id);
+            console.log('Current user:', supabaseAuthSystem.getCurrentUser());
             
             // Fetch updated room data with players
             const { data: room, error } = await this.supabase
@@ -1697,12 +1717,16 @@ class SupabaseRoomSystem {
             }
 
             console.log('Updated room data:', room);
+            console.log('Room players with roles:', room.room_players);
             
             // Check if there are actual changes before updating
             const newPlayers = room.room_players || [];
             const currentPlayers = this.currentRoom.players || [];
             const playersChanged = JSON.stringify(newPlayers) !== JSON.stringify(currentPlayers);
             const statusChanged = room.status !== this.currentRoom.status;
+            
+            console.log('Players changed:', playersChanged);
+            console.log('Status changed:', statusChanged);
             
             // Update current room
             this.currentRoom = room;
