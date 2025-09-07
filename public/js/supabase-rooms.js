@@ -33,6 +33,9 @@ class SupabaseRoomSystem {
         this.setupEventListeners();
                 console.log('setupEventListeners completed successfully');
                 
+                // Add window resize listener for responsive positioning
+                this.setupResponsiveListeners();
+                
                 // Check if user is already in a room
                 this.checkForExistingRoom();
             } catch (error) {
@@ -91,6 +94,28 @@ class SupabaseRoomSystem {
         } else {
             console.error('joinRoomBtn not found!');
         }
+    }
+
+    setupResponsiveListeners() {
+        console.log('=== SETTING UP RESPONSIVE LISTENERS ===');
+        
+        // Debounced resize handler to prevent excessive calls
+        let resizeTimeout;
+        const handleResize = () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                console.log('Window resized - recalculating player positions');
+                if (this.currentRoom && this.currentRoom.players) {
+                    this.positionPlayersOnCircle();
+                }
+            }, 250); // 250ms debounce
+        };
+        
+        // Add resize listener
+        window.addEventListener('resize', handleResize);
+        
+        // Store reference for cleanup
+        this.resizeHandler = handleResize;
     }
 
     stopLobbyPolling() {
@@ -947,13 +972,31 @@ class SupabaseRoomSystem {
         console.log('Recreating player slots for room state sync');
         gameTable.innerHTML = '';
         
-        // Responsive circle dimensions based on actual game table size
+        // Get responsive circle dimensions
         const gameTableRect = gameTable.getBoundingClientRect();
         const circleWidth = gameTableRect.width;
         const circleHeight = gameTableRect.height;
         const centerX = circleWidth / 2;
         const centerY = circleHeight / 2;
-        const radius = (circleWidth / 2) - (circleWidth * 0.1); // 10% margin for player slots
+        
+        // Calculate responsive radius based on viewport size
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const minDimension = Math.min(viewportWidth, viewportHeight);
+        
+        // Use a more conservative radius calculation that accounts for responsive design
+        const baseRadius = Math.min(circleWidth, circleHeight) / 2;
+        const radius = baseRadius * 0.75; // 75% of radius to ensure players stay within circle
+        
+        console.log('Responsive positioning:', {
+            viewportWidth,
+            viewportHeight,
+            minDimension,
+            circleWidth,
+            circleHeight,
+            baseRadius,
+            radius
+        });
         
         // Position actual players on the circle
         room.players.forEach((player, index) => {
@@ -966,9 +1009,22 @@ class SupabaseRoomSystem {
             const playerSlot = document.createElement('div');
             playerSlot.className = 'player-slot';
             
-            // Calculate responsive slot dimensions
-            const slotWidth = Math.min(circleWidth * 0.13, 80); // 13% of circle width, max 80px
-            const slotHeight = Math.min(circleHeight * 0.18, 110); // 18% of circle height, max 110px
+            // Calculate responsive slot dimensions based on viewport
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const minDimension = Math.min(viewportWidth, viewportHeight);
+            
+            // More responsive slot sizing
+            const slotWidth = Math.min(
+                circleWidth * 0.12,  // 12% of circle width
+                minDimension * 0.08, // 8% of smallest viewport dimension
+                80                   // Maximum 80px
+            );
+            const slotHeight = Math.min(
+                circleHeight * 0.16, // 16% of circle height
+                minDimension * 0.11, // 11% of smallest viewport dimension
+                110                  // Maximum 110px
+            );
             
             playerSlot.style.left = `${x - slotWidth / 2}px`; // Center the slot
             playerSlot.style.top = `${y - slotHeight / 2}px`; // Center the slot
@@ -992,10 +1048,26 @@ class SupabaseRoomSystem {
             const x = centerX + radius * Math.cos(angle);
             const y = centerY + radius * Math.sin(angle);
             
+            // Calculate responsive slot dimensions for empty slots too
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const minDimension = Math.min(viewportWidth, viewportHeight);
+            
+            const slotWidth = Math.min(
+                circleWidth * 0.12,
+                minDimension * 0.08,
+                80
+            );
+            const slotHeight = Math.min(
+                circleHeight * 0.16,
+                minDimension * 0.11,
+                110
+            );
+            
             const emptySlot = document.createElement('div');
             emptySlot.className = 'player-slot empty-slot';
-            emptySlot.style.left = `${x - 40}px`; // Center the slot
-            emptySlot.style.top = `${y - 55}px`; // Center the slot
+            emptySlot.style.left = `${x - slotWidth / 2}px`; // Center the slot
+            emptySlot.style.top = `${y - slotHeight / 2}px`; // Center the slot
             
             emptySlot.innerHTML = `
                 <div class="player-avatar">?</div>
@@ -1499,9 +1571,22 @@ class SupabaseRoomSystem {
             
             const playerSlot = gameTable.querySelector(`[data-player-id="${player.player_id}"]`);
             if (playerSlot) {
-                // Calculate responsive slot dimensions
-                const slotWidth = Math.min(circleWidth * 0.13, 80);
-                const slotHeight = Math.min(circleHeight * 0.18, 110);
+            // Calculate responsive slot dimensions based on viewport
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const minDimension = Math.min(viewportWidth, viewportHeight);
+            
+            // More responsive slot sizing
+            const slotWidth = Math.min(
+                circleWidth * 0.12,  // 12% of circle width
+                minDimension * 0.08, // 8% of smallest viewport dimension
+                80                   // Maximum 80px
+            );
+            const slotHeight = Math.min(
+                circleHeight * 0.16, // 16% of circle height
+                minDimension * 0.11, // 11% of smallest viewport dimension
+                110                  // Maximum 110px
+            );
                 
                 playerSlot.style.left = `${x - slotWidth / 2}px`;
                 playerSlot.style.top = `${y - slotHeight / 2}px`;
@@ -2269,10 +2354,29 @@ class SupabaseRoomSystem {
     // Display status message in UI
     displayStatusMessage(message, messageType) {
         const statusMessage = document.getElementById('statusMessage');
+        console.log('=== DISPLAYING STATUS MESSAGE ===');
+        console.log('Status message element:', statusMessage);
+        console.log('Message:', message);
+        console.log('Message type:', messageType);
+        
         if (statusMessage) {
             statusMessage.textContent = message;
             statusMessage.className = `status-message ${messageType}`;
-            console.log('Displayed status message:', message, 'type:', messageType);
+            
+            // Ensure the message is visible
+            statusMessage.style.display = 'block';
+            statusMessage.style.visibility = 'visible';
+            statusMessage.style.opacity = '1';
+            
+            console.log('Status message updated:', {
+                textContent: statusMessage.textContent,
+                className: statusMessage.className,
+                display: statusMessage.style.display,
+                visibility: statusMessage.style.visibility,
+                opacity: statusMessage.style.opacity
+            });
+        } else {
+            console.error('Status message element not found!');
         }
     }
 
