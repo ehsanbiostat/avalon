@@ -626,8 +626,7 @@ class SupabaseRoomSystem {
                     // Refresh room data to get updated player roles, then show role information
                     console.log('Calling refreshRoomData...');
                     this.refreshRoomData().then(() => {
-                        console.log('Room data refreshed, showing role information');
-                        this.showRoleInformation();
+                        console.log('Room data refreshed (role information should be shown by refreshRoomData)');
                     }).catch(error => {
                         console.error('Error in refreshRoomData:', error);
                         // Fallback: try to show role information anyway
@@ -639,8 +638,7 @@ class SupabaseRoomSystem {
                     setTimeout(() => {
                         console.log('Fallback: Attempting role distribution after delay...');
                         this.refreshRoomData().then(() => {
-                            console.log('Fallback: Room data refreshed, showing role information');
-                            this.showRoleInformation();
+                            console.log('Fallback: Room data refreshed (role information should be shown by refreshRoomData)');
                         }).catch(error => {
                             console.error('Fallback: Error in refreshRoomData:', error);
                         });
@@ -1741,17 +1739,31 @@ class SupabaseRoomSystem {
                 this.updateRoomDisplay();
                 
                 // Check if we need to show role information
+                console.log('Checking room status for role distribution...');
+                console.log('room.status:', room.status);
+                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
+                console.log('Status match:', room.status === GAME_STATUS.ROLE_DISTRIBUTION);
+                
                 if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
                     console.log('Room status is ROLE_DISTRIBUTION, showing role information');
                     this.showRoleInformation();
+                } else {
+                    console.log('Room status is not ROLE_DISTRIBUTION, not showing role information');
                 }
             } else {
                 console.log('No changes detected, skipping display update');
                 
                 // Even if no changes, check if we need to show role information
+                console.log('Checking room status for role distribution (no changes)...');
+                console.log('room.status:', room.status);
+                console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
+                console.log('Status match:', room.status === GAME_STATUS.ROLE_DISTRIBUTION);
+                
                 if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
                     console.log('No changes but room status is ROLE_DISTRIBUTION, showing role information');
                     this.showRoleInformation();
+                } else {
+                    console.log('No changes and room status is not ROLE_DISTRIBUTION, not showing role information');
                 }
             }
             
