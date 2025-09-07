@@ -659,6 +659,9 @@ class SupabaseRoomSystem {
     }
 
     async addPlayerToRoom(roomId, user) {
+        // Ensure user profile exists before adding to room
+        await this.ensureUserProfile(user);
+        
         const { error } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
             .insert({
@@ -1541,58 +1544,6 @@ class SupabaseRoomSystem {
         }, 3000);
     }
 
-    async addPlayerToRoom(roomId, user) {
-        console.log('=== ADDING PLAYER TO ROOM ===');
-        console.log('Room ID:', roomId);
-        console.log('User:', user);
-        
-        try {
-            // First check if player is already in the room
-            const { data: existingPlayer, error: checkError } = await this.supabase
-                .from(TABLES.ROOM_PLAYERS)
-                .select('*')
-                .eq('room_id', roomId)
-                .eq('player_id', user.id)
-                .maybeSingle();
-
-            if (checkError) {
-                console.error('Error checking existing player:', checkError);
-                // Continue anyway, might be a new player
-            } else if (existingPlayer) {
-                console.log('Player already in room:', existingPlayer);
-                return true; // Player already exists, that's fine
-            }
-
-            // Ensure user profile exists before adding to room
-            await this.ensureUserProfile(user);
-
-            // If not found, add the player
-            const { data, error } = await this.supabase
-                .from(TABLES.ROOM_PLAYERS)
-                .insert({
-                    room_id: roomId,
-                    player_id: user.id,
-                    player_name: user.profile?.display_name || user.email,
-                    player_avatar: user.profile?.avatar || '👤',
-                    is_host: true // First player is always host
-                })
-                .select()
-                .single();
-
-            if (error) {
-                console.error('Error adding player to room:', error);
-                this.showNotification('Failed to add player to room: ' + error.message, 'error');
-                return false;
-            }
-
-            console.log('Player added to room successfully:', data);
-            return true;
-        } catch (error) {
-            console.error('Exception adding player to room:', error);
-            this.showNotification('Failed to add player to room.', 'error');
-            return false;
-        }
-    }
 
     async ensureUserProfile(user) {
         console.log('=== ENSURING USER PROFILE EXISTS ===');
