@@ -554,6 +554,7 @@ class SupabaseRoomSystem {
                     code: roomConfig.code,
                     host_id: user.id,
                     host_name: user.profile?.display_name || user.email,
+                    original_host_id: user.id, // Track the original host (room creator)
                     max_players: roomConfig.maxPlayers,
                     roles: roomConfig.roles,
                     lady_of_lake: roomConfig.ladyOfLake,
@@ -696,17 +697,30 @@ class SupabaseRoomSystem {
         // Ensure user profile exists before adding to room
         await this.ensureUserProfile(user);
         
-        // Check if room has no host (host_id is null)
+        // Check if room has no host (host_id is null) and get original host info
         const { data: room } = await this.supabase
             .from(TABLES.GAME_ROOMS)
-            .select('host_id, current_players')
+            .select('host_id, current_players, original_host_id')
             .eq('id', roomId)
             .single();
             
-        // If room has no host and this is the first player rejoining, make them host
-        if (room && !room.host_id && room.current_players === 0) {
+        // Determine if this player should become host
+        if (room && !room.host_id) {
+            // Room has no current host
+            if (room.current_players === 0) {
+                // No players left, first rejoining player becomes host
+                isHost = true;
+                console.log('Room has no host and no players, making first rejoining player the new host');
+            } else if (room.original_host_id === user.id) {
+                // Original host is rejoining, they get priority to become host again
+                isHost = true;
+                console.log('Original host is rejoining, giving them host status back');
+            }
+        } else if (room && room.original_host_id === user.id && room.host_id !== user.id) {
+            // Original host is rejoining but room already has a host
+            // Give original host priority and transfer host status
             isHost = true;
-            console.log('Room has no host, making first rejoining player the new host');
+            console.log('Original host rejoining, transferring host status back to them');
         }
         
         const { error } = await this.supabase
@@ -725,16 +739,38 @@ class SupabaseRoomSystem {
         }
         
         // If this player became the new host, update the room's host_id
-        if (isHost && room && !room.host_id) {
-            await this.supabase
-                .from(TABLES.GAME_ROOMS)
-                .update({
-                    host_id: user.id,
-                    host_name: user.profile?.display_name || user.email
-                })
-                .eq('id', roomId);
+        if (isHost) {
+            if (room && !room.host_id) {
+                // Room had no host, set this player as host
+                await this.supabase
+                    .from(TABLES.GAME_ROOMS)
+                    .update({
+                        host_id: user.id,
+                        host_name: user.profile?.display_name || user.email
+                    })
+                    .eq('id', roomId);
+                    
+                console.log('Updated room host_id to new rejoining player');
+            } else if (room && room.host_id !== user.id) {
+                // Room already has a host, but original host is rejoining
+                // Transfer host status to original host
+                await this.supabase
+                    .from(TABLES.GAME_ROOMS)
+                    .update({
+                        host_id: user.id,
+                        host_name: user.profile?.display_name || user.email
+                    })
+                    .eq('id', roomId);
                 
-            console.log('Updated room host_id to new rejoining player');
+                // Remove host status from previous host
+                await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .update({ is_host: false })
+                    .eq('room_id', roomId)
+                    .eq('is_host', true);
+                    
+                console.log('Transferred host status back to original host');
+            }
         }
     }
 
