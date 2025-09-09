@@ -2488,8 +2488,11 @@ class SupabaseRoomSystem {
         console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
         
         if (statusMessage) {
-            statusMessage.textContent = message;
-            statusMessage.className = `status-message ${messageType}`;
+            // Make messages shorter for center display
+            const shortMessage = this.getShortStatusMessage(message, messageType);
+            
+            statusMessage.textContent = shortMessage;
+            statusMessage.className = `status-message-center ${messageType}`;
             
             // Force visibility
             statusMessage.style.display = 'block';
@@ -2506,6 +2509,24 @@ class SupabaseRoomSystem {
         } else {
             console.error('Status message element not found!');
         }
+    }
+
+    // Convert long status messages to shorter versions for center display
+    getShortStatusMessage(message, messageType) {
+        const shortMessages = {
+            'Waiting for players...': 'Waiting...',
+            'Room is full! Ready to start.': 'Ready to Start!',
+            'Roles are being distributed... Please check your role information.': 'Check Your Role!',
+            'Game started! Mission 1 begins.': 'Mission 1',
+            'Waiting for team proposal...': 'Propose Team',
+            'Voting on team...': 'Vote Now',
+            'Mission in progress...': 'Mission Active',
+            'Mission completed!': 'Mission Done',
+            'Game over!': 'Game Over'
+        };
+        
+        // Return short version if available, otherwise truncate the original
+        return shortMessages[message] || message.substring(0, 20) + (message.length > 20 ? '...' : '');
     }
 
     getRoleInformation(player) {

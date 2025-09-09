@@ -234,7 +234,10 @@
                     <div class="mission-token" id="mission4">4</div>
                     <div class="mission-token" id="mission5">5</div>
                 </div>
-                <div class="game-table" id="gameTable"></div>
+                <div class="game-table" id="gameTable">
+                    <!-- Room Status Message - Centered in the circle -->
+                    <div id="statusMessage" class="status-message-center waiting">Waiting for players...</div>
+                </div>
                 <div class="game-controls">
                     <button class="btn btn-primary" id="proposeTeamBtn" style="display: none;">Propose Team</button>
                     <button class="btn btn-primary" id="voteTeamBtn" style="display: none;">Vote</button>
@@ -242,9 +245,6 @@
                     <button class="btn btn-secondary" id="revealRoleBtn" style="display: none;">Reveal Role</button>
                     <button class="btn btn-primary" id="startGameBtn" style="display: none;">Start Game</button>
                 </div>
-                
-                <!-- Room Status Message -->
-                <div id="statusMessage" class="status-message waiting">Waiting for players...</div>
                 
                 <!-- Game Status Panel -->
                 <div id="gameStatusPanel" class="game-status-panel">
