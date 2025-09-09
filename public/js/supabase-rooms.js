@@ -2819,22 +2819,35 @@ class SupabaseRoomSystem {
     // Show/hide rejection tracker
     showRejectionTracker() {
         const rejectionTracker = document.getElementById('rejectionTracker');
+        console.log('🟢 Showing rejection tracker:', !!rejectionTracker);
         if (rejectionTracker) {
             rejectionTracker.style.display = 'block';
+            console.log('Rejection tracker display set to block');
         }
     }
 
     hideRejectionTracker() {
         const rejectionTracker = document.getElementById('rejectionTracker');
+        console.log('🔴 Hiding rejection tracker:', !!rejectionTracker);
         if (rejectionTracker) {
             rejectionTracker.style.display = 'none';
+            console.log('Rejection tracker display set to none');
         }
     }
 
     // Update rejection counter
     updateRejectionCounter(count) {
+        console.log('🔄 Updating rejection counter:', count);
+        
         const rejectionCount = document.getElementById('rejectionCount');
         const rejectionWarning = document.getElementById('rejectionWarning');
+        const rejectionTracker = document.getElementById('rejectionTracker');
+        
+        console.log('Rejection elements found:', {
+            rejectionCount: !!rejectionCount,
+            rejectionWarning: !!rejectionWarning,
+            rejectionTracker: !!rejectionTracker
+        });
         
         if (rejectionCount) {
             rejectionCount.textContent = count;
@@ -2848,8 +2861,8 @@ class SupabaseRoomSystem {
             }
         }
         
-        // Show tracker when there are rejections
-        if (count > 0) {
+        // Show tracker when there are rejections OR during voting phase
+        if (count > 0 || this.currentRoom?.is_voting_phase) {
             this.showRejectionTracker();
         } else {
             this.hideRejectionTracker();
@@ -2998,6 +3011,21 @@ class SupabaseRoomSystem {
         } catch (error) {
             console.error('Error passing leadership:', error);
         }
+    }
+
+    // Test function to show rejection tracker (for debugging)
+    testRejectionTracker() {
+        console.log('🧪 Testing rejection tracker visibility...');
+        this.updateRejectionCounter(1);
+        
+        // Also test with different counts
+        setTimeout(() => {
+            this.updateRejectionCounter(3);
+        }, 2000);
+        
+        setTimeout(() => {
+            this.updateRejectionCounter(5);
+        }, 4000);
     }
 
     // Force refresh status message from database
