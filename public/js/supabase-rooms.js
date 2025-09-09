@@ -2480,12 +2480,29 @@ class SupabaseRoomSystem {
 
     // Display status message in UI
     displayStatusMessage(message, messageType) {
-        const statusMessage = document.getElementById('statusMessage');
+        let statusMessage = document.getElementById('statusMessage');
         console.log('=== DISPLAYING STATUS MESSAGE ===');
         console.log('Status message element:', statusMessage);
         console.log('Message:', message);
         console.log('Message type:', messageType);
         console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+        
+        // If element doesn't exist, try to create it or find the game table
+        if (!statusMessage) {
+            console.log('Status message element not found, attempting to create it...');
+            const gameTable = document.getElementById('gameTable');
+            if (gameTable) {
+                // Create the status message element inside the game table
+                statusMessage = document.createElement('div');
+                statusMessage.id = 'statusMessage';
+                statusMessage.className = `status-message-center ${messageType}`;
+                gameTable.appendChild(statusMessage);
+                console.log('Created status message element inside game table');
+            } else {
+                console.error('Game table not found, cannot create status message element!');
+                return;
+            }
+        }
         
         if (statusMessage) {
             // Make messages shorter for center display
@@ -2507,7 +2524,7 @@ class SupabaseRoomSystem {
                 opacity: statusMessage.style.opacity
             });
         } else {
-            console.error('Status message element not found!');
+            console.error('Status message element not found and could not be created!');
         }
     }
 
