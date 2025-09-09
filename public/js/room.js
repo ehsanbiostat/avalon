@@ -312,10 +312,10 @@ class RoomSystem {
             joinRoomSubmitBtn.addEventListener('click', () => this.joinRoomByCode());
         }
 
-        // Start game button
-        const startGameBtn = document.getElementById('startGameBtn');
-        if (startGameBtn) {
-            startGameBtn.addEventListener('click', () => this.startGameFromLobby());
+        // Start game button (lobby)
+        const lobbyStartGameBtn = document.getElementById('lobbyStartGameBtn');
+        if (lobbyStartGameBtn) {
+            lobbyStartGameBtn.addEventListener('click', () => this.startGameFromLobby());
         }
 
 
@@ -737,7 +737,7 @@ class RoomSystem {
         this.updateLobbyDisplay();
         
         // Show start button for host only when room is full
-        const startGameBtn = document.getElementById('startGameBtn');
+        const lobbyStartGameBtn = document.getElementById('lobbyStartGameBtn');
         const debugStartBtn = document.getElementById('debugStartBtn');
         const waitingMessage = document.getElementById('waitingMessage');
         
@@ -745,14 +745,14 @@ class RoomSystem {
         const isRoomFull = room && room.players.length >= room.maxPlayers;
         if (this.isHost) {
             // Show start button only if room is full
-            if (startGameBtn) {
-                startGameBtn.style.display = isRoomFull ? 'inline-block' : 'none';
+            if (lobbyStartGameBtn) {
+                lobbyStartGameBtn.style.display = isRoomFull ? 'inline-block' : 'none';
             }
             if (waitingMessage) {
                 waitingMessage.style.display = isRoomFull ? 'none' : 'block';
             }
         } else {
-            if (startGameBtn) startGameBtn.style.display = 'none';
+            if (lobbyStartGameBtn) lobbyStartGameBtn.style.display = 'none';
             if (waitingMessage) waitingMessage.style.display = 'block';
         }
         
@@ -881,13 +881,13 @@ class RoomSystem {
         const isRoomFull = room.players.length >= room.maxPlayers;
         
         // Update start game button
-        const startGameBtn = document.getElementById('startGameBtn');
-        if (startGameBtn) {
+        const lobbyStartGameBtn = document.getElementById('lobbyStartGameBtn');
+        if (lobbyStartGameBtn) {
             if (this.isHost && isRoomFull) {
-                startGameBtn.style.display = 'inline-block';
-                startGameBtn.textContent = 'Start Game';
+                lobbyStartGameBtn.style.display = 'inline-block';
+                lobbyStartGameBtn.textContent = 'Start Game';
             } else {
-                startGameBtn.style.display = 'none';
+                lobbyStartGameBtn.style.display = 'none';
             }
         }
         
@@ -1012,7 +1012,7 @@ class RoomSystem {
     }
 
     updateLobbyButtons(room) {
-        const startGameBtn = document.getElementById('startGameBtn');
+        const lobbyStartGameBtn = document.getElementById('lobbyStartGameBtn');
         const debugStartBtn = document.getElementById('debugStartBtn');
         const waitingMessage = document.getElementById('waitingMessage');
         
@@ -1020,14 +1020,14 @@ class RoomSystem {
         
         if (this.isHost) {
             // Show start button only if room is full
-            if (startGameBtn) {
-                startGameBtn.style.display = isRoomFull ? 'inline-block' : 'none';
+            if (lobbyStartGameBtn) {
+                lobbyStartGameBtn.style.display = isRoomFull ? 'inline-block' : 'none';
             }
             if (waitingMessage) {
                 waitingMessage.style.display = isRoomFull ? 'none' : 'block';
             }
         } else {
-            if (startGameBtn) startGameBtn.style.display = 'none';
+            if (lobbyStartGameBtn) lobbyStartGameBtn.style.display = 'none';
             if (waitingMessage) waitingMessage.style.display = 'block';
         }
     }
