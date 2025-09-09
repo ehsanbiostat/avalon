@@ -838,9 +838,15 @@ class SupabaseRoomSystem {
                 this.currentRoom.status_message_type = preservedStatusMessageType;
             }
 
-            // Update UI
+            // Update UI in correct sequence
             this.setupRoomInterface();
             this.positionPlayersOnCircle();
+            
+            // Update status message after player positioning to avoid race conditions
+            if (this.currentRoom.status_message) {
+                this.displayStatusMessage(this.currentRoom.status_message, this.currentRoom.status_message_type || 'waiting');
+            }
+            
             await this.updateRoomStatus();
         } catch (error) {
             console.error('Error updating room display:', error);
@@ -980,9 +986,21 @@ class SupabaseRoomSystem {
         console.log('Room status:', room.status);
         console.log('Players data:', room.players.map(p => ({ name: p.player_name, id: p.player_id })));
         
-        // Always clear and recreate player slots to ensure synchronization
+        // Preserve status message element and only clear player slots
         console.log('Recreating player slots for room state sync');
+        
+        // Find and preserve the status message element
+        const statusMessage = document.getElementById('statusMessage');
+        const statusMessageHTML = statusMessage ? statusMessage.outerHTML : '';
+        
+        // Clear the game table
         gameTable.innerHTML = '';
+        
+        // Restore the status message element if it existed
+        if (statusMessageHTML) {
+            gameTable.insertAdjacentHTML('afterbegin', statusMessageHTML);
+            console.log('Preserved status message element during player positioning');
+        }
         
         // Get responsive circle dimensions
         const gameTableRect = gameTable.getBoundingClientRect();
@@ -1544,6 +1562,9 @@ class SupabaseRoomSystem {
             
             // Update room state to playing
             await this.updateRoomState('playing', { currentMission: 1 });
+            
+            // Wait a moment for the database update to propagate
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // Force refresh status message to ensure it's displayed
             await this.forceRefreshStatusMessage();
@@ -2384,6 +2405,10 @@ class SupabaseRoomSystem {
                 console.log('New type:', data.status_message_type);
                 console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
                 
+                // Update local cache first
+                this.currentRoom.status_message = data.status_message;
+                this.currentRoom.status_message_type = data.status_message_type;
+                
                 // Immediately update the status message display
                 console.log('Immediately updating status message display');
                 this.displayStatusMessage(data.status_message, data.status_message_type || 'waiting');
@@ -2681,7 +2706,8 @@ class SupabaseRoomSystem {
                 statusMessage = document.createElement('div');
                 statusMessage.id = 'statusMessage';
                 statusMessage.className = `status-message-center ${messageType}`;
-                gameTable.appendChild(statusMessage);
+                statusMessage.textContent = this.getShortStatusMessage(message, messageType);
+                gameTable.insertAdjacentElement('afterbegin', statusMessage);
                 console.log('Created status message element inside game table');
             } else {
                 console.error('Game table not found, cannot create status message element!');
