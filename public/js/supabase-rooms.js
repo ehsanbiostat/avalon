@@ -1129,7 +1129,10 @@ class SupabaseRoomSystem {
         
         // Update start game button
         const startGameBtn = document.getElementById('startGameBtn');
+        console.log('=== START GAME BUTTON DEBUG ===');
         console.log('startGameBtn element:', startGameBtn);
+        console.log('isRoomFull:', isRoomFull);
+        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
         
         if (startGameBtn) {
             // Check if current user is host from database with fallback
@@ -1152,6 +1155,7 @@ class SupabaseRoomSystem {
             }
             
             console.log('Final isHost value:', isHost, 'isRoomFull:', isRoomFull);
+            console.log('Button should be visible:', isHost && isRoomFull);
             
             if (isHost && isRoomFull) {
                 console.log('Showing Start Game button');

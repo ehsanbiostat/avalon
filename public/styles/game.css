@@ -55,7 +55,7 @@
 /* Centered status message in the middle of the game circle */
 .status-message-center {
     position: absolute;
-    top: 50%;
+    top: 45%;
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
@@ -66,7 +66,7 @@
     display: block;
     visibility: visible;
     opacity: 1;
-    z-index: 20;
+    z-index: 10;
     max-width: 80%;
     box-sizing: border-box;
     backdrop-filter: blur(5px);
@@ -497,6 +497,12 @@
 
 .game-controls .btn {
     min-width: 150px;
+}
+
+/* Ensure Start Game button is always visible */
+#startGameBtn {
+    z-index: 1000 !important;
+    position: relative !important;
 }
 
 /* Role Reveal Modal */
