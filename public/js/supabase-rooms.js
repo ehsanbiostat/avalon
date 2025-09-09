@@ -2531,16 +2531,31 @@ class SupabaseRoomSystem {
 
     // Fast polling system for real-time updates (restored working version)
     startFastPolling() {
-        if (this.pollingActive || !this.currentRoom) return;
+        if (this.pollingActive || !this.currentRoom) {
+            console.log('Polling already active or no current room:', {
+                pollingActive: this.pollingActive,
+                hasCurrentRoom: !!this.currentRoom,
+                roomId: this.currentRoom?.id
+            });
+            return;
+        }
         
-        console.log('Starting fast polling for room:', this.currentRoom.id);
+        console.log('=== STARTING FAST POLLING ===');
+        console.log('Room ID:', this.currentRoom.id);
+        console.log('User:', supabaseAuthSystem.getCurrentUser()?.email);
+        console.log('Is Host:', this.isHost);
+        
         this.pollingActive = true;
         this.pollingInterval = 1000; // 1 second polling
         
         const poll = async () => {
-            if (!this.pollingActive || !this.currentRoom) return;
+            if (!this.pollingActive || !this.currentRoom) {
+                console.log('Polling stopped or no current room');
+                return;
+            }
             
             try {
+                console.log('=== POLLING CYCLE ===', new Date().toISOString());
                 await this.fastRoomStateCheck();
             } catch (error) {
                 console.error('Error in fast polling:', error);
@@ -2635,6 +2650,8 @@ class SupabaseRoomSystem {
             console.log('Fresh status:', freshRoomData.status);
             console.log('Previous message:', this.currentRoom.status_message);
             console.log('Fresh message:', freshRoomData.status_message);
+            console.log('Status changed:', this.currentRoom.status !== freshRoomData.status);
+            console.log('Message changed:', this.currentRoom.status_message !== freshRoomData.status_message);
             
             // Update current room with fresh data
             this.currentRoom = freshRoomData;
@@ -2656,8 +2673,10 @@ class SupabaseRoomSystem {
                 this.updateTeamBuildingUI();
             }
             
-            // Update room display with fresh data
-            this.updateRoomDisplay();
+            // Update room display UI directly (no additional DB call needed)
+            this.setupRoomInterface();
+            this.positionPlayersOnCircle();
+            this.updateRoomStatus();
             
             // Always update status message with fresh data
             if (this.currentRoom.status_message) {
@@ -3994,6 +4013,9 @@ class SupabaseRoomSystem {
                     
                     // Subscribe to room updates
                     this.subscribeToRoomUpdates(this.currentRoom.id);
+                    
+                    // Start fast polling for real-time updates
+                    this.startFastPolling();
                     
                     // Show notification
                     this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
