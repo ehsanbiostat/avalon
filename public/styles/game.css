@@ -732,65 +732,6 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-/* Game Status Panel */
-.game-status-panel {
-    position: fixed;
-    top: 100px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.9);
-    padding: 1.5rem;
-    border-radius: 15px;
-    border: 2px solid rgba(255, 215, 0, 0.3);
-    min-width: 300px;
-    max-width: 400px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
-}
-
-.game-status-panel h3 {
-    color: #ffd700;
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
-    text-align: center;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.3);
-    padding-bottom: 0.5rem;
-}
-
-.game-status-panel p {
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0.5rem 0;
-    font-size: 1rem;
-    line-height: 1.4;
-}
-
-.game-status-panel .current-leader {
-    color: #ffd700;
-    font-weight: bold;
-}
-
-.game-status-panel .team-info {
-    background: rgba(255, 215, 0, 0.1);
-    padding: 0.5rem;
-    border-radius: 5px;
-    margin: 0.5rem 0;
-    border-left: 3px solid #ffd700;
-}
-
-.game-status-panel .mission-info {
-    background: rgba(0, 184, 148, 0.1);
-    padding: 0.5rem;
-    border-radius: 5px;
-    margin: 0.5rem 0;
-    border-left: 3px solid #00b894;
-}
-
-.game-status-panel .vote-info {
-    background: rgba(255, 107, 107, 0.1);
-    padding: 0.5rem;
-    border-radius: 5px;
-    margin: 0.5rem 0;
-    border-left: 3px solid #ff6b6b;
-}
 
 /* Game Status (old style - keeping for compatibility) */
 .game-status {

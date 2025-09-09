@@ -950,24 +950,7 @@ class SupabaseRoomSystem {
             playerCountElement.textContent = `${room.current_players}/${room.max_players} players`;
         }
         
-        // Update game status panel
-        const gameStatusPanel = document.getElementById('gameStatusPanel');
-        if (gameStatusPanel) {
-            gameStatusPanel.innerHTML = `
-                <div class="status-item">
-                    <span class="status-label">Room Status:</span>
-                    <span class="status-value">Waiting for players</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Players:</span>
-                    <span class="status-value">${room.current_players}/${room.max_players}</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Room Code:</span>
-                    <span class="status-value">${room.code}</span>
-                </div>
-            `;
-        }
+        // Game status panel removed - no longer needed
     }
 
     positionPlayersOnCircle() {
