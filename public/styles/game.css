@@ -394,7 +394,7 @@
 
 .player-name {
     position: absolute;
-    bottom: -20px;
+    bottom: -5px;
     left: 50%;
     transform: translateX(-50%);
     font-size: 0.8rem;
@@ -813,7 +813,7 @@
     
     .player-name {
         font-size: min(0.7vw, 0.7vh, 0.7rem);
-        bottom: -18px;
+        bottom: -4px;
     }
     
     .game-controls {
