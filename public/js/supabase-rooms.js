@@ -357,12 +357,36 @@ class SupabaseRoomSystem {
                 const playerCount = room.room_players ? room.room_players.length : 0;
                 const host = room.room_players ? room.room_players.find(p => p.is_host) : null;
                 
+                // Get status display text
+                let statusText = '';
+                let statusColor = '#ffd700';
+                switch (room.status) {
+                    case 'waiting':
+                        statusText = 'Waiting';
+                        statusColor = '#ffd700';
+                        break;
+                    case 'role_distribution':
+                        statusText = 'Starting';
+                        statusColor = '#3498db';
+                        break;
+                    case 'playing':
+                        statusText = 'In Progress';
+                        statusColor = '#e74c3c';
+                        break;
+                    default:
+                        statusText = room.status;
+                        statusColor = '#95a5a6';
+                }
+
                 roomCard.innerHTML = `
                     <div class="room-info">
                         <div style="font-weight: bold; color: #ffd700;">Room ${room.code}</div>
                         <div style="color: rgba(255,255,255,0.7); font-size: 0.9em;">
                             Host: ${host ? host.player_name : room.host_name} | 
                             Players: ${playerCount}/${room.max_players}
+                        </div>
+                        <div style="color: ${statusColor}; font-size: 0.8em; font-weight: bold; margin-top: 4px;">
+                            Status: ${statusText}
                         </div>
                     </div>
                     <button class="btn btn-primary" onclick="window.supabaseRoomSystem.joinRoomByCode('${room.code}')" 
@@ -809,6 +833,22 @@ class SupabaseRoomSystem {
 
             if (error) {
                 console.error('Error leaving room:', error);
+            } else {
+                // Update room player count
+                const { data: remainingPlayers } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .select('*')
+                    .eq('room_id', this.currentRoom.id);
+                
+                const newPlayerCount = remainingPlayers ? remainingPlayers.length : 0;
+                
+                // Update room's current_players count
+                await this.supabase
+                    .from(TABLES.GAME_ROOMS)
+                    .update({ current_players: newPlayerCount })
+                    .eq('id', this.currentRoom.id);
+                
+                console.log(`Player left room. New player count: ${newPlayerCount}`);
             }
 
             // If host is leaving, transfer host or delete room
@@ -960,13 +1000,13 @@ class SupabaseRoomSystem {
     async getActiveRooms() {
         try {
             console.log('=== FETCHING ACTIVE ROOMS ===');
-            console.log('Filtering for status:', GAME_STATUS.WAITING);
+            console.log('Filtering for status: waiting, role_distribution, playing');
             console.log('Filtering for is_public: true');
             
             const { data: rooms, error } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select('*')
-                .in('status', ['waiting', 'role_distribution'])
+                .in('status', ['waiting', 'role_distribution', 'playing'])
                 .eq('is_public', true)
                 .order('created_at', { ascending: false })
                 .limit(20);
@@ -3827,9 +3867,9 @@ class SupabaseRoomSystem {
                     continue;
                 }
                 
-                // Check if room is in waiting status
-                if (room.status === GAME_STATUS.WAITING) {
-                    console.log('Found active waiting room:', room);
+                // Check if room is in any active status (not finished)
+                if (room.status !== GAME_STATUS.FINISHED) {
+                    console.log('Found active room:', room);
                     
                     // Set current room data
                     this.currentRoom = room;
@@ -3865,10 +3905,16 @@ class SupabaseRoomSystem {
                         this.showRoleInformation();
                     }
                     
+                    // Check if room is in playing state and show appropriate UI
+                    if (this.currentRoom.status === GAME_STATUS.PLAYING) {
+                        console.log('Room is in playing state, restoring game UI');
+                        this.updateTeamBuildingUI();
+                    }
+                    
                     console.log('Successfully restored room state');
-                    return; // Exit after finding the first waiting room
+                    return; // Exit after finding the first active room
                 } else {
-                    console.log('Room is not in waiting status, current status:', room.status);
+                    console.log('Room is finished, current status:', room.status);
                 }
             }
             
