@@ -5,6 +5,26 @@ import { supabaseAuthSystem } from './supabase-auth.js';
 import { TABLES, GAME_STATUS } from '../supabase-config.js';
 console.log('Supabase rooms system imports loaded');
 
+// Team proposal state constants
+const TEAM_PROPOSAL_STATE = {
+    NONE: 'none',
+    SELECTING: 'selecting',
+    PROPOSED: 'proposed',
+    VOTING: 'voting',
+    APPROVED: 'approved',
+    REJECTED: 'rejected'
+};
+
+// Mission team sizes based on player count and mission number
+const MISSION_TEAM_SIZES = {
+    5: [2, 3, 2, 3, 3], // 5 players: missions 1-5
+    6: [2, 3, 4, 3, 4], // 6 players: missions 1-5
+    7: [2, 3, 3, 4, 4], // 7 players: missions 1-5
+    8: [3, 4, 4, 5, 5], // 8 players: missions 1-5
+    9: [3, 4, 4, 5, 5], // 9 players: missions 1-5
+    10: [3, 4, 4, 5, 5] // 10 players: missions 1-5
+};
+
 class SupabaseRoomSystem {
     constructor() {
         console.log('=== SUPABASE ROOMS SYSTEM CONSTRUCTOR ===');
@@ -1410,6 +1430,36 @@ class SupabaseRoomSystem {
         if (leaveGameBtn) {
             leaveGameBtn.addEventListener('click', () => this.leaveRoom());
         }
+
+        // Team proposal button
+        const proposeTeamBtn = document.getElementById('proposeTeamBtn');
+        if (proposeTeamBtn) {
+            proposeTeamBtn.addEventListener('click', () => this.proposeTeam());
+        }
+
+        // Vote team button
+        const voteTeamBtn = document.getElementById('voteTeamBtn');
+        if (voteTeamBtn) {
+            voteTeamBtn.addEventListener('click', () => this.showVotingModal());
+        }
+
+        // Add player selection event listeners
+        this.setupPlayerSelectionListeners();
+    }
+
+    // Setup player selection event listeners
+    setupPlayerSelectionListeners() {
+        // Use event delegation for player slots
+        const gameTable = document.getElementById('gameTable');
+        if (gameTable) {
+            gameTable.addEventListener('click', (event) => {
+                const playerSlot = event.target.closest('.player-slot');
+                if (playerSlot && playerSlot.dataset.playerId) {
+                    const playerId = playerSlot.dataset.playerId;
+                    this.selectPlayerForTeam(playerId);
+                }
+            });
+        }
     }
 
     async startGame() {
@@ -1589,6 +1639,9 @@ class SupabaseRoomSystem {
             
             // Update the display
             this.positionPlayersOnCircle();
+            
+            // Start team building phase
+            await this.startTeamBuildingPhase();
             
             console.log('✅ Game successfully started!');
             
@@ -2391,6 +2444,11 @@ class SupabaseRoomSystem {
                     rejection_count,
                     is_voting_phase,
                     mission_leader,
+                    current_mission,
+                    team_proposal_state,
+                    selected_team_members,
+                    team_proposer_id,
+                    team_proposal_attempts,
                     state_updated_at,
                     room_players (
                         id,
@@ -2449,10 +2507,20 @@ class SupabaseRoomSystem {
                 this.currentRoom.rejection_count = data.rejection_count || 0;
                 this.currentRoom.is_voting_phase = data.is_voting_phase || false;
                 this.currentRoom.mission_leader = data.mission_leader;
+                this.currentRoom.current_mission = data.current_mission || 1;
+                this.currentRoom.team_proposal_state = data.team_proposal_state || TEAM_PROPOSAL_STATE.NONE;
+                this.currentRoom.selected_team_members = data.selected_team_members || [];
+                this.currentRoom.team_proposer_id = data.team_proposer_id;
+                this.currentRoom.team_proposal_attempts = data.team_proposal_attempts || 0;
                 this.currentRoom.players = data.room_players || [];
                 
                 // Update rejection tracker UI (always update from database)
                 this.updateRejectionCounter(this.currentRoom.rejection_count || 0);
+                
+                // Update team building UI if in team building phase
+                if (this.currentRoom.team_proposal_state !== TEAM_PROPOSAL_STATE.NONE) {
+                    this.updateTeamBuildingUI();
+                }
                 
                 // Update host status
                 const currentUser = supabaseAuthSystem.getCurrentUser();
@@ -3031,6 +3099,307 @@ class SupabaseRoomSystem {
             this.updateRejectionCounter(0);
             console.log('Rejection tracker initialized with default count: 0');
         }
+    }
+
+    // Get required team size for current mission
+    getRequiredTeamSize() {
+        if (!this.currentRoom || !this.currentRoom.players) return 0;
+        
+        const playerCount = this.currentRoom.players.length;
+        const currentMission = this.currentRoom.current_mission || 1;
+        
+        const teamSizes = MISSION_TEAM_SIZES[playerCount];
+        if (!teamSizes) {
+            console.error('No team size configuration for', playerCount, 'players');
+            return 0;
+        }
+        
+        const requiredSize = teamSizes[currentMission - 1] || 0;
+        console.log(`Mission ${currentMission} with ${playerCount} players requires ${requiredSize} team members`);
+        return requiredSize;
+    }
+
+    // Check if current user is mission leader
+    isCurrentUserMissionLeader() {
+        if (!this.currentRoom || !this.currentRoom.mission_leader) return false;
+        
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser) return false;
+        
+        return this.currentRoom.mission_leader === currentUser.id;
+    }
+
+    // Start team building phase
+    async startTeamBuildingPhase() {
+        if (!this.currentRoom) return;
+        
+        try {
+            console.log('🏗️ Starting team building phase...');
+            
+            const requiredTeamSize = this.getRequiredTeamSize();
+            if (requiredTeamSize === 0) {
+                console.error('Invalid team size for current mission');
+                return;
+            }
+            
+            // Update room state to team building
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    team_proposal_state: TEAM_PROPOSAL_STATE.SELECTING,
+                    selected_team_members: [],
+                    team_proposal_attempts: 0
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error starting team building phase:', error);
+                return;
+            }
+            
+            // Update local state
+            this.currentRoom.team_proposal_state = TEAM_PROPOSAL_STATE.SELECTING;
+            this.currentRoom.selected_team_members = [];
+            this.currentRoom.team_proposal_attempts = 0;
+            
+            // Update UI
+            this.updateTeamBuildingUI();
+            
+            // Show status message
+            const missionLeader = this.currentRoom.players.find(p => p.player_id === this.currentRoom.mission_leader);
+            this.displayStatusMessage(`${missionLeader?.player_name || 'Mission Leader'} is selecting team for Mission ${this.currentRoom.current_mission}`, 'playing');
+            
+            console.log('Team building phase started successfully');
+            
+        } catch (error) {
+            console.error('Error starting team building phase:', error);
+        }
+    }
+
+    // Update team building UI
+    updateTeamBuildingUI() {
+        console.log('🎨 Updating team building UI...');
+        
+        // Show team selection interface for mission leader
+        if (this.isCurrentUserMissionLeader()) {
+            this.showTeamSelectionInterface();
+        } else {
+            this.showTeamSelectionWaiting();
+        }
+        
+        // Update player slots to show selection state
+        this.updatePlayerSelectionUI();
+    }
+
+    // Show team selection interface for mission leader
+    showTeamSelectionInterface() {
+        console.log('👑 Showing team selection interface for mission leader');
+        
+        const requiredTeamSize = this.getRequiredTeamSize();
+        const selectedCount = this.currentRoom.selected_team_members?.length || 0;
+        
+        // Show team selection status
+        this.displayStatusMessage(`Select ${requiredTeamSize} players for Mission ${this.currentRoom.current_mission} (${selectedCount}/${requiredTeamSize} selected)`, 'playing');
+        
+        // Enable team proposal button if enough players selected
+        this.updateTeamProposalButton(selectedCount >= requiredTeamSize);
+    }
+
+    // Show waiting message for non-leaders
+    showTeamSelectionWaiting() {
+        const missionLeader = this.currentRoom.players.find(p => p.player_id === this.currentRoom.mission_leader);
+        this.displayStatusMessage(`Waiting for ${missionLeader?.player_name || 'Mission Leader'} to select team...`, 'playing');
+    }
+
+    // Update team proposal button
+    updateTeamProposalButton(enabled) {
+        const proposeTeamBtn = document.getElementById('proposeTeamBtn');
+        if (proposeTeamBtn) {
+            proposeTeamBtn.style.display = enabled ? 'block' : 'none';
+            proposeTeamBtn.disabled = !enabled;
+        }
+    }
+
+    // Update player selection UI
+    updatePlayerSelectionUI() {
+        if (!this.currentRoom || !this.currentRoom.players) return;
+        
+        const selectedTeamMembers = this.currentRoom.selected_team_members || [];
+        
+        // Update each player slot
+        this.currentRoom.players.forEach(player => {
+            const playerSlot = document.querySelector(`[data-player-id="${player.player_id}"]`);
+            if (playerSlot) {
+                const isSelected = selectedTeamMembers.includes(player.player_id);
+                const isLeader = player.player_id === this.currentRoom.mission_leader;
+                
+                // Update selection state
+                if (isSelected) {
+                    playerSlot.classList.add('selected');
+                } else {
+                    playerSlot.classList.remove('selected');
+                }
+                
+                // Update leader state
+                if (isLeader) {
+                    playerSlot.classList.add('leader');
+                } else {
+                    playerSlot.classList.remove('leader');
+                }
+            }
+        });
+    }
+
+    // Handle player selection for team building
+    async selectPlayerForTeam(playerId) {
+        if (!this.isCurrentUserMissionLeader()) {
+            console.log('Only mission leader can select players');
+            return;
+        }
+        
+        if (this.currentRoom.team_proposal_state !== TEAM_PROPOSAL_STATE.SELECTING) {
+            console.log('Not in team selection phase');
+            return;
+        }
+        
+        try {
+            const selectedTeamMembers = this.currentRoom.selected_team_members || [];
+            const requiredTeamSize = this.getRequiredTeamSize();
+            
+            let newSelectedMembers;
+            
+            if (selectedTeamMembers.includes(playerId)) {
+                // Deselect player
+                newSelectedMembers = selectedTeamMembers.filter(id => id !== playerId);
+            } else {
+                // Select player (if not at limit)
+                if (selectedTeamMembers.length >= requiredTeamSize) {
+                    console.log('Team size limit reached');
+                    return;
+                }
+                newSelectedMembers = [...selectedTeamMembers, playerId];
+            }
+            
+            // Update database
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    selected_team_members: newSelectedMembers
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating team selection:', error);
+                return;
+            }
+            
+            // Update local state
+            this.currentRoom.selected_team_members = newSelectedMembers;
+            
+            // Update UI
+            this.updateTeamBuildingUI();
+            
+            console.log('Team selection updated:', newSelectedMembers);
+            
+        } catch (error) {
+            console.error('Error selecting player for team:', error);
+        }
+    }
+
+    // Propose the selected team
+    async proposeTeam() {
+        if (!this.isCurrentUserMissionLeader()) {
+            console.log('Only mission leader can propose team');
+            return;
+        }
+        
+        if (this.currentRoom.team_proposal_state !== TEAM_PROPOSAL_STATE.SELECTING) {
+            console.log('Not in team selection phase');
+            return;
+        }
+        
+        const selectedTeamMembers = this.currentRoom.selected_team_members || [];
+        const requiredTeamSize = this.getRequiredTeamSize();
+        
+        if (selectedTeamMembers.length !== requiredTeamSize) {
+            console.log('Team size does not match requirement');
+            return;
+        }
+        
+        try {
+            console.log('🏗️ Proposing team:', selectedTeamMembers);
+            
+            const currentUser = supabaseAuthSystem.getCurrentUser();
+            
+            // Update database
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    team_proposal_state: TEAM_PROPOSAL_STATE.PROPOSED,
+                    team_proposer_id: currentUser.id,
+                    team_proposal_attempts: (this.currentRoom.team_proposal_attempts || 0) + 1
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error proposing team:', error);
+                return;
+            }
+            
+            // Update local state
+            this.currentRoom.team_proposal_state = TEAM_PROPOSAL_STATE.PROPOSED;
+            this.currentRoom.team_proposer_id = currentUser.id;
+            this.currentRoom.team_proposal_attempts = (this.currentRoom.team_proposal_attempts || 0) + 1;
+            
+            // Update UI
+            this.updateTeamProposalUI();
+            
+            // Show status message
+            const selectedPlayerNames = selectedTeamMembers.map(playerId => {
+                const player = this.currentRoom.players.find(p => p.player_id === playerId);
+                return player?.player_name || 'Unknown';
+            });
+            
+            this.displayStatusMessage(`Team proposed: ${selectedPlayerNames.join(', ')}`, 'playing');
+            
+            console.log('Team proposed successfully');
+            
+        } catch (error) {
+            console.error('Error proposing team:', error);
+        }
+    }
+
+    // Update team proposal UI
+    updateTeamProposalUI() {
+        // Hide team proposal button
+        this.updateTeamProposalButton(false);
+        
+        // Update player selection UI to show proposed team
+        this.updatePlayerSelectionUI();
+        
+        // Show voting interface (next phase)
+        this.showVotingInterface();
+    }
+
+    // Show voting interface
+    showVotingInterface() {
+        console.log('🗳️ Showing voting interface');
+        
+        // Show vote buttons for all players
+        const voteTeamBtn = document.getElementById('voteTeamBtn');
+        if (voteTeamBtn) {
+            voteTeamBtn.style.display = 'block';
+        }
+        
+        // Update status message
+        this.displayStatusMessage('Vote on the proposed team: Accept or Reject', 'playing');
+    }
+
+    // Show voting modal (placeholder for now)
+    showVotingModal() {
+        console.log('🗳️ Showing voting modal (placeholder)');
+        // TODO: Implement voting modal
+        this.showNotification('Voting functionality coming soon!', 'info');
     }
 
     // Force refresh status message from database
