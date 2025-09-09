@@ -644,7 +644,7 @@ class SupabaseRoomSystem {
                 this.showNotification('Room not found!', 'error');
                 return false;
             }
-            
+
             // Check if room is full
             if (room.current_players >= room.max_players) {
                 this.showNotification('Room is full!', 'error');
@@ -850,15 +850,15 @@ class SupabaseRoomSystem {
                 // No players left, but keep room persistent for rejoining
                 // Just set host_id to NULL instead of deleting the room
                 await this.supabase
-                    .from(TABLES.GAME_ROOMS)
-                    .update({
+                .from(TABLES.GAME_ROOMS)
+                .update({
                         host_id: null,
                         host_name: 'Room Available',
                         current_players: 0,
                         status: 'waiting'
-                    })
-                    .eq('id', this.currentRoom.id);
-                    
+                })
+                .eq('id', this.currentRoom.id);
+
                 console.log('Room kept persistent - no players left but room remains for rejoining');
             }
         } catch (error) {
@@ -910,7 +910,7 @@ class SupabaseRoomSystem {
             // Preserve the status message that was just updated locally
             const preservedStatusMessage = this.currentRoom.status_message;
             const preservedStatusMessageType = this.currentRoom.status_message_type;
-            
+
             this.currentRoom = room;
             this.currentRoom.players = players;
             this.currentRoom.current_players = players.length; // Update player count
@@ -979,7 +979,7 @@ class SupabaseRoomSystem {
                     })));
                 }
             }
-            
+
             return rooms || [];
         } catch (error) {
             console.error('Error fetching active rooms:', error);
@@ -1056,9 +1056,11 @@ class SupabaseRoomSystem {
         // Preserve status message element and only clear player slots
         console.log('Recreating player slots for room state sync');
         
-        // Find and preserve the status message element
+        // Find and preserve the status message and rejection tracker elements
         const statusMessage = document.getElementById('statusMessage');
+        const rejectionTracker = document.getElementById('rejectionTracker');
         const statusMessageHTML = statusMessage ? statusMessage.outerHTML : '';
+        const rejectionTrackerHTML = rejectionTracker ? rejectionTracker.outerHTML : '';
         
         // Clear the game table
         gameTable.innerHTML = '';
@@ -1067,6 +1069,12 @@ class SupabaseRoomSystem {
         if (statusMessageHTML) {
             gameTable.insertAdjacentHTML('afterbegin', statusMessageHTML);
             console.log('Preserved status message element during player positioning');
+        }
+        
+        // Restore the rejection tracker element if it existed
+        if (rejectionTrackerHTML) {
+            gameTable.insertAdjacentHTML('afterbegin', rejectionTrackerHTML);
+            console.log('Preserved rejection tracker element during player positioning');
         }
         
         // Get responsive circle dimensions
@@ -2443,8 +2451,8 @@ class SupabaseRoomSystem {
                 this.currentRoom.mission_leader = data.mission_leader;
                 this.currentRoom.players = data.room_players || [];
                 
-                // Update rejection tracker UI
-                this.updateRejectionCounter(this.currentRoom.rejection_count);
+                // Update rejection tracker UI (always update from database)
+                this.updateRejectionCounter(this.currentRoom.rejection_count || 0);
                 
                 // Update host status
                 const currentUser = supabaseAuthSystem.getCurrentUser();
@@ -2861,12 +2869,8 @@ class SupabaseRoomSystem {
             }
         }
         
-        // Show tracker when there are rejections OR during voting phase
-        if (count > 0 || this.currentRoom?.is_voting_phase) {
-            this.showRejectionTracker();
-        } else {
-            this.hideRejectionTracker();
-        }
+        // Always show the rejection tracker - it's a permanent part of the game room
+        this.showRejectionTracker();
     }
 
     // Handle team rejection
@@ -2964,9 +2968,6 @@ class SupabaseRoomSystem {
             // Show Evil win message
             this.displayStatusMessage('Evil wins! 5 team rejections!', 'error');
             
-            // Hide rejection tracker
-            this.hideRejectionTracker();
-            
             console.log('Evil wins by 5 team rejections!');
             
         } catch (error) {
@@ -3013,19 +3014,23 @@ class SupabaseRoomSystem {
         }
     }
 
-    // Test function to show rejection tracker (for debugging)
-    testRejectionTracker() {
-        console.log('🧪 Testing rejection tracker visibility...');
-        this.updateRejectionCounter(1);
+    // Initialize rejection tracker when room loads
+    initializeRejectionTracker() {
+        console.log('🎯 Initializing rejection tracker...');
         
-        // Also test with different counts
-        setTimeout(() => {
-            this.updateRejectionCounter(3);
-        }, 2000);
+        // Always show the rejection tracker
+        this.showRejectionTracker();
         
-        setTimeout(() => {
-            this.updateRejectionCounter(5);
-        }, 4000);
+        // Initialize with current room state
+        if (this.currentRoom) {
+            const rejectionCount = this.currentRoom.rejection_count || 0;
+            this.updateRejectionCounter(rejectionCount);
+            console.log('Rejection tracker initialized with count:', rejectionCount);
+        } else {
+            // Default to 0 if no room data yet
+            this.updateRejectionCounter(0);
+            console.log('Rejection tracker initialized with default count: 0');
+        }
     }
 
     // Force refresh status message from database
@@ -3216,6 +3221,9 @@ class SupabaseRoomSystem {
             
             // Initialize the room display with the main circle
             await this.initializeRoomDisplay();
+            
+            // Initialize rejection tracker
+            this.initializeRejectionTracker();
         } else {
             console.error('gameInterface modal not found!');
         }
