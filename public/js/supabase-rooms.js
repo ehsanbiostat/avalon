@@ -2662,17 +2662,10 @@ class SupabaseRoomSystem {
             statusMessage.textContent = shortMessage;
             statusMessage.className = `status-message-center ${messageType}`;
             
-            // Force visibility with enhanced styling
+            // Force visibility with simple styling
             statusMessage.style.display = 'block';
             statusMessage.style.visibility = 'visible';
             statusMessage.style.opacity = '1';
-            statusMessage.style.transform = 'translate(-50%, -50%) scale(1.1)';
-            statusMessage.style.transition = 'all 0.3s ease-in-out';
-            
-            // Add a subtle pulse animation for important messages
-            if (messageType === 'playing' || message.includes('ready') || message.includes('started')) {
-                statusMessage.style.animation = 'pulse 2s infinite';
-            }
             
             console.log('Status message updated:', {
                 textContent: statusMessage.textContent,
