@@ -114,6 +114,35 @@ class SupabaseRoomSystem {
         } else {
             console.error('joinRoomBtn not found!');
         }
+
+        // Join Room Submit button (for room code input)
+        const joinRoomSubmitBtn = document.getElementById('joinRoomSubmitBtn');
+        console.log('joinRoomSubmitBtn element:', joinRoomSubmitBtn);
+        if (joinRoomSubmitBtn) {
+            console.log('Adding click event listener to joinRoomSubmitBtn');
+            joinRoomSubmitBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('Join room submit button clicked!');
+                this.handleJoinRoomSubmit();
+            });
+        } else {
+            console.error('joinRoomSubmitBtn not found!');
+        }
+
+        // Room code input (for Enter key support)
+        const roomCodeInput = document.getElementById('roomCode');
+        if (roomCodeInput) {
+            console.log('Adding keydown event listener to roomCode input');
+            roomCodeInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    console.log('Enter key pressed in room code input');
+                    this.handleJoinRoomSubmit();
+                }
+            });
+        } else {
+            console.error('roomCode input not found!');
+        }
     }
 
     setupResponsiveListeners() {
@@ -189,6 +218,51 @@ class SupabaseRoomSystem {
             console.log('Join room modal opened');
         } else {
             console.error('joinModal not found!');
+        }
+    }
+
+    async handleJoinRoomSubmit() {
+        console.log('=== HANDLE JOIN ROOM SUBMIT ===');
+        
+        // Check if user is logged in
+        if (!supabaseAuthSystem.isUserLoggedIn()) {
+            this.showNotification('Please login to join a room!', 'error');
+            return;
+        }
+
+        // Get room code from input
+        const roomCodeInput = document.getElementById('roomCode');
+        if (!roomCodeInput) {
+            console.error('Room code input not found!');
+            this.showNotification('Room code input not found!', 'error');
+            return;
+        }
+
+        const roomCode = roomCodeInput.value.trim().toUpperCase();
+        if (!roomCode) {
+            this.showNotification('Please enter a room code!', 'error');
+            return;
+        }
+
+        if (roomCode.length !== 6) {
+            this.showNotification('Room code must be 6 characters!', 'error');
+            return;
+        }
+
+        console.log('Attempting to join room with code:', roomCode);
+
+        // Use the existing joinRoomByCode function
+        const success = await this.joinRoomByCode(roomCode);
+        
+        if (success) {
+            // Close the join modal
+            const joinModal = document.getElementById('joinModal');
+            if (joinModal) {
+                joinModal.style.display = 'none';
+            }
+            
+            // Clear the input
+            roomCodeInput.value = '';
         }
     }
 
@@ -710,11 +784,49 @@ class SupabaseRoomSystem {
                 .single();
 
             if (existingPlayer) {
-                this.showNotification('You are already in this room!', 'info');
+                console.log('Player already in room, rejoining...');
+                this.showNotification('Rejoining your room...', 'info');
+                
+                // Set current room data
                 this.currentRoom = room;
-                this.isHost = room.host_id === user.id;
+                this.isHost = existingPlayer.is_host;
+                
+                // Fetch room players
+                const { data: roomPlayers, error: playersError } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .select('*')
+                    .eq('room_id', room.id);
+                
+                if (playersError) {
+                    console.error('Error fetching room players:', playersError);
+                    this.currentRoom.players = [];
+                } else {
+                    this.currentRoom.players = roomPlayers || [];
+                }
+                
+                this.currentRoom.current_players = this.currentRoom.players.length;
+                
+                // Show room interface
                 await this.showRoomInterface();
+                
+                // Subscribe to room updates
+                this.subscribeToRoomUpdates(room.id);
+                
+                // Start fast polling
                 this.startFastPolling();
+                
+                // Check if room is in role distribution status
+                if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                    console.log('Room is in role distribution, showing role information');
+                    this.showRoleInformation();
+                }
+                
+                // Check if room is in playing state and show appropriate UI
+                if (room.status === GAME_STATUS.PLAYING) {
+                    console.log('Room is in playing state, restoring game UI');
+                    this.updateTeamBuildingUI();
+                }
+                
                 return true;
             }
 
@@ -3835,11 +3947,35 @@ class SupabaseRoomSystem {
         try {
             console.log('Checking for existing room for user:', user.id);
             
-            // Find if user is in any room (without join)
+            // Find the LATEST room the user is in (ordered by joined_at DESC)
             const { data: playerRooms, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
-                .select('*')
-                .eq('player_id', user.id);
+                .select(`
+                    *,
+                    game_rooms (
+                        id,
+                        code,
+                        status,
+                        host_id,
+                        host_name,
+                        max_players,
+                        current_players,
+                        created_at,
+                        started_at,
+                        status_message,
+                        status_message_type,
+                        rejection_count,
+                        team_proposal_state,
+                        selected_team_members,
+                        team_proposer_id,
+                        team_proposal_attempts,
+                        current_mission,
+                        voting_leader_id,
+                        is_voting_phase
+                    )
+                `)
+                .eq('player_id', user.id)
+                .order('joined_at', { ascending: false }); // Get the LATEST room first
 
             if (error) {
                 console.error('Error checking for existing room:', error);
@@ -3851,25 +3987,19 @@ class SupabaseRoomSystem {
                 return;
             }
 
-            // Check each room the user is in
+            // Find the latest active room (not finished)
             for (const playerRoom of playerRooms) {
-                console.log('Checking room:', playerRoom.room_id);
-                
-                // Get the room data
-                const { data: room, error: roomError } = await this.supabase
-                    .from(TABLES.GAME_ROOMS)
-                    .select('*')
-                    .eq('id', playerRoom.room_id)
-                    .single();
-                
-                if (roomError) {
-                    console.error('Error fetching room data:', roomError);
+                const room = playerRoom.game_rooms;
+                if (!room) {
+                    console.log('No room data for player room:', playerRoom.room_id);
                     continue;
                 }
                 
+                console.log('Checking room:', room.id, 'Status:', room.status, 'Joined at:', playerRoom.joined_at);
+                
                 // Check if room is in any active status (not finished)
                 if (room.status !== GAME_STATUS.FINISHED) {
-                    console.log('Found active room:', room);
+                    console.log('Found latest active room:', room);
                     
                     // Set current room data
                     this.currentRoom = room;
@@ -3911,12 +4041,14 @@ class SupabaseRoomSystem {
                         this.updateTeamBuildingUI();
                     }
                     
-                    console.log('Successfully restored room state');
-                    return; // Exit after finding the first active room
+                    console.log('Successfully restored LATEST room state');
+                    return; // Exit after finding the latest active room
                 } else {
                     console.log('Room is finished, current status:', room.status);
                 }
             }
+            
+            console.log('No active rooms found for user');
             
         } catch (error) {
             console.error('Exception checking for existing room:', error);
