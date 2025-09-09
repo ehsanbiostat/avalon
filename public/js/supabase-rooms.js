@@ -1441,9 +1441,13 @@ class SupabaseRoomSystem {
 
     async monitorRoleDistributionCompletion() {
         console.log('=== MONITORING ROLE DISTRIBUTION COMPLETION ===');
+        console.log('Current room ID:', this.currentRoom?.id);
+        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
         
         const checkCompletion = async () => {
             try {
+                console.log('🔍 Checking role completion...');
+                
                 // Check if all players have seen their roles
                 const { data: players, error } = await this.supabase
                     .from(TABLES.ROOM_PLAYERS)
@@ -1455,16 +1459,22 @@ class SupabaseRoomSystem {
                     return;
                 }
                 
-                console.log('Players role seen status:', players.map(p => ({ 
+                console.log('📊 Players role seen status:', players.map(p => ({ 
                     name: p.player_name, 
-                    has_seen: p.has_role_seen 
+                    has_seen: p.has_role_seen,
+                    player_id: p.player_id
                 })));
                 
                 // Check if all players have seen their roles
                 const allPlayersSeenRoles = players.every(p => p.has_role_seen === true);
+                const seenCount = players.filter(p => p.has_role_seen === true).length;
+                const totalCount = players.length;
+                
+                console.log(`📈 Progress: ${seenCount}/${totalCount} players have seen their roles`);
+                console.log(`✅ All players seen: ${allPlayersSeenRoles}`);
                 
                 if (allPlayersSeenRoles) {
-                    console.log('✅ All players have seen their roles - starting actual game!');
+                    console.log('🎉 All players have seen their roles - starting actual game!');
                     
                     // Update status message
                     await this.updateRoomStatusMessage('All players ready! Starting game...', 'ready');
@@ -1476,12 +1486,15 @@ class SupabaseRoomSystem {
                     await this.startActualGame();
                 } else {
                     console.log('⏳ Still waiting for players to see their roles...');
+                    console.log(`Missing: ${players.filter(p => p.has_role_seen !== true).map(p => p.player_name).join(', ')}`);
                     // Check again in 2 seconds
                     setTimeout(checkCompletion, 2000);
                 }
                 
             } catch (error) {
                 console.error('Error in role distribution monitoring:', error);
+                // Continue monitoring even if there's an error
+                setTimeout(checkCompletion, 2000);
             }
         };
         
@@ -2174,11 +2187,21 @@ class SupabaseRoomSystem {
             console.log('Database response:', { data, error });
             
             if (error) {
-                console.error('Error marking role as seen:', error);
+                console.error('❌ Error marking role as seen:', error);
                 console.error('Error details:', error.message, error.details, error.hint);
             } else {
-                console.log('Successfully marked role information as seen for user:', currentUser.email);
+                console.log('✅ Successfully marked role information as seen for user:', currentUser.email);
                 console.log('Updated data:', data);
+                
+                // Verify the update by reading the record again
+                const { data: verifyData, error: verifyError } = await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .select('has_role_seen')
+                    .eq('room_id', this.currentRoom.id)
+                    .eq('player_id', currentUser.id)
+                    .single();
+                
+                console.log('🔍 Verification read:', { verifyData, verifyError });
             }
         } catch (error) {
             console.error('Exception marking role as seen:', error);
