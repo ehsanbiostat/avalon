@@ -632,22 +632,27 @@ class SupabaseRoomSystem {
                 return false;
             }
 
-            // Find room by code
+            // Find room by code (allow joining rooms in any state for rejoining)
             const { data: room, error: roomError } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select('*')
                 .eq('code', roomCode.toUpperCase())
-                .eq('status', GAME_STATUS.WAITING)
                 .single();
 
             if (roomError || !room) {
-                this.showNotification('Room not found or game already started!', 'error');
+                this.showNotification('Room not found!', 'error');
                 return false;
             }
-
+            
             // Check if room is full
             if (room.current_players >= room.max_players) {
                 this.showNotification('Room is full!', 'error');
+                return false;
+            }
+            
+            // Check if game has finished
+            if (room.status === 'finished') {
+                this.showNotification('This game has already finished!', 'error');
                 return false;
             }
 
@@ -691,6 +696,19 @@ class SupabaseRoomSystem {
         // Ensure user profile exists before adding to room
         await this.ensureUserProfile(user);
         
+        // Check if room has no host (host_id is null)
+        const { data: room } = await this.supabase
+            .from(TABLES.GAME_ROOMS)
+            .select('host_id, current_players')
+            .eq('id', roomId)
+            .single();
+            
+        // If room has no host and this is the first player rejoining, make them host
+        if (room && !room.host_id && room.current_players === 0) {
+            isHost = true;
+            console.log('Room has no host, making first rejoining player the new host');
+        }
+        
         const { error } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
             .insert({
@@ -704,6 +722,19 @@ class SupabaseRoomSystem {
         if (error) {
             console.error('Error adding player to room:', error);
             throw error;
+        }
+        
+        // If this player became the new host, update the room's host_id
+        if (isHost && room && !room.host_id) {
+            await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    host_id: user.id,
+                    host_name: user.profile?.display_name || user.email
+                })
+                .eq('id', roomId);
+                
+            console.log('Updated room host_id to new rejoining player');
         }
     }
 
@@ -770,12 +801,29 @@ class SupabaseRoomSystem {
                         host_name: newHost.player_name
                     })
                     .eq('id', this.currentRoom.id);
+                
+                // Update the new host's is_host flag
+                await this.supabase
+                    .from(TABLES.ROOM_PLAYERS)
+                    .update({ is_host: true })
+                    .eq('room_id', this.currentRoom.id)
+                    .eq('player_id', newHost.player_id);
+                    
+                console.log(`Host transferred to: ${newHost.player_name}`);
             } else {
-                // No players left, delete room
+                // No players left, but keep room persistent for rejoining
+                // Just set host_id to NULL instead of deleting the room
                 await this.supabase
                     .from(TABLES.GAME_ROOMS)
-                    .delete()
+                    .update({
+                        host_id: null,
+                        host_name: 'Room Available',
+                        current_players: 0,
+                        status: 'waiting'
+                    })
                     .eq('id', this.currentRoom.id);
+                    
+                console.log('Room kept persistent - no players left but room remains for rejoining');
             }
         } catch (error) {
             console.error('Error handling host leaving:', error);
@@ -862,7 +910,7 @@ class SupabaseRoomSystem {
             const { data: rooms, error } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select('*')
-                .eq('status', GAME_STATUS.WAITING)
+                .in('status', ['waiting', 'role_distribution'])
                 .eq('is_public', true)
                 .order('created_at', { ascending: false })
                 .limit(20);
