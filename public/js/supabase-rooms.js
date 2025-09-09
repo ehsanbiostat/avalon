@@ -1225,6 +1225,22 @@ class SupabaseRoomSystem {
                     console.log('Game interface bounding rect:', gameInterfaceRect);
                 }
                 
+                // Check the game-content container
+                const gameContent = document.querySelector('.game-content');
+                if (gameContent) {
+                    const gameContentStyle = window.getComputedStyle(gameContent);
+                    const gameContentRect = gameContent.getBoundingClientRect();
+                    console.log('Game content styles:', {
+                        display: gameContentStyle.display,
+                        visibility: gameContentStyle.visibility,
+                        opacity: gameContentStyle.opacity,
+                        flexDirection: gameContentStyle.flexDirection,
+                        height: gameContentStyle.height,
+                        width: gameContentStyle.width
+                    });
+                    console.log('Game content bounding rect:', gameContentRect);
+                }
+                
                 // Check if button is actually visible
                 const rect = startGameBtn.getBoundingClientRect();
                 console.log('Button bounding rect:', rect);
@@ -1247,12 +1263,29 @@ class SupabaseRoomSystem {
                         gameControls.style.opacity = '1';
                         gameControls.style.width = 'auto';
                         gameControls.style.height = 'auto';
+                        gameControls.style.position = 'relative';
+                        gameControls.style.zIndex = '1001';
+                    }
+                    
+                    // Force the game-content container to be visible
+                    if (gameContent) {
+                        gameContent.style.display = 'flex';
+                        gameContent.style.visibility = 'visible';
+                        gameContent.style.opacity = '1';
+                        gameContent.style.height = 'auto';
+                        gameContent.style.minHeight = '200px';
                     }
                     
                     // Check again after fixes
                     const newRect = startGameBtn.getBoundingClientRect();
                     console.log('Button bounding rect after fix:', newRect);
                     console.log('Button is visible after fix:', newRect.width > 0 && newRect.height > 0);
+                    
+                    // If still not visible, create a floating button
+                    if (newRect.width === 0 || newRect.height === 0) {
+                        console.log('Button still not visible, creating floating button...');
+                        this.createFloatingStartGameButton();
+                    }
                 }
                 
                 // Try moving the button to a more prominent location
@@ -2591,6 +2624,76 @@ class SupabaseRoomSystem {
         
         // Return short version if available, otherwise truncate the original
         return shortMessages[message] || message.substring(0, 20) + (message.length > 20 ? '...' : '');
+    }
+
+    // Create a floating Start Game button as a fallback
+    createFloatingStartGameButton() {
+        console.log('Creating floating Start Game button...');
+        
+        // Remove any existing floating button
+        const existingFloating = document.getElementById('floatingStartGameBtn');
+        if (existingFloating) {
+            existingFloating.remove();
+        }
+        
+        // Create floating button container
+        const floatingContainer = document.createElement('div');
+        floatingContainer.id = 'floatingStartGameBtn';
+        floatingContainer.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #007bff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        `;
+        
+        // Create the button
+        const floatingButton = document.createElement('button');
+        floatingButton.textContent = 'Start Game';
+        floatingButton.className = 'btn btn-primary';
+        floatingButton.style.cssText = `
+            width: 200px;
+            height: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+        `;
+        
+        // Add click event
+        floatingButton.addEventListener('click', () => {
+            console.log('Floating Start Game button clicked');
+            this.startGame();
+            floatingContainer.remove();
+        });
+        
+        // Add title
+        const title = document.createElement('h3');
+        title.textContent = 'Room is Full!';
+        title.style.cssText = `
+            color: white;
+            text-align: center;
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+        `;
+        
+        floatingContainer.appendChild(title);
+        floatingContainer.appendChild(floatingButton);
+        
+        // Add to body
+        document.body.appendChild(floatingContainer);
+        
+        console.log('Floating Start Game button created');
     }
 
     getRoleInformation(player) {
