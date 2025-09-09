@@ -1207,10 +1207,53 @@ class SupabaseRoomSystem {
                     height: gameControlsStyle.height
                 });
                 
+                // Check if game controls container is visible
+                const gameControlsRect = gameControls.getBoundingClientRect();
+                console.log('Game controls bounding rect:', gameControlsRect);
+                console.log('Game controls is visible:', gameControlsRect.width > 0 && gameControlsRect.height > 0);
+                
+                // Check if the game interface is visible
+                const gameInterface = document.getElementById('gameInterface');
+                if (gameInterface) {
+                    const gameInterfaceStyle = window.getComputedStyle(gameInterface);
+                    const gameInterfaceRect = gameInterface.getBoundingClientRect();
+                    console.log('Game interface styles:', {
+                        display: gameInterfaceStyle.display,
+                        visibility: gameInterfaceStyle.visibility,
+                        opacity: gameInterfaceStyle.opacity
+                    });
+                    console.log('Game interface bounding rect:', gameInterfaceRect);
+                }
+                
                 // Check if button is actually visible
                 const rect = startGameBtn.getBoundingClientRect();
                 console.log('Button bounding rect:', rect);
                 console.log('Button is visible:', rect.width > 0 && rect.height > 0);
+                
+                // If button is not visible, try to fix it
+                if (rect.width === 0 || rect.height === 0) {
+                    console.log('Button has zero dimensions, attempting to fix...');
+                    
+                    // Force the button to have dimensions
+                    startGameBtn.style.width = '150px';
+                    startGameBtn.style.height = '40px';
+                    startGameBtn.style.minWidth = '150px';
+                    startGameBtn.style.minHeight = '40px';
+                    
+                    // Force the parent container to be visible
+                    if (gameControls) {
+                        gameControls.style.display = 'flex';
+                        gameControls.style.visibility = 'visible';
+                        gameControls.style.opacity = '1';
+                        gameControls.style.width = 'auto';
+                        gameControls.style.height = 'auto';
+                    }
+                    
+                    // Check again after fixes
+                    const newRect = startGameBtn.getBoundingClientRect();
+                    console.log('Button bounding rect after fix:', newRect);
+                    console.log('Button is visible after fix:', newRect.width > 0 && newRect.height > 0);
+                }
                 
                 // Try moving the button to a more prominent location
         const statusMessage = document.getElementById('statusMessage');
