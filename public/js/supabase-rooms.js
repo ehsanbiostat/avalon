@@ -1469,8 +1469,8 @@ class SupabaseRoomSystem {
                     // Update status message
                     await this.updateRoomStatusMessage('All players ready! Starting game...', 'ready');
                     
-                    // Wait a moment for the message to be seen
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Wait longer for the message to be seen
+                    await new Promise(resolve => setTimeout(resolve, 4000));
                     
                     // Start the actual game
                     await this.startActualGame();
@@ -1520,6 +1520,9 @@ class SupabaseRoomSystem {
             
             // Update status message
             await this.updateRoomStatusMessage('Game started! Mission 1 begins.', 'playing');
+            
+            // Wait a moment for the message to be seen
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             // Update the display
             this.positionPlayersOnCircle();
@@ -2591,10 +2594,17 @@ class SupabaseRoomSystem {
             statusMessage.textContent = shortMessage;
             statusMessage.className = `status-message-center ${messageType}`;
             
-            // Force visibility
+            // Force visibility with enhanced styling
             statusMessage.style.display = 'block';
             statusMessage.style.visibility = 'visible';
             statusMessage.style.opacity = '1';
+            statusMessage.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            statusMessage.style.transition = 'all 0.3s ease-in-out';
+            
+            // Add a subtle pulse animation for important messages
+            if (messageType === 'playing' || message.includes('ready') || message.includes('started')) {
+                statusMessage.style.animation = 'pulse 2s infinite';
+            }
             
             console.log('Status message updated:', {
                 textContent: statusMessage.textContent,
