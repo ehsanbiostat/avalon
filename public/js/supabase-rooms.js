@@ -784,27 +784,23 @@ class SupabaseRoomSystem {
                 .single();
 
             if (existingPlayer) {
-                console.log('Player already in room, rejoining...');
+                console.log('Player already in room, rejoining with fresh data...');
                 this.showNotification('Rejoining your room...', 'info');
                 
-                // Set current room data
-                this.currentRoom = room;
-                this.isHost = existingPlayer.is_host;
-                
-                // Fetch room players
-                const { data: roomPlayers, error: playersError } = await this.supabase
-                    .from(TABLES.ROOM_PLAYERS)
-                    .select('*')
-                    .eq('room_id', room.id);
-                
-                if (playersError) {
-                    console.error('Error fetching room players:', playersError);
-                    this.currentRoom.players = [];
-                } else {
-                    this.currentRoom.players = roomPlayers || [];
+                // ALWAYS fetch complete fresh data from database
+                const freshRoomData = await this.fetchCompleteRoomState(room.id);
+                if (!freshRoomData) {
+                    this.showNotification('Failed to fetch room data', 'error');
+                    return false;
                 }
                 
+                // Set current room data with fresh data
+                this.currentRoom = freshRoomData;
+                this.currentRoom.players = freshRoomData.room_players || [];
                 this.currentRoom.current_players = this.currentRoom.players.length;
+                
+                // Update host status from fresh data
+                this.isHost = existingPlayer.is_host;
                 
                 // Show room interface
                 await this.showRoomInterface();
@@ -816,13 +812,13 @@ class SupabaseRoomSystem {
                 this.startFastPolling();
                 
                 // Check if room is in role distribution status
-                if (room.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                if (freshRoomData.status === GAME_STATUS.ROLE_DISTRIBUTION) {
                     console.log('Room is in role distribution, showing role information');
                     this.showRoleInformation();
                 }
                 
                 // Check if room is in playing state and show appropriate UI
-                if (room.status === GAME_STATUS.PLAYING) {
+                if (freshRoomData.status === GAME_STATUS.PLAYING) {
                     console.log('Room is in playing state, restoring game UI');
                     this.updateTeamBuildingUI();
                 }
@@ -1079,20 +1075,12 @@ class SupabaseRoomSystem {
             });
             console.log('Players data from DB:', players.length, players.map(p => p.player_name));
             
-            // Preserve the status message that was just updated locally
-            const preservedStatusMessage = this.currentRoom.status_message;
-            const preservedStatusMessageType = this.currentRoom.status_message_type;
-
+            // ALWAYS use fresh data from database - no local caching
             this.currentRoom = room;
             this.currentRoom.players = players;
             this.currentRoom.current_players = players.length; // Update player count
             
-            // Restore the preserved status message if it was more recent
-            if (preservedStatusMessage && preservedStatusMessage !== room.status_message) {
-                console.log('Preserving local status message:', preservedStatusMessage);
-                this.currentRoom.status_message = preservedStatusMessage;
-                this.currentRoom.status_message_type = preservedStatusMessageType;
-            }
+            console.log('Using fresh database data - no local preservation');
 
             // Update UI in correct sequence
             this.setupRoomInterface();
@@ -2578,30 +2566,17 @@ class SupabaseRoomSystem {
     }
 
 
-    // Fast room state check - restored working version
-    async fastRoomStateCheck() {
-        if (!this.currentRoom) return;
+    // COMPREHENSIVE fresh data fetch - always gets latest state from database
+    async fetchCompleteRoomState(roomId) {
+        console.log('=== FETCHING COMPLETE FRESH ROOM STATE ===');
+        console.log('Room ID:', roomId);
         
         try {
-            // Only fetch essential fields for speed
-            const { data, error } = await this.supabase
+            // Fetch ALL room data fresh from database - no caching
+            const { data: room, error: roomError } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select(`
-                    id,
-                    status,
-                    current_players,
-                    max_players,
-                    status_message,
-                    status_message_type,
-                    rejection_count,
-                    is_voting_phase,
-                    mission_leader,
-                    current_mission,
-                    team_proposal_state,
-                    selected_team_members,
-                    team_proposer_id,
-                    team_proposal_attempts,
-                    state_updated_at,
+                    *,
                     room_players (
                         id,
                         player_id,
@@ -2610,83 +2585,83 @@ class SupabaseRoomSystem {
                         is_host,
                         role,
                         alignment,
-                        has_role_seen
+                        has_role_seen,
+                        joined_at
                     )
                 `)
-                .eq('id', this.currentRoom.id)
+                .eq('id', roomId)
                 .single();
+
+            if (roomError) {
+                console.error('Error fetching complete room state:', roomError);
+                return null;
+            }
+
+            console.log('Fresh room data fetched:', {
+                id: room.id,
+                status: room.status,
+                status_message: room.status_message,
+                current_players: room.current_players,
+                rejection_count: room.rejection_count,
+                team_proposal_state: room.team_proposal_state,
+                mission_leader: room.mission_leader,
+                current_mission: room.current_mission,
+                players_count: room.room_players?.length || 0
+            });
+
+            return room;
+        } catch (error) {
+            console.error('Exception fetching complete room state:', error);
+            return null;
+        }
+    }
+
+    // Fast room state check - restored working version
+    async fastRoomStateCheck() {
+        if (!this.currentRoom) return;
+        
+        try {
+            // ALWAYS fetch complete fresh data - no partial fetching
+            const freshRoomData = await this.fetchCompleteRoomState(this.currentRoom.id);
             
-            if (error) {
-                console.error('Error in fast room state check:', error);
+            if (!freshRoomData) {
+                console.error('Failed to fetch fresh room data');
                 return;
             }
             
-            // Create a hash of the current state to detect changes
-            const stateHash = this.createStateHash(data);
+            // ALWAYS update with fresh data - no state comparison or caching
+            console.log('=== UPDATING WITH FRESH DATABASE DATA ===');
+            console.log('Previous status:', this.currentRoom.status);
+            console.log('Fresh status:', freshRoomData.status);
+            console.log('Previous message:', this.currentRoom.status_message);
+            console.log('Fresh message:', freshRoomData.status_message);
             
-            // Check for status message changes specifically
-            if (data.status_message !== this.currentRoom.status_message) {
-                console.log('=== STATUS MESSAGE CHANGE DETECTED IN POLLING ===');
-                console.log('Old message:', this.currentRoom.status_message);
-                console.log('New message:', data.status_message);
-                console.log('Old type:', this.currentRoom.status_message_type);
-                console.log('New type:', data.status_message_type);
-                console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
-                
-                // Update local cache first
-                this.currentRoom.status_message = data.status_message;
-                this.currentRoom.status_message_type = data.status_message_type;
-                
-                // Immediately update the status message display
-                console.log('Immediately updating status message display');
-                this.displayStatusMessage(data.status_message, data.status_message_type || 'waiting');
-            } else {
-                console.log('No status message change detected');
-                console.log('Current message:', this.currentRoom.status_message);
-                console.log('Database message:', data.status_message);
+            // Update current room with fresh data
+            this.currentRoom = freshRoomData;
+            this.currentRoom.players = freshRoomData.room_players || [];
+            this.currentRoom.current_players = this.currentRoom.players.length;
+            
+            // Update host status
+            const currentUser = supabaseAuthSystem.getCurrentUser();
+            if (currentUser) {
+                const playerData = this.currentRoom.players.find(p => p.player_id === currentUser.id);
+                this.isHost = playerData ? playerData.is_host : false;
             }
             
-            // Only update if state actually changed
-            if (stateHash !== this.lastStateHash) {
-                console.log('Room state changed, updating display');
-                this.lastStateHash = stateHash;
-                
-                // Update local room data
-                this.currentRoom.status = data.status;
-                this.currentRoom.current_players = data.current_players;
-                this.currentRoom.status_message = data.status_message;
-                this.currentRoom.status_message_type = data.status_message_type;
-                this.currentRoom.rejection_count = data.rejection_count || 0;
-                this.currentRoom.is_voting_phase = data.is_voting_phase || false;
-                this.currentRoom.mission_leader = data.mission_leader;
-                this.currentRoom.current_mission = data.current_mission || 1;
-                this.currentRoom.team_proposal_state = data.team_proposal_state || TEAM_PROPOSAL_STATE.NONE;
-                this.currentRoom.selected_team_members = data.selected_team_members || [];
-                this.currentRoom.team_proposer_id = data.team_proposer_id;
-                this.currentRoom.team_proposal_attempts = data.team_proposal_attempts || 0;
-                this.currentRoom.players = data.room_players || [];
-                
-                // Update rejection tracker UI (always update from database)
-                this.updateRejectionCounter(this.currentRoom.rejection_count || 0);
-                
-                // Update team building UI if in team building phase
-                if (this.currentRoom.team_proposal_state !== TEAM_PROPOSAL_STATE.NONE) {
-                    this.updateTeamBuildingUI();
-                }
-                
-                // Update host status
-                const currentUser = supabaseAuthSystem.getCurrentUser();
-                if (currentUser) {
-                    this.isHost = data.room_players?.find(p => p.player_id === currentUser.id)?.is_host || false;
-                }
-                
-                // Update UI
-                await this.updateRoomDisplay();
-                
-                // Check for role distribution
-                if (data.status === 'role_distribution' && !this.roleInformationShown) {
-                    this.showRoleInformation();
-                }
+            // Always update UI with fresh data
+            this.updateRejectionCounter(this.currentRoom.rejection_count || 0);
+            
+            // Update team building UI if in team building phase
+            if (this.currentRoom.team_proposal_state !== TEAM_PROPOSAL_STATE.NONE) {
+                this.updateTeamBuildingUI();
+            }
+            
+            // Update room display with fresh data
+            this.updateRoomDisplay();
+            
+            // Always update status message with fresh data
+            if (this.currentRoom.status_message) {
+                this.displayStatusMessage(this.currentRoom.status_message, this.currentRoom.status_message_type || 'waiting');
             }
             
         } catch (error) {
@@ -4001,24 +3976,18 @@ class SupabaseRoomSystem {
                 if (room.status !== GAME_STATUS.FINISHED) {
                     console.log('Found latest active room:', room);
                     
-                    // Set current room data
-                    this.currentRoom = room;
-                    this.isHost = playerRoom.is_host;
-                    
-                    // Fetch room players separately
-                    const { data: roomPlayers, error: playersError } = await this.supabase
-                        .from(TABLES.ROOM_PLAYERS)
-                        .select('*')
-                        .eq('room_id', this.currentRoom.id);
-                    
-                    if (playersError) {
-                        console.error('Error fetching room players:', playersError);
-                        this.currentRoom.players = [];
-                    } else {
-                        this.currentRoom.players = roomPlayers || [];
+                    // ALWAYS fetch complete fresh data from database
+                    const freshRoomData = await this.fetchCompleteRoomState(room.id);
+                    if (!freshRoomData) {
+                        console.error('Failed to fetch fresh room data for latest room');
+                        continue;
                     }
                     
+                    // Set current room data with fresh data
+                    this.currentRoom = freshRoomData;
+                    this.currentRoom.players = freshRoomData.room_players || [];
                     this.currentRoom.current_players = this.currentRoom.players.length;
+                    this.isHost = playerRoom.is_host;
                     
                     // Show room interface
                     await this.showRoomInterface();
@@ -4030,18 +3999,18 @@ class SupabaseRoomSystem {
                     this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
                     
                     // Check if room is already in role distribution status
-                    if (this.currentRoom.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                    if (freshRoomData.status === GAME_STATUS.ROLE_DISTRIBUTION) {
                         console.log('Room is already in role distribution, showing role information');
                         this.showRoleInformation();
                     }
                     
                     // Check if room is in playing state and show appropriate UI
-                    if (this.currentRoom.status === GAME_STATUS.PLAYING) {
+                    if (freshRoomData.status === GAME_STATUS.PLAYING) {
                         console.log('Room is in playing state, restoring game UI');
                         this.updateTeamBuildingUI();
                     }
                     
-                    console.log('Successfully restored LATEST room state');
+                    console.log('Successfully restored LATEST room state with fresh data');
                     return; // Exit after finding the latest active room
                 } else {
                     console.log('Room is finished, current status:', room.status);
