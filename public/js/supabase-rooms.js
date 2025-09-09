@@ -1137,11 +1137,7 @@ class SupabaseRoomSystem {
         // Don't show start game button if game has already started
         if (room.status !== GAME_STATUS.WAITING) {
             console.log('Game has already started, not showing start game button');
-            // Remove any existing button overlay
-            const buttonContainer = document.getElementById('startGameButtonContainer');
-            if (buttonContainer) {
-                buttonContainer.remove();
-            }
+            // Button overlay no longer created, so no need to remove it
             return;
         }
         
@@ -1305,59 +1301,8 @@ class SupabaseRoomSystem {
                     }
                 }
                 
-                // Try moving the button to a more prominent location
-        const statusMessage = document.getElementById('statusMessage');
-                if (statusMessage && statusMessage.parentElement) {
-                    // Create a new container for the button
-                    let buttonContainer = document.getElementById('startGameButtonContainer');
-                    if (!buttonContainer) {
-                        buttonContainer = document.createElement('div');
-                        buttonContainer.id = 'startGameButtonContainer';
-                        buttonContainer.style.cssText = `
-                            position: fixed;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            z-index: 10000;
-                            background: rgba(0, 0, 0, 0.8);
-                            padding: 20px;
-                            border-radius: 10px;
-                            text-align: center;
-                        `;
-                        document.body.appendChild(buttonContainer);
-                    }
-                    
-                    // Move button to new container
-                    buttonContainer.innerHTML = `
-                        <h3 style="color: white; margin-bottom: 15px;">Room is Full!</h3>
-                        <button class="btn btn-primary" id="startGameBtn" style="
-                            display: inline-block !important;
-                            visibility: visible !important;
-                            opacity: 1 !important;
-                            position: relative !important;
-                            z-index: 10001 !important;
-                            width: 200px !important;
-                            height: 50px !important;
-                            min-width: 200px !important;
-                            min-height: 50px !important;
-                            padding: 15px 30px !important;
-                            margin: 10px !important;
-                            font-size: 18px !important;
-                            font-weight: bold !important;
-                            background: #007bff !important;
-                            color: white !important;
-                            border: none !important;
-                            border-radius: 5px !important;
-                            cursor: pointer !important;
-                        ">Start Game</button>
-                    `;
-                    
-                    // Re-attach event listener to the new button
-                    const newButton = buttonContainer.querySelector('#startGameBtn');
-                    if (newButton) {
-                        newButton.addEventListener('click', () => this.startGame());
-                    }
-                }
+                // Button should now be visible after all fixes
+                console.log('Start Game button visibility fixes applied');
                 
                 // Also ensure parent is visible
                 if (gameControls) {
@@ -1427,11 +1372,7 @@ class SupabaseRoomSystem {
             this.currentRoom.status = GAME_STATUS.ROLE_DISTRIBUTION;
             this.currentRoom.started_at = new Date().toISOString();
 
-            // Remove the button overlay
-            const buttonContainer = document.getElementById('startGameButtonContainer');
-            if (buttonContainer) {
-                buttonContainer.remove();
-            }
+            // Button overlay no longer created, so no need to remove it
 
             // Hide original start game button
             const startGameBtn = document.getElementById('startGameBtn');
@@ -3062,12 +3003,7 @@ class SupabaseRoomSystem {
         if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
             console.log('Game started! Role distribution beginning...');
             
-            // Remove any existing button overlay
-            const buttonContainer = document.getElementById('startGameButtonContainer');
-            if (buttonContainer) {
-                console.log('Removing button overlay');
-                buttonContainer.remove();
-            }
+            // Button overlay no longer created, so no need to remove it
             
             // Hide start game button for non-host players
             const startGameBtn = document.getElementById('startGameBtn');
