@@ -1356,8 +1356,9 @@ class SupabaseRoomSystem {
             console.error('Start Game button element not found!');
         }
         
-        // Update status message from database or calculate if needed
-        await this.updateAndDisplayRoomStatusMessage(room, isRoomFull);
+        // Update status message based on room state
+        const roomState = isRoomFull ? 'ready' : 'waiting';
+        await this.updateRoomState(roomState);
     }
 
     setupGameEventListeners() {
@@ -1421,8 +1422,8 @@ class SupabaseRoomSystem {
                 startGameBtn.style.display = 'none';
             }
 
-            // Update status message to indicate role distribution
-            await this.updateRoomStatusMessage('Roles are being distributed... Please check your role information.', 'playing');
+            // Update room state to role distribution
+            await this.updateRoomState('role_distribution');
 
             // Force immediate update for all players via polling
             await this.immediateRoomStateUpdate();
@@ -1476,8 +1477,11 @@ class SupabaseRoomSystem {
                 if (allPlayersSeenRoles) {
                     console.log('🎉 All players have seen their roles - starting actual game!');
                     
-                    // Update status message
-                    await this.updateRoomStatusMessage('All players ready! Starting game...', 'ready');
+                    // Update status message with progress info
+                    await this.updateRoomState('role_distribution', { 
+                        playersSeenRoles: seenCount, 
+                        totalPlayers: totalCount 
+                    });
                     
                     // Wait longer for the message to be seen
                     await new Promise(resolve => setTimeout(resolve, 4000));
@@ -1487,6 +1491,13 @@ class SupabaseRoomSystem {
                 } else {
                     console.log('⏳ Still waiting for players to see their roles...');
                     console.log(`Missing: ${players.filter(p => p.has_role_seen !== true).map(p => p.player_name).join(', ')}`);
+                    
+                    // Update status message with current progress
+                    await this.updateRoomState('role_distribution', { 
+                        playersSeenRoles: seenCount, 
+                        totalPlayers: totalCount 
+                    });
+                    
                     // Check again in 2 seconds
                     setTimeout(checkCompletion, 2000);
                 }
@@ -1531,8 +1542,8 @@ class SupabaseRoomSystem {
             // Update local room status
             this.currentRoom.status = GAME_STATUS.PLAYING;
             
-            // Update status message
-            await this.updateRoomStatusMessage('Game started! Mission 1 begins.', 'playing');
+            // Update room state to playing
+            await this.updateRoomState('playing', { currentMission: 1 });
             
             // Wait a moment for the message to be seen
             await new Promise(resolve => setTimeout(resolve, 3000));
@@ -2453,7 +2464,64 @@ class SupabaseRoomSystem {
     }
 
 
-    // Database-driven room state management methods
+    // Update room state and automatically set corresponding status message
+    async updateRoomState(newState, additionalInfo = {}) {
+        if (!this.currentRoom) return;
+        
+        try {
+            // Get the appropriate status message for this state
+            const statusMessage = this.getStatusMessageForState(newState, additionalInfo);
+            const statusMessageType = this.getStatusMessageType(newState);
+            
+            console.log('🔄 Updating room state:', {
+                from: this.currentRoom.status,
+                to: newState,
+                message: statusMessage,
+                type: statusMessageType,
+                additionalInfo
+            });
+            
+            // Update database with new state and corresponding message
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    status: newState,
+                    status_message: statusMessage,
+                    status_message_type: statusMessageType
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating room state:', error);
+            } else {
+                console.log('✅ Successfully updated room state:', newState);
+                // Update local cache
+                this.currentRoom.status = newState;
+                this.currentRoom.status_message = statusMessage;
+                this.currentRoom.status_message_type = statusMessageType;
+                
+                // Immediately update the display
+                this.displayStatusMessage(statusMessage, statusMessageType);
+            }
+        } catch (error) {
+            console.error('Exception updating room state:', error);
+        }
+    }
+
+    // Get status message type based on room state
+    getStatusMessageType(roomState) {
+        const typeMapping = {
+            'waiting': 'waiting',
+            'ready': 'ready',
+            'role_distribution': 'playing',
+            'playing': 'playing',
+            'finished': 'finished'
+        };
+        
+        return typeMapping[roomState] || 'waiting';
+    }
+
+    // Database-driven room state management methods (legacy - use updateRoomState instead)
     async updateRoomStatusMessage(message, type = 'waiting') {
         if (!this.currentRoom) return;
         
@@ -2641,13 +2709,51 @@ class SupabaseRoomSystem {
         }
     }
 
+    // Get status message based on room state (database-driven)
+    getStatusMessageForState(roomState, additionalInfo = {}) {
+        const statusMessages = {
+            'waiting': 'Waiting for players...',
+            'ready': 'Room is full! Ready to start.',
+            'role_distribution': 'Role distribution in progress...',
+            'playing': 'Game in progress...',
+            'finished': 'Game over!'
+        };
+        
+        // Get base message
+        let message = statusMessages[roomState] || 'Unknown state...';
+        
+        // Add specific information based on state and additional info
+        if (roomState === 'role_distribution') {
+            const { playersSeenRoles = 0, totalPlayers = 0 } = additionalInfo;
+            if (totalPlayers > 0) {
+                message = `Role distribution in progress... (${playersSeenRoles}/${totalPlayers} ready)`;
+            }
+        } else if (roomState === 'playing') {
+            const { currentMission = 1 } = additionalInfo;
+            message = `Mission ${currentMission} in progress...`;
+        }
+        
+        return message;
+    }
+
     // Convert long status messages to shorter versions for center display
     getShortStatusMessage(message, messageType) {
         const shortMessages = {
             'Waiting for players...': 'Waiting...',
             'Room is full! Ready to start.': 'Ready to Start!',
-            'Roles are being distributed... Please check your role information.': 'Check Your Role!',
+            'Role distribution in progress...': 'Check Your Role!',
+            'Role distribution in progress... (1/5 ready)': 'Check Your Role!',
+            'Role distribution in progress... (2/5 ready)': 'Check Your Role!',
+            'Role distribution in progress... (3/5 ready)': 'Check Your Role!',
+            'Role distribution in progress... (4/5 ready)': 'Check Your Role!',
+            'Role distribution in progress... (5/5 ready)': 'Check Your Role!',
+            'All players ready! Starting game...': 'Starting Game!',
             'Game started! Mission 1 begins.': 'Mission 1',
+            'Mission 1 in progress...': 'Mission 1',
+            'Mission 2 in progress...': 'Mission 2',
+            'Mission 3 in progress...': 'Mission 3',
+            'Mission 4 in progress...': 'Mission 4',
+            'Mission 5 in progress...': 'Mission 5',
             'Waiting for team proposal...': 'Propose Team',
             'Voting on team...': 'Vote Now',
             'Mission in progress...': 'Mission Active',
