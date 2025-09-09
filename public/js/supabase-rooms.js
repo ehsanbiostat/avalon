@@ -1545,6 +1545,9 @@ class SupabaseRoomSystem {
             // Update room state to playing
             await this.updateRoomState('playing', { currentMission: 1 });
             
+            // Force refresh status message to ensure it's displayed
+            await this.forceRefreshStatusMessage();
+            
             // Wait a moment for the message to be seen
             await new Promise(resolve => setTimeout(resolve, 3000));
             
@@ -2377,11 +2380,17 @@ class SupabaseRoomSystem {
                 console.log('=== STATUS MESSAGE CHANGE DETECTED IN POLLING ===');
                 console.log('Old message:', this.currentRoom.status_message);
                 console.log('New message:', data.status_message);
+                console.log('Old type:', this.currentRoom.status_message_type);
+                console.log('New type:', data.status_message_type);
                 console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
                 
                 // Immediately update the status message display
                 console.log('Immediately updating status message display');
                 this.displayStatusMessage(data.status_message, data.status_message_type || 'waiting');
+            } else {
+                console.log('No status message change detected');
+                console.log('Current message:', this.currentRoom.status_message);
+                console.log('Database message:', data.status_message);
             }
             
             // Only update if state actually changed
@@ -2660,6 +2669,8 @@ class SupabaseRoomSystem {
         console.log('Message:', message);
         console.log('Message type:', messageType);
         console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+        console.log('Current room status:', this.currentRoom?.status);
+        console.log('Current room status_message:', this.currentRoom?.status_message);
         
         // If element doesn't exist, try to create it or find the game table
         if (!statusMessage) {
@@ -2763,6 +2774,46 @@ class SupabaseRoomSystem {
         
         // Return short version if available, otherwise truncate the original
         return shortMessages[message] || message.substring(0, 20) + (message.length > 20 ? '...' : '');
+    }
+
+    // Force refresh status message from database
+    async forceRefreshStatusMessage() {
+        if (!this.currentRoom) return;
+        
+        try {
+            console.log('🔄 Force refreshing status message from database...');
+            
+            const { data, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select('status_message, status_message_type, status')
+                .eq('id', this.currentRoom.id)
+                .single();
+            
+            if (error) {
+                console.error('Error force refreshing status message:', error);
+                return;
+            }
+            
+            console.log('📊 Database status data:', data);
+            console.log('📊 Current local status:', {
+                status: this.currentRoom.status,
+                status_message: this.currentRoom.status_message,
+                status_message_type: this.currentRoom.status_message_type
+            });
+            
+            // Update local cache
+            this.currentRoom.status_message = data.status_message;
+            this.currentRoom.status_message_type = data.status_message_type;
+            this.currentRoom.status = data.status;
+            
+            // Force display update
+            this.displayStatusMessage(data.status_message, data.status_message_type || 'waiting');
+            
+            console.log('✅ Status message force refreshed');
+            
+        } catch (error) {
+            console.error('Exception force refreshing status message:', error);
+        }
     }
 
     // Create a floating Start Game button as a fallback
