@@ -1091,7 +1091,7 @@ class SupabaseRoomSystem {
         
         // Use a more conservative radius calculation that accounts for responsive design
         const baseRadius = Math.min(circleWidth, circleHeight) / 2;
-        const radius = baseRadius * 0.75; // 75% of radius to ensure players stay within circle
+        const radius = baseRadius * 0.85; // 85% of radius to move players closer to circle border
         
         console.log('Responsive positioning:', {
             viewportWidth,
