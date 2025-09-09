@@ -1357,8 +1357,8 @@ class SupabaseRoomSystem {
         }
         
         // Update status message based on room state
-        const roomState = isRoomFull ? 'ready' : 'waiting';
-        await this.updateRoomState(roomState);
+        const roomState = 'waiting'; // Always use 'waiting' status, but show different messages
+        await this.updateRoomState(roomState, { isRoomFull });
     }
 
     setupGameEventListeners() {
@@ -2521,10 +2521,10 @@ class SupabaseRoomSystem {
     getStatusMessageType(roomState) {
         const typeMapping = {
             'waiting': 'waiting',
-            'ready': 'ready',
             'role_distribution': 'playing',
             'playing': 'playing',
-            'finished': 'finished'
+            'finished': 'finished',
+            'cancelled': 'error'
         };
         
         return typeMapping[roomState] || 'waiting';
@@ -2632,7 +2632,7 @@ class SupabaseRoomSystem {
         if (room.status === 'waiting') {
             if (isRoomFull) {
                 message = 'Room is full! Ready to start.';
-                messageType = 'ready';
+                messageType = 'waiting';
             } else {
                 const playersNeeded = room.max_players - room.current_players;
                 message = `Waiting for ${playersNeeded} more player${playersNeeded === 1 ? '' : 's'}...`;
@@ -2724,17 +2724,22 @@ class SupabaseRoomSystem {
     getStatusMessageForState(roomState, additionalInfo = {}) {
         const statusMessages = {
             'waiting': 'Waiting for players...',
-            'ready': 'Room is full! Ready to start.',
             'role_distribution': 'Role distribution in progress...',
             'playing': 'Game in progress...',
-            'finished': 'Game over!'
+            'finished': 'Game over!',
+            'cancelled': 'Game cancelled'
         };
         
         // Get base message
         let message = statusMessages[roomState] || 'Unknown state...';
         
         // Add specific information based on state and additional info
-        if (roomState === 'role_distribution') {
+        if (roomState === 'waiting') {
+            const { isRoomFull = false } = additionalInfo;
+            if (isRoomFull) {
+                message = 'Room is full! Ready to start.';
+            }
+        } else if (roomState === 'role_distribution') {
             const { playersSeenRoles = 0, totalPlayers = 0 } = additionalInfo;
             if (totalPlayers > 0) {
                 message = `Role distribution in progress... (${playersSeenRoles}/${totalPlayers} ready)`;
