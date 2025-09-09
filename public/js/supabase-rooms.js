@@ -2380,6 +2380,9 @@ class SupabaseRoomSystem {
                     max_players,
                     status_message,
                     status_message_type,
+                    rejection_count,
+                    is_voting_phase,
+                    mission_leader,
                     state_updated_at,
                     room_players (
                         id,
@@ -2435,7 +2438,13 @@ class SupabaseRoomSystem {
                 this.currentRoom.current_players = data.current_players;
                 this.currentRoom.status_message = data.status_message;
                 this.currentRoom.status_message_type = data.status_message_type;
+                this.currentRoom.rejection_count = data.rejection_count || 0;
+                this.currentRoom.is_voting_phase = data.is_voting_phase || false;
+                this.currentRoom.mission_leader = data.mission_leader;
                 this.currentRoom.players = data.room_players || [];
+                
+                // Update rejection tracker UI
+                this.updateRejectionCounter(this.currentRoom.rejection_count);
                 
                 // Update host status
                 const currentUser = supabaseAuthSystem.getCurrentUser();
@@ -2805,6 +2814,190 @@ class SupabaseRoomSystem {
         
         // Return short version if available, otherwise truncate the original
         return shortMessages[message] || message.substring(0, 20) + (message.length > 20 ? '...' : '');
+    }
+
+    // Show/hide rejection tracker
+    showRejectionTracker() {
+        const rejectionTracker = document.getElementById('rejectionTracker');
+        if (rejectionTracker) {
+            rejectionTracker.style.display = 'block';
+        }
+    }
+
+    hideRejectionTracker() {
+        const rejectionTracker = document.getElementById('rejectionTracker');
+        if (rejectionTracker) {
+            rejectionTracker.style.display = 'none';
+        }
+    }
+
+    // Update rejection counter
+    updateRejectionCounter(count) {
+        const rejectionCount = document.getElementById('rejectionCount');
+        const rejectionWarning = document.getElementById('rejectionWarning');
+        
+        if (rejectionCount) {
+            rejectionCount.textContent = count;
+        }
+        
+        if (rejectionWarning) {
+            if (count >= 4) {
+                rejectionWarning.style.display = 'block';
+            } else {
+                rejectionWarning.style.display = 'none';
+            }
+        }
+        
+        // Show tracker when there are rejections
+        if (count > 0) {
+            this.showRejectionTracker();
+        } else {
+            this.hideRejectionTracker();
+        }
+    }
+
+    // Handle team rejection
+    async handleTeamRejection() {
+        if (!this.currentRoom) return;
+        
+        try {
+            const newRejectionCount = (this.currentRoom.rejection_count || 0) + 1;
+            
+            // Update database
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    rejection_count: newRejectionCount,
+                    is_voting_phase: false // End voting phase
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating rejection count:', error);
+                return;
+            }
+            
+            // Update local state
+            this.currentRoom.rejection_count = newRejectionCount;
+            
+            // Update UI
+            this.updateRejectionCounter(newRejectionCount);
+            
+            // Check if Evil wins (5 rejections)
+            if (newRejectionCount >= 5) {
+                await this.handleEvilWinByRejections();
+                return;
+            }
+            
+            // Pass leadership to next player
+            await this.passLeadershipToNext();
+            
+            console.log(`Team rejected! Rejection count: ${newRejectionCount}/5`);
+            
+        } catch (error) {
+            console.error('Error handling team rejection:', error);
+        }
+    }
+
+    // Handle team acceptance
+    async handleTeamAcceptance() {
+        if (!this.currentRoom) return;
+        
+        try {
+            // Reset rejection count when team is accepted
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    rejection_count: 0,
+                    is_voting_phase: false // End voting phase
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error resetting rejection count:', error);
+                return;
+            }
+            
+            // Update local state
+            this.currentRoom.rejection_count = 0;
+            
+            // Update UI
+            this.updateRejectionCounter(0);
+            
+            console.log('Team accepted! Rejection count reset to 0');
+            
+        } catch (error) {
+            console.error('Error handling team acceptance:', error);
+        }
+    }
+
+    // Handle Evil win by 5 rejections
+    async handleEvilWinByRejections() {
+        try {
+            // Update room status to finished with Evil win
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    status: 'finished',
+                    finished_at: new Date().toISOString()
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating room status for Evil win:', error);
+                return;
+            }
+            
+            // Show Evil win message
+            this.displayStatusMessage('Evil wins! 5 team rejections!', 'error');
+            
+            // Hide rejection tracker
+            this.hideRejectionTracker();
+            
+            console.log('Evil wins by 5 team rejections!');
+            
+        } catch (error) {
+            console.error('Error handling Evil win by rejections:', error);
+        }
+    }
+
+    // Pass leadership to next player
+    async passLeadershipToNext() {
+        if (!this.currentRoom || !this.currentRoom.players) return;
+        
+        try {
+            const currentLeaderIndex = this.currentRoom.players.findIndex(p => p.player_id === this.currentRoom.mission_leader);
+            const nextLeaderIndex = (currentLeaderIndex + 1) % this.currentRoom.players.length;
+            const nextLeader = this.currentRoom.players[nextLeaderIndex];
+            
+            // Update mission leader in database
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({ 
+                    mission_leader: nextLeader.player_id,
+                    is_voting_phase: true // Start new voting phase
+                })
+                .eq('id', this.currentRoom.id);
+            
+            if (error) {
+                console.error('Error updating mission leader:', error);
+                return;
+            }
+            
+            // Update local state
+            this.currentRoom.mission_leader = nextLeader.player_id;
+            
+            // Update UI
+            this.positionPlayersOnCircle();
+            
+            // Show new leader message
+            this.displayStatusMessage(`${nextLeader.player_name} is now the mission leader`, 'playing');
+            
+            console.log(`Leadership passed to: ${nextLeader.player_name}`);
+            
+        } catch (error) {
+            console.error('Error passing leadership:', error);
+        }
     }
 
     // Force refresh status message from database

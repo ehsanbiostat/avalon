@@ -237,6 +237,17 @@
                 <div class="game-table" id="gameTable">
                     <!-- Room Status Message - Centered in the circle -->
                     <div id="statusMessage" class="status-message-center waiting">Waiting for players...</div>
+                    
+                    <!-- Team Rejection Tracker - Below status message -->
+                    <div id="rejectionTracker" class="rejection-tracker" style="display: none;">
+                        <div class="rejection-title">Team Rejections</div>
+                        <div class="rejection-counter">
+                            <span id="rejectionCount">0</span>/5
+                        </div>
+                        <div class="rejection-warning" id="rejectionWarning" style="display: none;">
+                            ⚠️ 5 rejections = Evil wins!
+                        </div>
+                    </div>
                 </div>
                 <div class="game-controls">
                     <button class="btn btn-primary" id="proposeTeamBtn" style="display: none;">Propose Team</button>

@@ -55,7 +55,7 @@
 /* Centered status message in the middle of the game circle */
 .status-message-center {
     position: absolute;
-    top: 45%;
+    top: 35%;
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
@@ -75,6 +75,50 @@
     pointer-events: none;
 }
 
+/* Team Rejection Tracker */
+.rejection-tracker {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 1rem 1.5rem;
+    border-radius: 15px;
+    background: rgba(220, 53, 69, 0.9);
+    border: 2px solid rgba(220, 53, 69, 1);
+    color: #fff;
+    font-weight: bold;
+    font-size: min(1.1rem, 2.5vw);
+    z-index: 10;
+    max-width: 200px;
+    box-sizing: border-box;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.rejection-title {
+    font-size: min(0.9rem, 2vw);
+    margin-bottom: 0.5rem;
+    opacity: 0.9;
+}
+
+.rejection-counter {
+    font-size: min(1.4rem, 3.5vw);
+    font-weight: 900;
+    margin-bottom: 0.5rem;
+}
+
+.rejection-warning {
+    font-size: min(0.8rem, 1.8vw);
+    color: #ffd700;
+    font-weight: bold;
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(255, 215, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.5);
+}
 
 .status-message.ready {
     background: rgba(40, 167, 69, 0.2);
