@@ -2641,7 +2641,7 @@ class SupabaseRoomSystem {
         floatingContainer.id = 'floatingStartGameBtn';
         floatingContainer.style.cssText = `
             position: fixed;
-            top: 50%;
+            top: 60%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 10000;
