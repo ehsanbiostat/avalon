@@ -5145,16 +5145,58 @@ class SupabaseRoomSystem {
     }
 }
 
-// Initialize the room system
-const supabaseRoomSystem = new SupabaseRoomSystem();
+// ✅ PROPER GLOBAL INITIALIZATION
+console.log('🔧 Initializing supabaseRoomsSystem...');
 
-// Expose debugging functions globally
-window.debugRoomState = () => supabaseRoomSystem.debugRoomState();
-window.debugValidateState = () => supabaseRoomSystem.debugValidateState();
-window.getStateHistory = () => supabaseRoomSystem.getStateUpdateHistory();
-window.getPerformanceMetrics = () => supabaseRoomSystem.getPerformanceMetrics();
+// Wait for DOM and auth system to be ready
+const initializeRoomsSystem = () => {
+  if (window.supabaseAuthSystem) {
+    window.supabaseRoomsSystem = new SupabaseRoomSystem(window.supabaseAuthSystem);
+    console.log('✅ supabaseRoomsSystem initialized and available globally');
+    
+    // Expose it explicitly with alternative reference
+    window.roomsSystem = window.supabaseRoomsSystem;
+    
+    // Expose the class globally for manual initialization if needed
+    window.SupabaseRoomSystem = SupabaseRoomSystem;
+    
+    // Dispatch event to notify other scripts
+    window.dispatchEvent(new CustomEvent('roomsSystemReady', {
+      detail: { roomsSystem: window.supabaseRoomsSystem }
+    }));
+    
+  } else {
+    console.warn('⚠️ supabaseAuthSystem not ready, retrying...');
+    setTimeout(initializeRoomsSystem, 100); // Retry after 100ms
+  }
+};
 
-// Make it globally available
-window.supabaseRoomSystem = supabaseRoomSystem;
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeRoomsSystem);
+} else {
+  initializeRoomsSystem();
+}
+
+// Expose debugging functions globally (will be set after initialization)
+window.setupDebugFunctions = () => {
+    if (window.supabaseRoomsSystem) {
+        window.debugRoomState = () => window.supabaseRoomsSystem.debugRoomState();
+        window.debugValidateState = () => window.supabaseRoomsSystem.debugValidateState();
+        window.getStateHistory = () => window.supabaseRoomsSystem.getStateUpdateHistory();
+        console.log('✅ Debug functions exposed globally');
+    }
+};
+// Update the initialization to also setup debug functions
+const originalInitializeRoomsSystem = initializeRoomsSystem;
+initializeRoomsSystem = () => {
+    originalInitializeRoomsSystem();
+    // Setup debug functions after initialization
+    setTimeout(() => {
+        if (window.setupDebugFunctions) {
+            window.setupDebugFunctions();
+        }
+    }, 100);
+};
 
 export default supabaseRoomSystem;

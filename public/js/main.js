@@ -120,10 +120,12 @@ class AvalonApp {
             joinModal.style.display = 'block';
             
             // Load active rooms when modal opens
-            if (supabaseRoomsSystem) {
-                supabaseRoomsSystem.loadActiveRooms().then(({myRooms, joinableRooms}) => {
-                    supabaseRoomsSystem.displayActiveRoomsList(myRooms, joinableRooms);
+            if (window.supabaseRoomsSystem) {
+                window.supabaseRoomsSystem.loadActiveRooms().then(({myRooms, joinableRooms}) => {
+                    window.supabaseRoomsSystem.displayActiveRoomsList(myRooms, joinableRooms);
                 });
+            } else {
+                console.warn('⚠️ supabaseRoomsSystem not available for loading active rooms');
             }
         }
     }
@@ -140,25 +142,102 @@ class AvalonApp {
         }
 
         try {
-            const success = await supabaseRoomsSystem.joinRoomByCode(roomCode);
+            // Safety check for supabaseRoomsSystem
+            if (!window.supabaseRoomsSystem) {
+                console.warn('⚠️ supabaseRoomsSystem not available, attempting to initialize...');
+                
+                // Try to initialize if possible
+                if (window.supabaseAuthSystem && window.SupabaseRoomSystem) {
+                    window.supabaseRoomsSystem = new window.SupabaseRoomSystem(window.supabaseAuthSystem);
+                    console.log('✅ supabaseRoomsSystem initialized on demand');
+                } else {
+                    console.error('❌ Required dependencies not available');
+                    alert('System not ready. Please refresh the page.');
+                    return;
+                }
+            }
+            
+            const success = await window.supabaseRoomsSystem.joinRoomByCode(roomCode);
             if (success) {
                 this.closeAllModals();
                 roomCodeInput.value = '';
             }
         } catch (error) {
-            console.error('Failed to join room:', error);
+            console.error('❌ Failed to join room:', error);
+            alert('Failed to join room: ' + error.message);
+        }
+    }
+
+    // Debug utility to check global object availability
+    debugAvailability() {
+        const checks = {
+            'supabaseAuthSystem': !!window.supabaseAuthSystem,
+            'supabaseRoomsSystem': !!window.supabaseRoomsSystem,
+            'SupabaseRoomSystem class': !!window.SupabaseRoomSystem,
+            'roomsSystem alternative': !!window.roomsSystem,
+            'connectionManager': !!window.connectionManager,
+            'subscriptionManager': !!window.subscriptionManager
+        };
+        
+        console.table(checks);
+        
+        if (!window.supabaseRoomsSystem) {
+            console.log('🔧 Attempting manual initialization...');
+            try {
+                if (window.supabaseAuthSystem && window.SupabaseRoomSystem) {
+                    window.supabaseRoomsSystem = new window.SupabaseRoomSystem(window.supabaseAuthSystem);
+                    console.log('✅ Manual initialization successful');
+                } else {
+                    console.error('❌ Missing dependencies for manual initialization');
+                }
+            } catch (error) {
+                console.error('❌ Manual initialization failed:', error);
+            }
+        }
+        
+        return checks;
+    }
+
+    // Handle rooms system ready event
+    onRoomsSystemReady(roomsSystem) {
+        console.log('🎮 Rooms system ready, setting up additional features');
+        
+        // Set up any additional features that depend on rooms system
+        if (roomsSystem) {
+            // Ensure global reference is set
+            window.supabaseRoomsSystem = roomsSystem;
+            window.roomSystem = roomsSystem;
+            
+            console.log('✅ Rooms system fully integrated');
         }
     }
 
     initializeSystems() {
         // Initialize all systems in the correct order
         // Supabase auth system is already initialized
-        // Supabase room system is already initialized
-        // Game system is already initialized
+        
+        // Add debugging utility to global scope
+        window.debugAvailability = () => this.debugAvailability();
+        
+        // Listen for rooms system ready event
+        window.addEventListener('roomsSystemReady', (event) => {
+            console.log('📡 Received roomsSystemReady event');
+            this.onRoomsSystemReady(event.detail.roomsSystem);
+        });
+        
+        // Also try immediate initialization in case it's already ready
+        setTimeout(() => {
+            if (window.supabaseRoomsSystem) {
+                console.log('✅ Rooms system already ready');
+                this.onRoomsSystemReady(window.supabaseRoomsSystem);
+            } else {
+                console.log('⏳ Waiting for rooms system...');
+            }
+        }, 100); // Small delay to ensure scripts loaded
         
         // Set up global references
         window.authSystem = window.supabaseAuthSystem;
-        window.roomSystem = window.supabaseRoomSystem;
+        window.roomSystem = window.supabaseRoomsSystem;
         window.gameSystem = gameSystem;
         
         // Initialize any additional features
