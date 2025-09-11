@@ -1069,25 +1069,25 @@ class SupabaseRoomSystem {
         console.log('🔄 Proceeding with player insert...');
 
         // Check if room has no host (host_id is null) and get original host info
-        const { data: room } = await this.supabase
+        const { data: roomData } = await this.supabase
             .from(TABLES.GAME_ROOMS)
             .select('host_id, current_players, original_host_id')
             .eq('id', roomId)
             .single();
 
         // Determine if this player should become host
-        if (room && !room.host_id) {
+        if (roomData && !roomData.host_id) {
             // Room has no current host
-            if (room.current_players === 0) {
+            if (roomData.current_players === 0) {
                 // No players left, first rejoining player becomes host
                 isHost = true;
                 console.log('Room has no host and no players, making first rejoining player the new host');
-            } else if (room.original_host_id === user.id) {
+            } else if (roomData.original_host_id === user.id) {
                 // Original host is rejoining, they get priority to become host again
                 isHost = true;
                 console.log('Original host is rejoining, giving them host status back');
             }
-        } else if (room && room.original_host_id === user.id && room.host_id !== user.id) {
+        } else if (roomData && roomData.original_host_id === user.id && roomData.host_id !== user.id) {
             // Original host is rejoining but room already has a host
             // Give original host priority and transfer host status
             isHost = true;
@@ -1157,9 +1157,9 @@ class SupabaseRoomSystem {
 
         // Prepare insert data with exact field names
         const insertData = {
-            room_id: roomId,
-            player_id: user.id,
-            player_name: user.profile?.display_name || user.email,
+                room_id: roomId,
+                player_id: user.id,
+                player_name: user.profile?.display_name || user.email,
             player_avatar: user.profile?.avatar || '👤',
             is_host: isHost
         };
