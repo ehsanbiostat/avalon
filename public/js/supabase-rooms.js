@@ -1105,42 +1105,23 @@ class SupabaseRoomSystem {
         console.log('Insert data keys:', Object.keys(insertData));
         console.log('Insert data values:', insertData);
 
-        // Test manual insert with simplified data first
-        console.log('🧪 Testing manual insert with simplified data');
-        const testInsert = {
-            room_id: roomId,
-            player_id: user.id,
-            player_name: 'TestUser',
-            is_host: true
-        };
-
-        const { data: testResult, error: testError } = await this.supabase
-            .from(TABLES.ROOM_PLAYERS)
-            .insert(testInsert)
-            .select();
-
-        console.log('🧪 Test insert result:', { testResult, testError });
-
-        if (testError) {
-            console.error('🚨 TEST INSERT FAILED:', {
-                test_error: testError,
-                test_data: testInsert
-            });
-            throw testError;
-        }
-
-        console.log('✅ Test insert successful, proceeding with full insert');
-
-        // Then perform database operation
-        console.log('🔄 About to insert player into room_players table');
+        // Perform database operation with upsert to handle duplicates gracefully
+        console.log('🔄 About to upsert player into room_players table');
         
         const { data: insertResult, error } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
-            .insert(insertData)
+            .upsert(insertData, {
+                onConflict: 'room_id,player_id',
+                ignoreDuplicates: false // Update existing record if it exists
+            })
             .select();
 
-        console.log('📊 Insert result:', insertResult);
-        console.log('❌ Insert error:', error);
+        console.log('📊 Upsert result:', insertResult);
+        console.log('❌ Upsert error:', error);
+        
+        if (insertResult && insertResult.length > 0) {
+            console.log('✅ Player upserted successfully:', insertResult[0]);
+        }
 
         if (error) {
             console.error('🚨 DETAILED INSERT ERROR:', {
@@ -1161,40 +1142,13 @@ class SupabaseRoomSystem {
                 player_id: user.id
             });
             
-            // Check if it's a duplicate key error (player already exists)
-            if (error.code === '23505') {
-                console.log('Player already exists in room (duplicate key), updating instead');
-                // Try to update the existing record
-                const { error: updateError } = await this.supabase
-                    .from(TABLES.ROOM_PLAYERS)
-                    .update({
-                        player_name: user.profile?.display_name || user.email,
-                        player_avatar: user.profile?.avatar || '👤',
-                        is_host: isHost,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('room_id', roomId)
-                    .eq('player_id', user.id);
-                    
-                if (updateError) {
-                    console.error('Error updating existing player after duplicate key error:', updateError);
-                    // Rollback optimistic update
-                    this.currentRoom.players = this.currentRoom.players.filter(p => p.id !== user.id);
-                    this.currentRoom.current_players = this.currentRoom.players.length;
-                    this.setupRoomInterface();
-                    this.positionPlayersOnCircle();
-                    this.updateRoomStatus();
-                    throw updateError;
-                }
-            } else {
-                // Rollback optimistic update for other errors
-                this.currentRoom.players = this.currentRoom.players.filter(p => p.id !== user.id);
-                this.currentRoom.current_players = this.currentRoom.players.length;
-                this.setupRoomInterface();
-                this.positionPlayersOnCircle();
-                this.updateRoomStatus();
-                throw error;
-            }
+            // Rollback optimistic update for any errors
+            this.currentRoom.players = this.currentRoom.players.filter(p => p.id !== user.id);
+            this.currentRoom.current_players = this.currentRoom.players.length;
+            this.setupRoomInterface();
+            this.positionPlayersOnCircle();
+            this.updateRoomStatus();
+            throw error;
         }
 
         // CRITICAL: Update game_rooms table to trigger real-time subscriptions
