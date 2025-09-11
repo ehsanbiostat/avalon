@@ -1,11 +1,15 @@
 -- Fix RLS policies for room_players table to allow necessary queries
 -- This fixes the 406 (Not Acceptable) error when checking if player exists
 
--- Drop existing restrictive policies
+-- Drop ALL existing policies first to avoid conflicts
 DROP POLICY IF EXISTS "Users can view their own room players" ON public.room_players;
 DROP POLICY IF EXISTS "Users can insert their own room players" ON public.room_players;
 DROP POLICY IF EXISTS "Users can update their own room players" ON public.room_players;
 DROP POLICY IF EXISTS "Users can delete their own room players" ON public.room_players;
+DROP POLICY IF EXISTS "Anyone can view room players" ON public.room_players;
+DROP POLICY IF EXISTS "Authenticated users can join rooms" ON public.room_players;
+DROP POLICY IF EXISTS "Users can update room players" ON public.room_players;
+DROP POLICY IF EXISTS "Users can leave rooms" ON public.room_players;
 
 -- Create more permissive policies for room_players table
 -- Allow anyone to view room players (needed for real-time subscriptions and duplicate checks)

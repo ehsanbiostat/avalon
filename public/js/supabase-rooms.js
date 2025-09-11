@@ -882,6 +882,12 @@ class SupabaseRoomSystem {
         await this.ensureUserProfile(user);
         
         // Check if player already exists in room to prevent duplicates
+        console.log('🔍 Checking if player exists in room:', {
+            roomId,
+            playerId: user.id,
+            playerName: user.profile?.display_name || user.email
+        });
+        
         const { data: existingPlayer, error: checkError } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
             .select('*')
@@ -889,10 +895,22 @@ class SupabaseRoomSystem {
             .eq('player_id', user.id)
             .single();
             
-        if (checkError && checkError.code !== 'PGRST116') {
-            // PGRST116 is "not found" which is expected if player doesn't exist
-            console.error('Error checking for existing player:', checkError);
-            // Continue with insert attempt - the database will handle duplicates
+        if (checkError) {
+            console.error('❌ Error checking for existing player:', {
+                error: checkError,
+                code: checkError.code,
+                message: checkError.message,
+                details: checkError.details,
+                hint: checkError.hint
+            });
+            
+            if (checkError.code === 'PGRST116') {
+                // PGRST116 is "not found" which is expected if player doesn't exist
+                console.log('✅ Player not found (expected), continuing with insert');
+            } else {
+                // For 406 errors or other issues, skip the check and proceed with insert
+                console.log('⚠️ Skipping duplicate check due to error, proceeding with insert');
+            }
         } else if (existingPlayer) {
             console.log('Player already exists in room, updating existing record');
             // Update existing player record instead of creating duplicate
@@ -916,6 +934,9 @@ class SupabaseRoomSystem {
             await this.updateGameRoomsPlayersArray(roomId);
             return;
         }
+        
+        // If we get here, either no existing player was found or there was an error
+        console.log('🔄 Proceeding with player insert...');
 
         // Check if room has no host (host_id is null) and get original host info
         const { data: room } = await this.supabase
