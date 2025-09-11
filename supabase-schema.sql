@@ -36,6 +36,9 @@ CREATE TABLE public.game_rooms (
     mission_leader UUID REFERENCES public.profiles(id),
     players JSONB DEFAULT '[]', -- Store complete player data with roles
     
+    -- Optimistic locking
+    version INTEGER DEFAULT 1,
+    
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     started_at TIMESTAMP WITH TIME ZONE,
@@ -63,6 +66,9 @@ CREATE TABLE public.room_players (
     -- Role and alignment (assigned during role distribution)
     role TEXT CHECK (role IN ('merlin', 'assassin', 'percival', 'morgana', 'mordred', 'oberon', 'loyal_servant', 'minion')),
     alignment TEXT CHECK (alignment IN ('good', 'evil')),
+    
+    -- Optimistic locking
+    version INTEGER DEFAULT 1,
     
     UNIQUE(room_id, player_id)
 );
@@ -236,6 +242,31 @@ $$ language 'plpgsql';
 CREATE TRIGGER calculate_win_rate_trigger
     BEFORE INSERT OR UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION calculate_win_rate();
+
+-- Function for optimistic locking updates
+CREATE OR REPLACE FUNCTION update_with_optimistic_lock(
+    table_name TEXT,
+    record_id UUID,
+    current_version INTEGER,
+    updates JSONB
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    result BOOLEAN := FALSE;
+BEGIN
+    -- Update the record only if the version matches
+    EXECUTE format('UPDATE %I SET version = version + 1, %s WHERE id = $1 AND version = $2', 
+                   table_name, 
+                   (SELECT string_agg(key || ' = $' || (idx + 3), ', ') 
+                    FROM jsonb_each_text(updates) WITH ORDINALITY AS t(key, value, idx)))
+    USING record_id, current_version, (SELECT array_agg(value) FROM jsonb_each_text(updates));
+    
+    -- Check if any rows were affected
+    GET DIAGNOSTICS result = FOUND;
+    
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_room_players_role ON public.room_players(role);

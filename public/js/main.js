@@ -376,20 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const testCounts = [0, 1, 2, 3, 4, 5];
         let currentIndex = 0;
         
-        const testInterval = setInterval(() => {
-            if (currentIndex < testCounts.length) {
-                window.gameSystem.rejectedTeams = testCounts[currentIndex];
-                console.log(`Testing rejection count: ${testCounts[currentIndex]}/5`);
-                window.gameSystem.updateRejectionCounter();
-                currentIndex++;
-            } else {
-                clearInterval(testInterval);
-                // Reset to 0
-                window.gameSystem.rejectedTeams = 0;
-                window.gameSystem.updateRejectionCounter();
-                console.log('Rejection counter test completed, reset to 0');
-            }
-        }, 1000);
+        // REMOVED: Test polling - using real-time updates only
+        console.log('Rejection counter test removed - using real-time updates only');
         
         authSystem.showNotification('Testing rejection counter - watch the center bar!', 'info');
     };
@@ -590,17 +578,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 2000);
 });
 
-// Handle page visibility changes
+// Handle page visibility changes - real-time subscriptions handle this automatically
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-        // Page is hidden, pause any active polling
-        if (roomSystem && roomSystem.lobbyPolling) {
-            roomSystem.stopLobbyPolling();
-        }
+        console.log('Page hidden - real-time subscriptions continue in background');
     } else {
-        // Page is visible again, resume polling if needed
-        if (roomSystem && roomSystem.currentRoom && !roomSystem.lobbyPolling) {
-            roomSystem.lobbyPolling = setInterval(() => roomSystem.updateLobbyDisplay(), 2000);
+        console.log('Page visible - real-time subscriptions active');
+        // Check if we need to reconnect to real-time updates
+        if (roomSystem && roomSystem.currentRoom && roomSystem.subscriptionStatus !== 'SUBSCRIBED') {
+            console.log('Reconnecting to real-time updates...');
+            roomSystem.subscribeToRoomUpdates(roomSystem.currentRoom.id);
         }
     }
 });

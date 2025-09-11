@@ -35,15 +35,11 @@ class SupabaseRoomSystem {
         this.lobbyPolling = null; // For compatibility with old room system
         this.showingRoleInformation = false; // Flag to prevent multiple simultaneous calls to showRoleInformation
         
-        // Real-time subscription system (primary)
+        // Real-time subscription system (ONLY method for live updates)
         this.roomSubscription = null;
-        
-        // Polling systems (backup/fallback only)
-        this.fastPolling = null;
-        this.backupPolling = null;
-        this.pollingInterval = 2000; // 2 seconds polling (fallback mode)
-        this.lastStateHash = null;
-        this.pollingActive = false;
+        this.subscriptionStatus = 'disconnected';
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
         
         // Add a small delay to ensure DOM is fully ready
         console.log('Setting up setTimeout for event listeners...');
@@ -964,13 +960,11 @@ class SupabaseRoomSystem {
                 await this.handleHostLeaving();
             }
 
-            // Stop fast polling
-            this.stopFastPolling();
-            
-            // Unsubscribe from room updates (backup)
+            // Unsubscribe from real-time updates
             if (this.roomSubscription) {
                 this.roomSubscription.unsubscribe();
                 this.roomSubscription = null;
+                this.subscriptionStatus = 'disconnected';
             }
 
             this.currentRoom = null;
@@ -2578,94 +2572,8 @@ class SupabaseRoomSystem {
         return this.isHost;
     }
 
-    // Backup polling system - only used when real-time subscriptions fail
-    startBackupPolling() {
-        if (this.backupPolling || !this.currentRoom) {
-            console.log('Backup polling already active or no current room');
-            return;
-        }
-        
-        console.log('=== STARTING BACKUP POLLING (30s intervals) ===');
-        console.log('Room ID:', this.currentRoom.id);
-        console.log('User:', supabaseAuthSystem.getCurrentUser()?.email);
-        
-        this.backupPolling = setInterval(async () => {
-            if (!this.currentRoom) {
-                console.log('No current room, stopping backup polling');
-                this.stopBackupPolling();
-                return;
-            }
-            
-            try {
-                console.log('=== BACKUP POLLING CYCLE ===', new Date().toISOString());
-                await this.fastRoomStateCheck();
-            } catch (error) {
-                console.error('Error in backup polling:', error);
-            }
-        }, 30000); // 30 seconds - much less frequent than before
-    }
-
-    stopBackupPolling() {
-        if (this.backupPolling) {
-            console.log('Stopping backup polling');
-            clearInterval(this.backupPolling);
-            this.backupPolling = null;
-        }
-    }
-
-    // Fast polling system - only used as fallback when real-time fails
-    startFastPolling() {
-        if (this.pollingActive || !this.currentRoom) {
-            console.log('Fast polling already active or no current room:', {
-                pollingActive: this.pollingActive,
-                hasCurrentRoom: !!this.currentRoom,
-                roomId: this.currentRoom?.id
-            });
-            return;
-        }
-        
-        console.log('=== STARTING FAST POLLING (FALLBACK MODE) ===');
-        console.log('Room ID:', this.currentRoom.id);
-        console.log('User:', supabaseAuthSystem.getCurrentUser()?.email);
-        console.log('Is Host:', this.isHost);
-        
-        this.pollingActive = true;
-        this.pollingInterval = 2000; // 2 seconds polling (less aggressive than before)
-        
-        const poll = async () => {
-            if (!this.pollingActive || !this.currentRoom) {
-                console.log('Fast polling stopped or no current room');
-                return;
-            }
-            
-            try {
-                console.log('=== FAST POLLING CYCLE (FALLBACK) ===', new Date().toISOString());
-                await this.fastRoomStateCheck();
-            } catch (error) {
-                console.error('Error in fast polling:', error);
-            }
-            
-            // Schedule next poll
-            if (this.pollingActive) {
-                this.fastPolling = setTimeout(poll, this.pollingInterval);
-            }
-        };
-        
-        // Start polling immediately
-        poll();
-    }
-
-    stopFastPolling() {
-        console.log('Stopping fast polling');
-        this.pollingActive = false;
-        if (this.fastPolling) {
-            clearTimeout(this.fastPolling);
-            this.fastPolling = null;
-        }
-        
-        // Also stop backup polling
-        this.stopBackupPolling();
-    }
+    // REAL-TIME ONLY: No polling systems - all updates via Supabase subscriptions
+    // Removed all polling mechanisms to enforce real-time-first approach
 
 
     // COMPREHENSIVE fresh data fetch - always gets latest state from database
@@ -3879,23 +3787,79 @@ class SupabaseRoomSystem {
             
             .subscribe((status) => {
                 console.log('Real-time subscription status:', status);
+                this.subscriptionStatus = status;
+                
                 if (status === 'SUBSCRIBED') {
                     console.log('✅ Successfully subscribed to real-time updates');
-                    // Start minimal backup polling (every 30 seconds) only as fallback
-                    this.startBackupPolling();
+                    this.reconnectAttempts = 0;
+                    this.showNotification('Connected to real-time updates', 'success');
                 } else if (status === 'CHANNEL_ERROR') {
-                    console.error('❌ Real-time subscription failed, falling back to polling');
-                    this.startFastPolling(); // Fallback to fast polling
+                    console.error('❌ Real-time subscription failed');
+                    this.handleSubscriptionError();
+                } else if (status === 'TIMED_OUT') {
+                    console.error('❌ Real-time subscription timed out');
+                    this.handleSubscriptionError();
+                } else if (status === 'CLOSED') {
+                    console.log('Real-time subscription closed');
+                    this.subscriptionStatus = 'disconnected';
                 }
             });
+    }
+
+    handleSubscriptionError() {
+        console.error('=== HANDLING SUBSCRIPTION ERROR ===');
+        this.reconnectAttempts++;
+        
+        if (this.reconnectAttempts <= this.maxReconnectAttempts) {
+            console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            this.showNotification(`Reconnecting to real-time updates... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`, 'warning');
+            
+            // Wait before reconnecting
+            setTimeout(() => {
+                if (this.currentRoom) {
+                    this.subscribeToRoomUpdates(this.currentRoom.id);
+                }
+            }, 2000 * this.reconnectAttempts); // Exponential backoff
+        } else {
+            console.error('Max reconnection attempts reached');
+            this.showNotification('Real-time connection failed. Please refresh the page.', 'error');
+        }
     }
 
     handleRoomPlayersChange(payload) {
         console.log('=== HANDLING ROOM PLAYERS CHANGE ===');
         console.log('Payload:', payload);
         
-        // Refresh the room data and update display
-        this.refreshRoomData();
+        // Update UI directly from real-time event - no polling needed
+        this.updateUIFromRealTimeEvent(payload);
+    }
+
+    async updateUIFromRealTimeEvent(payload) {
+        console.log('=== UPDATING UI FROM REAL-TIME EVENT ===');
+        console.log('Event type:', payload.eventType);
+        console.log('Table:', payload.table);
+        console.log('New data:', payload.new);
+        console.log('Old data:', payload.old);
+        
+        // Handle different types of player changes
+        if (payload.eventType === 'INSERT') {
+            console.log('Player joined:', payload.new.player_name);
+            // Player joined - refresh room data
+            await this.refreshRoomData();
+        } else if (payload.eventType === 'DELETE') {
+            console.log('Player left:', payload.old.player_name);
+            // Player left - refresh room data
+            await this.refreshRoomData();
+        } else if (payload.eventType === 'UPDATE') {
+            console.log('Player updated:', payload.new.player_name);
+            // Player data updated (role, alignment, etc.) - refresh room data
+            await this.refreshRoomData();
+        }
+        
+        // Update UI components
+        this.setupRoomInterface();
+        this.positionPlayersOnCircle();
+        this.updateRoomStatus();
     }
 
     async handleGameRoomChange(payload) {
@@ -4041,25 +4005,7 @@ class SupabaseRoomSystem {
         }
     }
 
-    startRoomPolling(roomId) {
-        // Poll every 30 seconds as backup (much less frequent)
-        // Real-time subscriptions should handle most updates
-        this.roomPolling = setInterval(() => {
-            this.refreshRoomData();
-        }, 30000);
-    }
-
-    stopRoomPolling() {
-        if (this.roomPolling) {
-            clearInterval(this.roomPolling);
-            this.roomPolling = null;
-        }
-        
-        if (this.roomSubscription) {
-            this.supabase.removeChannel(this.roomSubscription);
-            this.roomSubscription = null;
-        }
-    }
+    // REMOVED: All polling functions - using real-time subscriptions only
 
     async checkForExistingRoom() {
         console.log('=== CHECKING FOR EXISTING ROOM ===');
