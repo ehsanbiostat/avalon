@@ -2139,7 +2139,14 @@ class SupabaseRoomSystem {
         }
         
         // Check if role information has already been shown (in memory or database)
-        if (this.roleInformationShown || await this.hasSeenRoleInformation()) {
+        const hasSeenInDB = await this.hasSeenRoleInformation();
+        console.log('Role information check:', {
+            roleInformationShown: this.roleInformationShown,
+            hasSeenInDB: hasSeenInDB,
+            currentUser: supabaseAuthSystem.getCurrentUser()?.email
+        });
+        
+        if (this.roleInformationShown || hasSeenInDB) {
             console.log('Role information already shown, skipping');
             return;
         }
@@ -2665,12 +2672,35 @@ class SupabaseRoomSystem {
                 this.isHost = playerData ? playerData.is_host : false;
             }
             
+            // Reset role information shown flag when room status changes to role distribution
+            if (freshRoomData.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                console.log('Room status changed to role distribution, resetting role information flag');
+                this.roleInformationShown = false;
+            }
+            
             // Always update UI with fresh data
             this.updateRejectionCounter(this.currentRoom.rejection_count || 0);
             
             // Update team building UI if in team building phase
             if (this.currentRoom.team_proposal_state !== TEAM_PROPOSAL_STATE.NONE) {
                 this.updateTeamBuildingUI();
+            }
+            
+            // Check if room is in role distribution status and show role information
+            if (this.currentRoom.status === GAME_STATUS.ROLE_DISTRIBUTION) {
+                console.log('=== ROLE DISTRIBUTION DETECTED IN POLLING ===');
+                console.log('Room status:', this.currentRoom.status);
+                console.log('Role information shown flag:', this.roleInformationShown);
+                console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+                console.log('Is host:', this.isHost);
+                
+                // Always try to show role information if not already shown
+                if (!this.roleInformationShown) {
+                    console.log('Showing role information for player');
+                    this.showRoleInformation();
+                } else {
+                    console.log('Role information already shown, skipping');
+                }
             }
             
             // Update room display UI directly (no additional DB call needed)
