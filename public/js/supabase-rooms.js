@@ -735,7 +735,7 @@ class SupabaseRoomSystem {
             });
             
             try {
-                await this.addPlayerToRoom(room.id, user, true);
+                await this.addPlayerToRoom(room.id, user, true, room);
                 console.log('✅ Host added successfully');
             } catch (playerError) {
                 console.error('🚨 HOST ADD ERROR:', {
@@ -848,17 +848,44 @@ class SupabaseRoomSystem {
                 return false;
             }
 
+            // Validate room code format
+            if (!roomCode || typeof roomCode !== 'string') {
+                this.showNotification('Room code is required', 'error');
+                return false;
+            }
+
+            const cleanCode = roomCode.trim().toUpperCase();
+            const codeRegex = /^[A-Z0-9]{6}$/;
+            
+            if (!codeRegex.test(cleanCode)) {
+                this.showNotification('Invalid room code format', 'error');
+                return false;
+            }
+
+            console.log('🔍 Looking up room by code:', cleanCode);
+
             // Find room by code (allow joining rooms in any state for rejoining)
             const { data: room, error: roomError } = await this.supabase
                 .from(TABLES.GAME_ROOMS)
                 .select('*')
-                .eq('code', roomCode.toUpperCase())
+                .eq('code', cleanCode)
                 .single();
 
-            if (roomError || !room) {
-                this.showNotification('Room not found!', 'error');
+            console.log('📊 Room lookup result:', { room, roomError });
+
+            if (roomError) {
+                console.error('❌ Room lookup failed:', roomError);
+                this.showNotification(`Room lookup failed: ${roomError.message}`, 'error');
                 return false;
             }
+
+            if (!room) {
+                console.error('❌ Room not found for code:', cleanCode);
+                this.showNotification('Room not found or not available', 'error');
+                return false;
+            }
+
+            console.log('✅ Room found:', room);
 
             // Check if room is full
             if (room.current_players >= room.max_players) {
@@ -921,10 +948,10 @@ class SupabaseRoomSystem {
                 return true;
             }
 
-            // Add player to room
-            await this.addPlayerToRoom(room.id, user, false);
+            // Add player to room with room object
+            await this.addPlayerToRoom(room.id, user, false, room);
 
-            this.currentRoom = room;
+            // Set host status
             this.isHost = room.host_id === user.id;
 
             this.showNotification(`Joined room ${roomCode}!`, 'success');
@@ -940,7 +967,9 @@ class SupabaseRoomSystem {
         }
     }
 
-    async addPlayerToRoom(roomId, user, isHost = false) {
+    async addPlayerToRoom(roomId, user, isHost = false, roomObject = null) {
+        console.log('🔍 Adding player to room:', { roomId, playerData: user, hasRoomObject: !!roomObject });
+        
         // Log state update
         this.logStateUpdate('api-call', 'join', {
             playerId: user.id,
@@ -948,6 +977,41 @@ class SupabaseRoomSystem {
             isHost,
             roomId
         });
+        
+        // Handle room object - use provided object or fetch from database
+        let room = roomObject;
+        
+        if (!room) {
+            console.log('🔍 Room object not provided, fetching from database...');
+            
+            const { data: fetchedRoom, error: fetchError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select('*')
+                .eq('id', roomId)
+                .single();
+            
+            if (fetchError) {
+                console.error('❌ Failed to fetch room:', fetchError);
+                throw new Error(`Room fetch failed: ${fetchError.message}`);
+            }
+            
+            if (!fetchedRoom) {
+                console.error('❌ Room not found for ID:', roomId);
+                throw new Error('Room not found');
+            }
+            
+            room = fetchedRoom;
+        }
+        
+        console.log('✅ Using room object:', room);
+        
+        // Set current room if not already set
+        if (!this.currentRoom) {
+            this.currentRoom = room;
+            this.currentRoom.players = this.currentRoom.players || [];
+            this.currentRoom.current_players = this.currentRoom.players.length;
+            console.log('🔧 Initialized currentRoom from provided/fetched room object');
+        }
         
         // Ensure user profile exists before adding to room
         await this.ensureUserProfile(user);
