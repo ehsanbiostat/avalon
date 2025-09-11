@@ -887,9 +887,20 @@ class SupabaseRoomSystem {
 
         // CRITICAL: Update game_rooms table to trigger real-time subscriptions
         // This ensures all players receive real-time updates when someone joins
+        // First, get all current players to update the players column
+        const { data: allPlayers, error: playersError } = await this.supabase
+            .from(TABLES.ROOM_PLAYERS)
+            .select('*')
+            .eq('room_id', roomId);
+
+        if (playersError) {
+            console.error('Error fetching players for room update:', playersError);
+        }
+
         const { error: roomUpdateError } = await this.supabase
             .from(TABLES.GAME_ROOMS)
             .update({
+                players: allPlayers || [],
                 updated_at: new Date().toISOString(),
                 version: room?.version ? room.version + 1 : 1
             })
@@ -966,11 +977,12 @@ class SupabaseRoomSystem {
 
                 const newPlayerCount = remainingPlayers ? remainingPlayers.length : 0;
 
-                // Update room's current_players count and trigger real-time updates
+                // Update room's current_players count and players list to trigger real-time updates
                 await this.supabase
                     .from(TABLES.GAME_ROOMS)
                     .update({
                         current_players: newPlayerCount,
+                        players: remainingPlayers || [],
                         updated_at: new Date().toISOString(),
                         version: this.currentRoom.version ? this.currentRoom.version + 1 : 1
                     })
@@ -1023,6 +1035,7 @@ class SupabaseRoomSystem {
                     .update({
                         host_id: newHost.player_id,
                         host_name: newHost.player_name,
+                        players: remainingPlayers,
                         updated_at: new Date().toISOString(),
                         version: this.currentRoom.version ? this.currentRoom.version + 1 : 1
                     })
@@ -1045,6 +1058,7 @@ class SupabaseRoomSystem {
                         host_id: null,
                         host_name: 'Room Available',
                         current_players: 0,
+                        players: [],
                         status: 'waiting',
                         updated_at: new Date().toISOString(),
                         version: this.currentRoom.version ? this.currentRoom.version + 1 : 1
