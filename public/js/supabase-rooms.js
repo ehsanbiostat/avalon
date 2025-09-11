@@ -980,6 +980,14 @@ class SupabaseRoomSystem {
         this.updateRoomStatus();
         
         // Then perform database operation
+        console.log('🔄 Inserting player into room_players table:', {
+            room_id: roomId,
+            player_id: user.id,
+            player_name: user.profile?.display_name || user.email,
+            player_avatar: user.profile?.avatar || '👤',
+            is_host: isHost
+        });
+        
         const { error } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
             .insert({
@@ -991,7 +999,13 @@ class SupabaseRoomSystem {
             });
 
         if (error) {
-            console.error('Error adding player to room:', error);
+            console.error('❌ Error adding player to room:', {
+                error: error,
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
             
             // Check if it's a duplicate key error (player already exists)
             if (error.code === '23505') {
@@ -1033,23 +1047,37 @@ class SupabaseRoomSystem {
         // This ensures all players receive real-time updates when someone joins
         // First, get all current players to update the players column
         // Update game_rooms table with current players
-        await this.updateGameRoomsPlayersArray(roomId);
+        console.log('🔄 Updating game_rooms table with players array...');
+        try {
+            await this.updateGameRoomsPlayersArray(roomId);
+            console.log('✅ Successfully updated game_rooms table');
+        } catch (error) {
+            console.error('❌ Error updating game_rooms table:', error);
+            throw error;
+        }
 
         // If this player became the new host, update the room's host_id
         if (isHost) {
-            if (room && !room.host_id) {
-                // Room had no host, set this player as host
-                await this.supabase
-                    .from(TABLES.GAME_ROOMS)
-                    .update({
-                        host_id: user.id,
-                        host_name: user.profile?.display_name || user.email,
-                        updated_at: new Date().toISOString(),
-                        version: room?.version ? room.version + 1 : 1
-                    })
-                    .eq('id', roomId);
+            console.log('🔄 Updating host information...');
+            try {
+                if (room && !room.host_id) {
+                    // Room had no host, set this player as host
+                    console.log('Setting player as new host (room had no host)');
+                    const { error: hostError } = await this.supabase
+                        .from(TABLES.GAME_ROOMS)
+                        .update({
+                            host_id: user.id,
+                            host_name: user.profile?.display_name || user.email,
+                            updated_at: new Date().toISOString(),
+                            version: room?.version ? room.version + 1 : 1
+                        })
+                        .eq('id', roomId);
 
-                console.log('Updated room host_id to new rejoining player');
+                    if (hostError) {
+                        console.error('❌ Error setting host:', hostError);
+                        throw hostError;
+                    }
+                    console.log('✅ Updated room host_id to new rejoining player');
             } else if (room && room.host_id !== user.id) {
                 // Room already has a host, but original host is rejoining
                 // Transfer host status to original host

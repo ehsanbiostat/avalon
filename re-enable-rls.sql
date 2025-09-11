@@ -1,5 +1,15 @@
 -- Re-enable RLS on room_players table since the issue was with .single() query, not RLS
 
+-- Drop ALL existing policies first to avoid conflicts
+DROP POLICY IF EXISTS "Users can view their own room players" ON public.room_players;
+DROP POLICY IF EXISTS "Users can insert their own room players" ON public.room_players;
+DROP POLICY IF EXISTS "Users can update their own room players" ON public.room_players;
+DROP POLICY IF EXISTS "Users can delete their own room players" ON public.room_players;
+DROP POLICY IF EXISTS "Anyone can view room players" ON public.room_players;
+DROP POLICY IF EXISTS "Authenticated users can join rooms" ON public.room_players;
+DROP POLICY IF EXISTS "Users can update room players" ON public.room_players;
+DROP POLICY IF EXISTS "Users can leave rooms" ON public.room_players;
+
 -- Re-enable RLS
 ALTER TABLE public.room_players ENABLE ROW LEVEL SECURITY;
 
