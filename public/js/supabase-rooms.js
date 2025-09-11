@@ -1031,6 +1031,54 @@ class SupabaseRoomSystem {
         console.log('✅ Room system cleanup completed');
     }
 
+    // Setup event listeners for UI elements
+    setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+        
+        // Refresh Rooms Button
+        const refreshRoomsBtn = document.getElementById('refreshRoomsBtn');
+        if (refreshRoomsBtn) {
+            refreshRoomsBtn.onclick = null; // Clear any existing handler
+            refreshRoomsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🔄 Refresh rooms button clicked');
+                
+                if (this.loadActiveRooms) {
+                    this.loadActiveRooms().then(({myRooms, joinableRooms}) => {
+                        this.displayActiveRoomsList(myRooms, joinableRooms);
+                    }).catch(error => {
+                        console.error('❌ Error refreshing rooms:', error);
+                    });
+                } else {
+                    console.error('❌ loadActiveRooms method not available');
+                }
+            });
+            console.log('✅ Refresh rooms button event listener added');
+        } else {
+            console.warn('⚠️ Refresh rooms button not found');
+        }
+        
+        // Create Room Button (if exists)
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        if (createRoomBtn) {
+            createRoomBtn.onclick = null; // Clear any existing handler
+            createRoomBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('🎮 Create room button clicked');
+                
+                if (typeof this.createRoom === 'function') {
+                    this.createRoom();
+                } else {
+                    console.error('❌ createRoom method not available');
+                    alert('Create room function not available.');
+                }
+            });
+            console.log('✅ Create room button event listener added');
+        }
+        
+        console.log('✅ Event listeners setup completed');
+    }
+
     // Update player connection status
     async updatePlayerConnectionStatus(roomId, isConnected) {
         try {
@@ -5165,6 +5213,13 @@ const initializeRoomsSystem = () => {
       detail: { roomsSystem: window.supabaseRoomsSystem }
     }));
     
+    // Setup event listeners after initialization
+    setTimeout(() => {
+      if (window.supabaseRoomsSystem && typeof window.supabaseRoomsSystem.setupEventListeners === 'function') {
+        window.supabaseRoomsSystem.setupEventListeners();
+      }
+    }, 100);
+    
   } else {
     console.warn('⚠️ supabaseAuthSystem not ready, retrying...');
     setTimeout(initializeRoomsSystem, 100); // Retry after 100ms
@@ -5187,9 +5242,30 @@ window.setupDebugFunctions = () => {
         console.log('✅ Debug functions exposed globally');
     }
 };
+
+// Add debug function for rooms system
+window.debugRoomsSystem = () => {
+    console.log('🔍 Debugging rooms system:');
+    console.log('supabaseRoomsSystem exists:', !!window.supabaseRoomsSystem);
+    console.log('createRoom method exists:', !!window.supabaseRoomsSystem?.createRoom);
+    console.log('setupEventListeners method exists:', !!window.supabaseRoomsSystem?.setupEventListeners);
+    
+    if (window.supabaseRoomsSystem) {
+        const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(window.supabaseRoomsSystem))
+            .filter(name => name !== 'constructor');
+        console.log('Available methods:', methods);
+        console.log('System object:', window.supabaseRoomsSystem);
+    }
+    
+    // Check for buttons
+    const createRoomBtn = document.getElementById('createRoomBtn');
+    const refreshRoomsBtn = document.getElementById('refreshRoomsBtn');
+    console.log('createRoomBtn found:', !!createRoomBtn);
+    console.log('refreshRoomsBtn found:', !!refreshRoomsBtn);
+};
 // Update the initialization to also setup debug functions
 const originalInitializeRoomsSystem = initializeRoomsSystem;
-initializeRoomsSystem = () => {
+const enhancedInitializeRoomsSystem = () => {
     originalInitializeRoomsSystem();
     // Setup debug functions after initialization
     setTimeout(() => {
@@ -5198,5 +5274,8 @@ initializeRoomsSystem = () => {
         }
     }, 100);
 };
+
+// Replace the original with the enhanced version
+initializeRoomsSystem = enhancedInitializeRoomsSystem;
 
 export default supabaseRoomSystem;
