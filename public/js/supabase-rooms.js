@@ -3896,26 +3896,8 @@ class SupabaseRoomSystem {
         this.roomSubscription = this.supabase
             .channel(`room_${roomId}_${Date.now()}`) // Add timestamp to avoid conflicts
             
-            // Subscribe to room_players changes (player joins/leaves, role updates, etc.)
-            .on('postgres_changes', {
-                event: '*', // INSERT, UPDATE, DELETE
-                schema: 'public',
-                table: 'room_players',
-                filter: `room_id=eq.${roomId}`
-            }, (payload) => {
-                console.log('=== REAL-TIME: Room players changed ===');
-                console.log('Timestamp:', new Date().toISOString());
-                console.log('Event type:', payload.eventType);
-                console.log('Table:', payload.table);
-                console.log('Schema:', payload.schema);
-                console.log('Filter:', `room_id=eq.${roomId}`);
-                console.log('New data:', payload.new);
-                console.log('Old data:', payload.old);
-                console.log('Full payload:', payload);
-                this.handleRoomPlayersChange(payload);
-            })
-            
             // Subscribe to game_rooms changes (status, messages, game state, etc.)
+            // This is the primary subscription that should always work
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
@@ -3936,11 +3918,40 @@ class SupabaseRoomSystem {
                 await this.handleGameRoomChange(payload);
             })
             
+            // Subscribe to room_players changes (player joins/leaves, role updates, etc.)
+            // This may fail due to RLS policies, but we'll try it anyway
+            .on('postgres_changes', {
+                event: '*', // INSERT, UPDATE, DELETE
+                schema: 'public',
+                table: 'room_players',
+                filter: `room_id=eq.${roomId}`
+            }, (payload) => {
+                console.log('=== REAL-TIME: Room players changed ===');
+                console.log('Timestamp:', new Date().toISOString());
+                console.log('Event type:', payload.eventType);
+                console.log('Table:', payload.table);
+                console.log('Schema:', payload.schema);
+                console.log('Filter:', `room_id=eq.${roomId}`);
+                console.log('New data:', payload.new);
+                console.log('Old data:', payload.old);
+                console.log('Full payload:', payload);
+                this.handleRoomPlayersChange(payload);
+            })
+            
             // Monitor system events for connection health
             .on('system', {}, (status) => {
                 console.log('=== REAL-TIME SYSTEM EVENT ===');
                 console.log('Timestamp:', new Date().toISOString());
                 console.log('System status:', status);
+                
+                if (status.status === 'error') {
+                    console.error('❌ REAL-TIME SYSTEM ERROR:', status.message);
+                    console.error('This usually means:');
+                    console.error('1. Table not enabled for real-time publications');
+                    console.error('2. RLS policies blocking real-time access');
+                    console.error('3. Table does not exist or has wrong permissions');
+                    console.error('Run the fix-realtime-subscriptions.sql migration to fix this');
+                }
             })
             
             .subscribe((status) => {
