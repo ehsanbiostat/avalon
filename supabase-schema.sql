@@ -41,6 +41,7 @@ CREATE TABLE public.game_rooms (
     
     -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     started_at TIMESTAMP WITH TIME ZONE,
     finished_at TIMESTAMP WITH TIME ZONE,
     
@@ -60,6 +61,7 @@ CREATE TABLE public.room_players (
     player_avatar TEXT DEFAULT '👤',
     position INTEGER, -- Position on the game circle
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_ready BOOLEAN DEFAULT FALSE,
     is_host BOOLEAN DEFAULT FALSE,
     
@@ -199,6 +201,12 @@ $$ language 'plpgsql';
 
 -- Triggers for automatic timestamp updates
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_game_rooms_updated_at BEFORE UPDATE ON public.game_rooms
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_room_players_updated_at BEFORE UPDATE ON public.room_players
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Function to update room player count

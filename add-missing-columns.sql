@@ -1,19 +1,38 @@
--- Add missing columns to room_players table
--- This migration adds the role, alignment, and is_host columns
+-- Add missing columns to game_rooms table for real-time updates and optimistic locking
 
--- Add role column
-ALTER TABLE public.room_players 
-ADD COLUMN IF NOT EXISTS role TEXT CHECK (role IN ('merlin', 'assassin', 'percival', 'morgana', 'mordred', 'oberon', 'loyal_servant', 'minion'));
+-- Add updated_at column to game_rooms
+ALTER TABLE public.game_rooms ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
--- Add alignment column  
-ALTER TABLE public.room_players 
-ADD COLUMN IF NOT EXISTS alignment TEXT CHECK (alignment IN ('good', 'evil'));
+-- Add updated_at column to room_players  
+ALTER TABLE public.room_players ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
--- Add is_host column (if not already exists)
-ALTER TABLE public.room_players 
-ADD COLUMN IF NOT EXISTS is_host BOOLEAN DEFAULT FALSE;
+-- Add version column to game_rooms (if not already added)
+ALTER TABLE public.game_rooms ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
 
--- Add index for better performance
-CREATE INDEX IF NOT EXISTS idx_room_players_role ON public.room_players(role);
-CREATE INDEX IF NOT EXISTS idx_room_players_alignment ON public.room_players(alignment);
-CREATE INDEX IF NOT EXISTS idx_room_players_is_host ON public.room_players(is_host);
+-- Add version column to room_players (if not already added)
+ALTER TABLE public.room_players ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
+
+-- Create trigger to automatically update updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Add trigger for game_rooms updated_at
+DROP TRIGGER IF EXISTS update_game_rooms_updated_at ON public.game_rooms;
+CREATE TRIGGER update_game_rooms_updated_at 
+    BEFORE UPDATE ON public.game_rooms
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Add trigger for room_players updated_at
+DROP TRIGGER IF EXISTS update_room_players_updated_at ON public.room_players;
+CREATE TRIGGER update_room_players_updated_at 
+    BEFORE UPDATE ON public.room_players
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Update existing records to have updated_at set to created_at
+UPDATE public.game_rooms SET updated_at = created_at WHERE updated_at IS NULL;
+UPDATE public.room_players SET updated_at = joined_at WHERE updated_at IS NULL;
