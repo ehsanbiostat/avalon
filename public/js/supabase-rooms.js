@@ -803,12 +803,13 @@ class SupabaseRoomSystem {
             }
 
             // Check if already in room
-            const { data: existingPlayer } = await this.supabase
+            const { data: existingPlayers } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('*')
                 .eq('room_id', room.id)
-                .eq('player_id', user.id)
-                .single();
+                .eq('player_id', user.id);
+
+            const existingPlayer = existingPlayers && existingPlayers.length > 0 ? existingPlayers[0] : null;
 
             if (existingPlayer) {
                 console.log('Player already in room, rejoining with fresh data...');
@@ -2606,17 +2607,18 @@ class SupabaseRoomSystem {
             console.log('=== CHECKING ROLE INFORMATION FROM DATABASE ===');
 
             // Always fetch fresh data from database
-            const { data: playerData, error } = await this.supabase
+            const { data: playerDataArray, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('has_role_seen, role, alignment')
                 .eq('room_id', this.currentRoom.id)
-                .eq('player_id', currentUser.id)
-                .single();
+                .eq('player_id', currentUser.id);
 
             if (error) {
                 console.error('Error fetching player role data:', error);
                 return;
             }
+
+            const playerData = playerDataArray && playerDataArray.length > 0 ? playerDataArray[0] : null;
 
             console.log('Database role data:', {
                 has_role_seen: playerData.has_role_seen,
@@ -2644,19 +2646,19 @@ class SupabaseRoomSystem {
         if (!currentUser || !this.currentRoom) return false;
 
         try {
-            const { data, error } = await this.supabase
+            const { data: roleSeenDataArray, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('has_role_seen')
                 .eq('room_id', this.currentRoom.id)
-                .eq('player_id', currentUser.id)
-                .single();
+                .eq('player_id', currentUser.id);
 
             if (error) {
                 console.error('Error checking role seen status:', error);
                 return false;
             }
 
-            return data?.has_role_seen || false;
+            const roleSeenData = roleSeenDataArray && roleSeenDataArray.length > 0 ? roleSeenDataArray[0] : null;
+            return roleSeenData?.has_role_seen || false;
         } catch (error) {
             console.error('Exception checking role seen status:', error);
             return false;
@@ -2683,13 +2685,13 @@ class SupabaseRoomSystem {
 
             // First, let's check if the user can read their own record
             console.log('Checking if user can read their own record...');
-            const { data: readData, error: readError } = await this.supabase
+            const { data: readDataArray, error: readError } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('*')
                 .eq('room_id', this.currentRoom.id)
-                .eq('player_id', currentUser.id)
-                .single();
+                .eq('player_id', currentUser.id);
 
+            const readData = readDataArray && readDataArray.length > 0 ? readDataArray[0] : null;
             console.log('Read test result:', { readData, readError });
 
             if (readError) {
@@ -2715,13 +2717,13 @@ class SupabaseRoomSystem {
                 console.log('Updated data:', data);
 
                 // Verify the update by reading the record again
-                const { data: verifyData, error: verifyError } = await this.supabase
+                const { data: verifyDataArray, error: verifyError } = await this.supabase
                     .from(TABLES.ROOM_PLAYERS)
                     .select('has_role_seen')
                     .eq('room_id', this.currentRoom.id)
-                    .eq('player_id', currentUser.id)
-                    .single();
+                    .eq('player_id', currentUser.id);
 
+                const verifyData = verifyDataArray && verifyDataArray.length > 0 ? verifyDataArray[0] : null;
                 console.log('🔍 Verification read:', { verifyData, verifyError });
             }
         } catch (error) {
@@ -2764,20 +2766,20 @@ class SupabaseRoomSystem {
 
         // Fallback to database query if room_players data not available
         try {
-            const { data, error } = await this.supabase
+            const { data: hostDataArray, error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
                 .select('is_host')
                 .eq('room_id', this.currentRoom.id)
-                .eq('player_id', currentUser.id)
-                .single();
+                .eq('player_id', currentUser.id);
 
             if (error) {
                 console.error('Error checking host status:', error);
                 return false;
             }
 
-            console.log('Using database query for host check:', data?.is_host);
-            return data?.is_host || false;
+            const hostData = hostDataArray && hostDataArray.length > 0 ? hostDataArray[0] : null;
+            console.log('Using database query for host check:', hostData?.is_host);
+            return hostData?.is_host || false;
         } catch (error) {
             console.error('Exception checking host status:', error);
             return false;
@@ -3959,11 +3961,12 @@ class SupabaseRoomSystem {
 
         try {
             // Check if profile already exists
-            const { data: existingProfile, error: checkError } = await this.supabase
+            const { data: existingProfiles, error: checkError } = await this.supabase
                 .from('profiles')
                 .select('*')
-                .eq('id', user.id)
-                .single();
+                .eq('id', user.id);
+
+            const existingProfile = existingProfiles && existingProfiles.length > 0 ? existingProfiles[0] : null;
 
             if (existingProfile) {
                 console.log('Profile already exists:', existingProfile);

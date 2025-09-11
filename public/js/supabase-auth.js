@@ -221,12 +221,12 @@ class SupabaseAuthSystem {
         console.log('User ID:', this.currentUser.id);
 
         try {
-            const { data: profile, error } = await this.supabase
+            const { data: profiles, error } = await this.supabase
                 .from('profiles')
                 .select('*')
-                .eq('id', this.currentUser.id)
-                .single();
+                .eq('id', this.currentUser.id);
 
+            const profile = profiles && profiles.length > 0 ? profiles[0] : null;
             console.log('Profile query result:', { profile, error });
 
             if (error && error.code === 'PGRST116') {
