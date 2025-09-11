@@ -735,28 +735,19 @@ class SupabaseRoomSystem {
             // Show room interface
             await this.showRoomInterface();
 
-            // CRITICAL: Fetch initial state BEFORE subscribing to real-time updates
-            console.log('=== FETCHING INITIAL ROOM STATE BEFORE SUBSCRIBING ===');
-            console.log('Timestamp:', new Date().toISOString());
-            console.log('Room ID:', room.id);
-            
+            // Fetch initial state before subscribing to real-time updates
             const initialRoomState = await this.fetchCompleteRoomState(room.id);
             if (initialRoomState) {
-                console.log('✅ Initial room state fetched successfully');
-                console.log('Initial players:', initialRoomState.room_players);
-                console.log('Initial players count:', initialRoomState.room_players?.length || 0);
+                console.log('✅ Initial room state loaded');
                 this.currentRoom = initialRoomState;
                 
                 // Update UI with initial state
                 this.setupRoomInterface();
                 this.positionPlayersOnCircle();
                 this.updateRoomStatus();
-            } else {
-                console.error('❌ Failed to fetch initial room state');
             }
             
-            // Now subscribe to real-time updates for future changes
-            console.log('=== SUBSCRIBING TO REAL-TIME UPDATES ===');
+            // Subscribe to real-time updates
             this.subscribeToRoomUpdates(room.id);
 
             return true;
@@ -922,13 +913,8 @@ class SupabaseRoomSystem {
             console.error('Error fetching players for room update:', playersError);
         }
 
-        console.log('=== UPDATING GAME_ROOMS TABLE FOR REAL-TIME TRIGGER ===');
-        console.log('Timestamp:', new Date().toISOString());
-        console.log('Room ID:', roomId);
-        console.log('Players to update:', allPlayers);
+        console.log('=== UPDATING GAME_ROOMS TABLE ===');
         console.log('Players count:', allPlayers?.length || 0);
-        console.log('Current room version:', room?.version);
-        console.log('New version:', room?.version ? room.version + 1 : 1);
         
         const { error: roomUpdateError } = await this.supabase
             .from(TABLES.GAME_ROOMS)
@@ -940,12 +926,9 @@ class SupabaseRoomSystem {
             .eq('id', roomId);
 
         if (roomUpdateError) {
-            console.error('❌ Error updating game_rooms for real-time trigger:', roomUpdateError);
-            console.error('Error details:', roomUpdateError.message, roomUpdateError.code);
-            // Don't throw error - player was added successfully, just real-time update failed
+            console.error('❌ Error updating game_rooms:', roomUpdateError);
         } else {
-            console.log('✅ Successfully updated game_rooms table to trigger real-time subscriptions');
-            console.log('This should trigger real-time events for all connected clients');
+            console.log('✅ Updated game_rooms table');
         }
 
         // If this player became the new host, update the room's host_id
@@ -3060,13 +3043,7 @@ class SupabaseRoomSystem {
     // Display status message in UI
     displayStatusMessage(message, messageType) {
         let statusMessage = document.getElementById('statusMessage');
-        console.log('=== DISPLAYING STATUS MESSAGE ===');
-        console.log('Status message element:', statusMessage);
-        console.log('Message:', message);
-        console.log('Message type:', messageType);
-        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
-        console.log('Current room status:', this.currentRoom?.status);
-        console.log('Current room status_message:', this.currentRoom?.status_message);
+        // Removed excessive logging to reduce CPU usage
 
         // If element doesn't exist, try to create it or find the game table
         if (!statusMessage) {
@@ -3098,13 +3075,7 @@ class SupabaseRoomSystem {
             statusMessage.style.visibility = 'visible';
             statusMessage.style.opacity = '1';
 
-            console.log('Status message updated:', {
-                textContent: statusMessage.textContent,
-                className: statusMessage.className,
-                display: statusMessage.style.display,
-                visibility: statusMessage.style.visibility,
-                opacity: statusMessage.style.opacity
-            });
+        // Removed excessive logging
         } else {
             console.error('Status message element not found and could not be created!');
         }
@@ -3878,12 +3849,8 @@ class SupabaseRoomSystem {
     }
 
     subscribeToRoomUpdates(roomId) {
-        console.log('=== SUBSCRIBING TO COMPREHENSIVE ROOM UPDATES ===');
-        console.log('Timestamp:', new Date().toISOString());
+        console.log('=== SUBSCRIBING TO REAL-TIME UPDATES ===');
         console.log('Room ID:', roomId);
-        console.log('Room ID type:', typeof roomId);
-        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
-        console.log('Current room exists:', !!this.currentRoom);
         
         // Clean up any existing subscription first
         if (this.roomSubscription) {
@@ -3905,16 +3872,7 @@ class SupabaseRoomSystem {
                 filter: `id=eq.${roomId}`
             }, async (payload) => {
                 console.log('=== REAL-TIME: Game room updated ===');
-                console.log('Timestamp:', new Date().toISOString());
-                console.log('Event type:', payload.eventType);
-                console.log('Table:', payload.table);
-                console.log('Schema:', payload.schema);
-                console.log('Filter:', `id=eq.${roomId}`);
-                console.log('New data:', payload.new);
-                console.log('Old data:', payload.old);
-                console.log('Players in new data:', payload.new?.players);
-                console.log('Current players count:', payload.new?.current_players);
-                console.log('Full payload:', payload);
+                console.log('Players count:', payload.new?.current_players);
                 await this.handleGameRoomChange(payload);
             })
             
@@ -3927,14 +3885,6 @@ class SupabaseRoomSystem {
                 filter: `room_id=eq.${roomId}`
             }, (payload) => {
                 console.log('=== REAL-TIME: Room players changed ===');
-                console.log('Timestamp:', new Date().toISOString());
-                console.log('Event type:', payload.eventType);
-                console.log('Table:', payload.table);
-                console.log('Schema:', payload.schema);
-                console.log('Filter:', `room_id=eq.${roomId}`);
-                console.log('New data:', payload.new);
-                console.log('Old data:', payload.old);
-                console.log('Full payload:', payload);
                 this.handleRoomPlayersChange(payload);
             })
             
@@ -3956,9 +3906,7 @@ class SupabaseRoomSystem {
             
             .subscribe((status) => {
                 console.log('=== REAL-TIME SUBSCRIPTION STATUS ===');
-                console.log('Timestamp:', new Date().toISOString());
                 console.log('Status:', status);
-                console.log('Channel name:', `room_${roomId}_${Date.now()}`);
                 this.subscriptionStatus = status;
                 
                 if (status === 'SUBSCRIBED') {
