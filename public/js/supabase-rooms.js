@@ -673,6 +673,8 @@ class SupabaseRoomSystem {
     }
 
     async createRoomInDatabase(roomConfig) {
+        let roomId = null;
+        
         try {
             const user = supabaseAuthSystem.getCurrentUser();
             if (!user) {
@@ -702,6 +704,9 @@ class SupabaseRoomSystem {
                 this.showNotification('Failed to create room: ' + error.message, 'error');
                 return false;
             }
+
+            roomId = room.id;
+            console.log('✅ Room created successfully with ID:', roomId);
 
             // Add host as first player
             await this.addPlayerToRoom(room.id, user, true);
@@ -765,6 +770,20 @@ class SupabaseRoomSystem {
 
             return true;
         } catch (error) {
+            console.error('❌ Room creation failed, cleaning up...');
+            
+            // Clean up any partial data
+            if (roomId) {
+                console.log('🧹 Cleaning up partial room data for room ID:', roomId);
+                try {
+                    await this.supabase.from(TABLES.ROOM_PLAYERS).delete().eq('room_id', roomId);
+                    await this.supabase.from(TABLES.GAME_ROOMS).delete().eq('id', roomId);
+                    console.log('✅ Cleanup completed');
+                } catch (cleanupError) {
+                    console.error('❌ Cleanup failed:', cleanupError);
+                }
+            }
+            
             this.showNotification('Failed to create room.', 'error');
             return false;
         }
@@ -980,32 +999,102 @@ class SupabaseRoomSystem {
         this.positionPlayersOnCircle();
         this.updateRoomStatus();
         
-        // Then perform database operation
-        console.log('🔄 Inserting player into room_players table:', {
+        // Verify room exists before adding player
+        console.log('🔍 Verifying room exists before adding player');
+        const { data: roomCheck, error: roomCheckError } = await this.supabase
+            .from(TABLES.GAME_ROOMS)
+            .select('id, code, host_id, current_players')
+            .eq('id', roomId);
+
+        console.log('🏠 Room verification:', { roomCheck, roomCheckError });
+
+        if (roomCheckError || !roomCheck || roomCheck.length === 0) {
+            console.error('❌ Room does not exist, cannot add player');
+            throw new Error('Room was not created properly');
+        }
+
+        // Verify player profile exists
+        console.log('🔍 Verifying player profile exists');
+        const { data: profileCheck, error: profileCheckError } = await this.supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar')
+            .eq('id', user.id);
+
+        console.log('👤 Profile verification:', { profileCheck, profileCheckError });
+
+        if (profileCheckError || !profileCheck || profileCheck.length === 0) {
+            console.error('❌ Player profile does not exist');
+            throw new Error('Player profile not found');
+        }
+
+        // Prepare insert data with exact field names
+        const insertData = {
             room_id: roomId,
             player_id: user.id,
             player_name: user.profile?.display_name || user.email,
             player_avatar: user.profile?.avatar || '👤',
             is_host: isHost
-        });
-        
-        const { error } = await this.supabase
+        };
+
+        console.log('🔍 Checking exact field names for insert');
+        console.log('Schema expects:', ['room_id', 'player_id', 'player_name', 'player_avatar', 'is_host']);
+        console.log('Insert data keys:', Object.keys(insertData));
+        console.log('Insert data values:', insertData);
+
+        // Test manual insert with simplified data first
+        console.log('🧪 Testing manual insert with simplified data');
+        const testInsert = {
+            room_id: roomId,
+            player_id: user.id,
+            player_name: 'TestUser',
+            is_host: true
+        };
+
+        const { data: testResult, error: testError } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
-            .insert({
-                room_id: roomId,
-                player_id: user.id,
-                player_name: user.profile?.display_name || user.email,
-                player_avatar: user.profile?.avatar || '👤',
-                is_host: isHost
+            .insert(testInsert)
+            .select();
+
+        console.log('🧪 Test insert result:', { testResult, testError });
+
+        if (testError) {
+            console.error('🚨 TEST INSERT FAILED:', {
+                test_error: testError,
+                test_data: testInsert
             });
+            throw testError;
+        }
+
+        console.log('✅ Test insert successful, proceeding with full insert');
+
+        // Then perform database operation
+        console.log('🔄 About to insert player into room_players table');
+        
+        const { data: insertResult, error } = await this.supabase
+            .from(TABLES.ROOM_PLAYERS)
+            .insert(insertData)
+            .select();
+
+        console.log('📊 Insert result:', insertResult);
+        console.log('❌ Insert error:', error);
 
         if (error) {
-            console.error('❌ Error adding player to room:', {
-                error: error,
-                code: error.code,
+            console.error('🚨 DETAILED INSERT ERROR:', {
                 message: error.message,
+                code: error.code,
                 details: error.details,
-                hint: error.hint
+                hint: error.hint,
+                full_error: error
+            });
+            
+            console.error('🚨 ROOM CREATION FAILED:', {
+                error_message: error.message,
+                error_code: error.code,
+                error_details: error.details,
+                full_error: error,
+                insert_data: insertData,
+                room_id: roomId,
+                player_id: user.id
             });
             
             // Check if it's a duplicate key error (player already exists)
