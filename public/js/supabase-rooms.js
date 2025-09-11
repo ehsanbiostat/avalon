@@ -5222,8 +5222,19 @@ const initializeRoomsSystem = () => {
     
   } else {
     console.warn('⚠️ supabaseAuthSystem not ready, retrying...');
-    setTimeout(enhancedInitializeRoomsSystem, 100); // Retry after 100ms
+    setTimeout(initializeRoomsSystem, 100); // Retry after 100ms
   }
+};
+
+// Enhanced initialization with debug functions
+const enhancedInitializeRoomsSystem = () => {
+  initializeRoomsSystem();
+  // Setup debug functions after initialization
+  setTimeout(() => {
+    if (window.setupDebugFunctions) {
+      window.setupDebugFunctions();
+    }
+  }, 100);
 };
 
 // Initialize when DOM is ready
@@ -5263,20 +5274,6 @@ window.debugRoomsSystem = () => {
     console.log('createRoomBtn found:', !!createRoomBtn);
     console.log('refreshRoomsBtn found:', !!refreshRoomsBtn);
 };
-// Update the initialization to also setup debug functions
-const originalInitializeRoomsSystem = initializeRoomsSystem;
-const enhancedInitializeRoomsSystem = () => {
-    originalInitializeRoomsSystem();
-    // Setup debug functions after initialization
-    setTimeout(() => {
-        if (window.setupDebugFunctions) {
-            window.setupDebugFunctions();
-        }
-    }, 100);
-};
-
-// Use the enhanced version directly instead of reassigning
-// Replace the original with the enhanced version
-const finalInitializeRoomsSystem = enhancedInitializeRoomsSystem;
+// Debug functions setup is now handled in enhancedInitializeRoomsSystem above
 
 export default supabaseRoomSystem;
