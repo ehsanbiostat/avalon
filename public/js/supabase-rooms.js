@@ -1078,27 +1078,43 @@ class SupabaseRoomSystem {
                         throw hostError;
                     }
                     console.log('✅ Updated room host_id to new rejoining player');
-            } else if (room && room.host_id !== user.id) {
-                // Room already has a host, but original host is rejoining
-                // Transfer host status to original host
-                await this.supabase
-                    .from(TABLES.GAME_ROOMS)
-                    .update({
-                        host_id: user.id,
-                        host_name: user.profile?.display_name || user.email,
-                        updated_at: new Date().toISOString(),
-                        version: room?.version ? room.version + 1 : 1
-                    })
-                    .eq('id', roomId);
+                } else if (room && room.host_id !== user.id) {
+                    // Room already has a host, but original host is rejoining
+                    // Transfer host status to original host
+                    console.log('Transferring host status back to original host');
+                    const { error: transferError } = await this.supabase
+                        .from(TABLES.GAME_ROOMS)
+                        .update({
+                            host_id: user.id,
+                            host_name: user.profile?.display_name || user.email,
+                            updated_at: new Date().toISOString(),
+                            version: room?.version ? room.version + 1 : 1
+                        })
+                        .eq('id', roomId);
 
-                // Remove host status from previous host
-                await this.supabase
-                    .from(TABLES.ROOM_PLAYERS)
-                    .update({ is_host: false })
-                    .eq('room_id', roomId)
-                    .eq('is_host', true);
+                    if (transferError) {
+                        console.error('❌ Error transferring host:', transferError);
+                        throw transferError;
+                    }
 
-                console.log('Transferred host status back to original host');
+                    // Remove host status from previous host
+                    const { error: removeHostError } = await this.supabase
+                        .from(TABLES.ROOM_PLAYERS)
+                        .update({ is_host: false })
+                        .eq('room_id', roomId)
+                        .eq('is_host', true);
+
+                    if (removeHostError) {
+                        console.error('❌ Error removing previous host status:', removeHostError);
+                        throw removeHostError;
+                    }
+
+                    console.log('✅ Transferred host status back to original host');
+                }
+                console.log('✅ Host information updated successfully');
+            } catch (error) {
+                console.error('❌ Error updating host information:', error);
+                throw error;
             }
         }
     }
