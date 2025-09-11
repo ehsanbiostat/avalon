@@ -5276,4 +5276,5 @@ window.debugRoomsSystem = () => {
 };
 // Debug functions setup is now handled in enhancedInitializeRoomsSystem above
 
-export default supabaseRoomSystem;
+// Export the class for module usage
+export default SupabaseRoomSystem;
