@@ -718,6 +718,12 @@ class SupabaseRoomSystem {
             roomId = room.id;
             console.log('✅ Room created successfully with ID:', roomId);
 
+            // Set current room before adding player (needed for optimistic updates)
+            this.currentRoom = room;
+            this.currentRoom.players = [];
+            this.currentRoom.current_players = 0;
+            console.log('🔧 Initialized currentRoom for player addition');
+
             // Add host as first player
             console.log('🔄 About to add host as first player...');
             console.log('🔍 Player data being sent:', {
@@ -761,11 +767,14 @@ class SupabaseRoomSystem {
 
             if (fetchError) {
                 console.error('Error fetching complete room data:', fetchError);
-            this.currentRoom = room;
+                // Keep the current room data we already have
+                console.log('Keeping existing currentRoom data due to fetch error');
             } else {
+                // Update with fresh data but preserve any optimistic updates
                 this.currentRoom = completeRoom;
                 this.currentRoom.players = completeRoom.room_players || [];
                 this.currentRoom.current_players = this.currentRoom.players.length;
+                console.log('Updated currentRoom with fresh database data');
             }
 
             this.isHost = true;
@@ -1030,9 +1039,22 @@ class SupabaseRoomSystem {
         };
         
         // Add to local state immediately for responsive UI
-        if (!this.currentRoom.players) {
+        console.log('🔍 DEBUG - About to access players property');
+        console.log('🔍 Current room object:', this.currentRoom);
+        console.log('🔍 Current room type:', typeof this.currentRoom);
+        console.log('🔍 Current room is null?', this.currentRoom === null);
+        console.log('🔍 Current room players property:', this.currentRoom?.players);
+        
+        if (!this.currentRoom) {
+            console.error('❌ Current room is null, cannot access players property');
+            throw new Error('Current room object is null');
+        }
+        
+        if (!this.currentRoom.players || !Array.isArray(this.currentRoom.players)) {
+            console.log('🔧 Initializing empty players array');
             this.currentRoom.players = [];
         }
+        
         this.currentRoom.players.push(optimisticPlayer);
         this.currentRoom.current_players = this.currentRoom.players.length;
         
