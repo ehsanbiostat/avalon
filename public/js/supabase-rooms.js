@@ -40,6 +40,15 @@ class SupabaseRoomSystem {
         this.subscriptionStatus = 'disconnected';
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
+        this.isSubscribing = false; // Prevent duplicate subscriptions
+        this.subscriptionDebounceTimer = null; // Debounce subscription calls
+        this.updateDebounceTimer = null; // Debounce UI updates
+        this.lastUpdateTime = 0; // Rate limiting for updates
+        this.performanceMetrics = {
+            subscriptionCount: 0,
+            updateCount: 0,
+            lastPerformanceCheck: Date.now()
+        };
 
         // Add a small delay to ensure DOM is fully ready
         console.log('Setting up setTimeout for event listeners...');
@@ -845,7 +854,7 @@ class SupabaseRoomSystem {
 
             this.showNotification(`Joined room ${roomCode}!`, 'success');
             await this.showRoomInterface();
-
+            
             // Subscribe to real-time updates (primary method)
             this.subscribeToRoomUpdates(room.id);
 
@@ -913,6 +922,13 @@ class SupabaseRoomSystem {
             console.error('Error fetching players for room update:', playersError);
         }
 
+        // Rate limiting: Only update if enough time has passed since last update
+        const now = Date.now();
+        if (now - this.lastUpdateTime < 500) { // 500ms rate limit for DB updates
+            return;
+        }
+        this.lastUpdateTime = now;
+        
         console.log('=== UPDATING GAME_ROOMS TABLE ===');
         console.log('Players count:', allPlayers?.length || 0);
         
@@ -976,7 +992,7 @@ class SupabaseRoomSystem {
 
         try {
             const user = supabaseAuthSystem.getCurrentUser();
-
+            
             // Remove player from room
             const { error } = await this.supabase
                 .from(TABLES.ROOM_PLAYERS)
@@ -1023,6 +1039,27 @@ class SupabaseRoomSystem {
                 this.roomSubscription = null;
                 this.subscriptionStatus = 'disconnected';
             }
+
+            // Clear all timers
+            if (this.subscriptionDebounceTimer) {
+                clearTimeout(this.subscriptionDebounceTimer);
+                this.subscriptionDebounceTimer = null;
+            }
+            if (this.updateDebounceTimer) {
+                clearTimeout(this.updateDebounceTimer);
+                this.updateDebounceTimer = null;
+            }
+            
+            // Reset subscription flags
+            this.isSubscribing = false;
+            this.lastUpdateTime = 0;
+            
+            // Reset performance metrics
+            this.performanceMetrics = {
+                subscriptionCount: 0,
+                updateCount: 0,
+                lastPerformanceCheck: Date.now()
+            };
 
             this.currentRoom = null;
             this.isHost = false;
@@ -1231,32 +1268,32 @@ class SupabaseRoomSystem {
     setupRoomInterface() {
         const room = this.currentRoom;
         if (!room) return;
-
+        
         // Update game title
         const gameTitle = document.getElementById('gameTitle');
         if (gameTitle) {
             gameTitle.textContent = 'Game Room';
         }
-
+        
         // Update room info display
         const roomCodeElement = document.getElementById('roomCodeDisplay');
         if (roomCodeElement) {
             roomCodeElement.textContent = `Room: ${room.code}`;
         }
-
+        
         // Update player count
         const playerCountElement = document.getElementById('playerCountDisplay');
         if (playerCountElement) {
             playerCountElement.textContent = `${room.current_players}/${room.max_players} players`;
         }
-
+        
         // Game status panel removed - no longer needed
     }
 
     positionPlayersOnCircle() {
         const room = this.currentRoom;
         if (!room || !room.players) return;
-
+        
         // Get game table
         const gameTable = document.getElementById('gameTable');
         if (!gameTable) return;
@@ -1323,10 +1360,10 @@ class SupabaseRoomSystem {
         room.players.forEach((player, index) => {
             // Calculate angle: start from top (12 o'clock) and distribute evenly
             const angle = (index * 2 * Math.PI) / room.players.length - Math.PI / 2;
-
+            
             const x = centerX + radius * Math.cos(angle);
             const y = centerY + radius * Math.sin(angle);
-
+            
             const playerSlot = document.createElement('div');
             playerSlot.className = 'player-slot';
 
@@ -1353,23 +1390,23 @@ class SupabaseRoomSystem {
 
             // Check if this player is the mission leader
             const isMissionLeader = this.currentRoom.mission_leader === player.player_id;
-
+            
             playerSlot.innerHTML = `
                 <div class="player-avatar">${player.player_avatar}</div>
                 <div class="player-name">${player.player_name}</div>
                 ${isMissionLeader ? '<div class="mission-leader-token">👑</div>' : ''}
             `;
-
+            
             if (gameTable) {
                 gameTable.appendChild(playerSlot);
             }
         });
-
+        
         // Add empty slots for remaining players
         for (let i = room.players.length; i < room.max_players; i++) {
             // Calculate angle: start from top (12 o'clock) and distribute evenly
             const angle = (i * 2 * Math.PI) / room.max_players - Math.PI / 2;
-
+            
             const x = centerX + radius * Math.cos(angle);
             const y = centerY + radius * Math.sin(angle);
 
@@ -1388,17 +1425,17 @@ class SupabaseRoomSystem {
                 minDimension * 0.11,
                 110
             );
-
+            
             const emptySlot = document.createElement('div');
             emptySlot.className = 'player-slot empty-slot';
             emptySlot.style.left = `${x - slotWidth / 2}px`; // Center the slot
             emptySlot.style.top = `${y - slotHeight / 2}px`; // Center the slot
-
+            
             emptySlot.innerHTML = `
                 <div class="player-avatar">?</div>
                 <div class="player-name">Waiting...</div>
             `;
-
+            
             if (gameTable) {
                 gameTable.appendChild(emptySlot);
             }
@@ -1408,7 +1445,7 @@ class SupabaseRoomSystem {
     async updateRoomStatus() {
         const room = this.currentRoom;
         if (!room) return;
-
+        
         const isRoomFull = room.current_players >= room.max_players;
 
         // Browser detection for debugging
@@ -1431,7 +1468,7 @@ class SupabaseRoomSystem {
             // Button overlay no longer created, so no need to remove it
             return;
         }
-
+        
         // Update start game button
         const startGameBtn = document.getElementById('startGameBtn');
         console.log('=== START GAME BUTTON DEBUG ===');
@@ -3040,10 +3077,20 @@ class SupabaseRoomSystem {
         this.displayStatusMessage(room.status_message || message, room.status_message_type || messageType);
     }
 
-    // Display status message in UI
+    // Display status message in UI with debouncing
     displayStatusMessage(message, messageType) {
+        // Debounce status message updates to prevent rapid changes
+        if (this.updateDebounceTimer) {
+            clearTimeout(this.updateDebounceTimer);
+        }
+        
+        this.updateDebounceTimer = setTimeout(() => {
+            this._performStatusMessageUpdate(message, messageType);
+        }, 150); // 150ms debounce
+    }
+
+    _performStatusMessageUpdate(message, messageType) {
         let statusMessage = document.getElementById('statusMessage');
-        // Removed excessive logging to reduce CPU usage
 
         // If element doesn't exist, try to create it or find the game table
         if (!statusMessage) {
@@ -3848,9 +3895,49 @@ class SupabaseRoomSystem {
         }
     }
 
+    // Performance monitoring function
+    getPerformanceMetrics() {
+        const now = Date.now();
+        const timeSinceLastCheck = now - this.performanceMetrics.lastPerformanceCheck;
+        
+        return {
+            subscriptionCount: this.performanceMetrics.subscriptionCount,
+            updateCount: this.performanceMetrics.updateCount,
+            timeSinceLastCheck,
+            subscriptionStatus: this.subscriptionStatus,
+            isSubscribing: this.isSubscribing
+        };
+    }
+
+    // Centralized subscription manager with deduplication and debouncing
     subscribeToRoomUpdates(roomId) {
+        // Prevent duplicate subscription calls
+        if (this.isSubscribing) {
+            console.log('⚠️ Subscription already in progress, skipping...');
+            return;
+        }
+
+        // Debounce subscription calls to prevent rapid re-subscriptions
+        if (this.subscriptionDebounceTimer) {
+            clearTimeout(this.subscriptionDebounceTimer);
+        }
+
+        this.subscriptionDebounceTimer = setTimeout(() => {
+            this._performSubscription(roomId);
+        }, 100); // 100ms debounce
+    }
+
+    _performSubscription(roomId) {
         console.log('=== SUBSCRIBING TO REAL-TIME UPDATES ===');
         console.log('Room ID:', roomId);
+        
+        this.isSubscribing = true;
+        this.performanceMetrics.subscriptionCount++;
+        
+        // Performance monitoring: Warn if too many subscriptions
+        if (this.performanceMetrics.subscriptionCount > 5) {
+            console.warn('⚠️ High subscription count detected:', this.performanceMetrics.subscriptionCount);
+        }
         
         // Clean up any existing subscription first
         if (this.roomSubscription) {
@@ -3871,8 +3958,20 @@ class SupabaseRoomSystem {
                 table: 'game_rooms',
                 filter: `id=eq.${roomId}`
             }, async (payload) => {
+                // Rate limiting: Only process updates if enough time has passed
+                const now = Date.now();
+                if (now - this.lastUpdateTime < 200) { // 200ms rate limit
+                    return;
+                }
+                this.lastUpdateTime = now;
+                
+                // Performance monitoring
+                this.performanceMetrics.updateCount++;
+                if (this.performanceMetrics.updateCount % 10 === 0) {
+                    console.log('📊 Performance: Updates processed:', this.performanceMetrics.updateCount);
+                }
+                
                 console.log('=== REAL-TIME: Game room updated ===');
-                console.log('Players count:', payload.new?.current_players);
                 await this.handleGameRoomChange(payload);
             })
             
@@ -3884,50 +3983,36 @@ class SupabaseRoomSystem {
                 table: 'room_players',
                 filter: `room_id=eq.${roomId}`
             }, (payload) => {
+                // Rate limiting: Only process updates if enough time has passed
+                const now = Date.now();
+                if (now - this.lastUpdateTime < 200) { // 200ms rate limit
+                    return;
+                }
+                this.lastUpdateTime = now;
+                
                 console.log('=== REAL-TIME: Room players changed ===');
                 this.handleRoomPlayersChange(payload);
             })
             
             // Monitor system events for connection health
             .on('system', {}, (status) => {
-                console.log('=== REAL-TIME SYSTEM EVENT ===');
-                console.log('Timestamp:', new Date().toISOString());
-                console.log('System status:', status);
-                
                 if (status.status === 'error') {
                     console.error('❌ REAL-TIME SYSTEM ERROR:', status.message);
-                    console.error('This usually means:');
-                    console.error('1. Table not enabled for real-time publications');
-                    console.error('2. RLS policies blocking real-time access');
-                    console.error('3. Table does not exist or has wrong permissions');
-                    console.error('Run the fix-realtime-subscriptions.sql migration to fix this');
                 }
             })
             
             .subscribe((status) => {
-                console.log('=== REAL-TIME SUBSCRIPTION STATUS ===');
-                console.log('Status:', status);
                 this.subscriptionStatus = status;
+                this.isSubscribing = false; // Reset subscription flag
                 
                 if (status === 'SUBSCRIBED') {
-                    console.log('✅ Successfully subscribed to real-time updates');
-                    console.log('Subscribed to tables: room_players, game_rooms');
-                    console.log('Filters: room_id=eq.' + roomId + ', id=eq.' + roomId);
+                    console.log('✅ Real-time connected');
                     this.reconnectAttempts = 0;
-                    this.showNotification('Connected to real-time updates', 'success');
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.error('❌ Real-time subscription failed');
-                    console.error('Error details: Channel error occurred');
-                    this.handleSubscriptionError();
-                } else if (status === 'TIMED_OUT') {
-                    console.error('❌ Real-time subscription timed out');
-                    console.error('Error details: Connection timed out');
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error('❌ Real-time connection failed');
                     this.handleSubscriptionError();
                 } else if (status === 'CLOSED') {
-                    console.log('Real-time subscription closed');
                     this.subscriptionStatus = 'disconnected';
-                } else {
-                    console.log('Unknown subscription status:', status);
                 }
             });
     }

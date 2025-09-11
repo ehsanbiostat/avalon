@@ -580,13 +580,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Handle page visibility changes - real-time subscriptions handle this automatically
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        console.log('Page hidden - real-time subscriptions continue in background');
-    } else {
-        console.log('Page visible - real-time subscriptions active');
+    if (!document.hidden) {
         // Check if we need to reconnect to real-time updates
         if (roomSystem && roomSystem.currentRoom && roomSystem.subscriptionStatus !== 'SUBSCRIBED') {
-            console.log('Reconnecting to real-time updates...');
             roomSystem.subscribeToRoomUpdates(roomSystem.currentRoom.id);
         }
     }
