@@ -675,8 +675,18 @@ class SupabaseRoomSystem {
     async createRoomInDatabase(roomConfig) {
         let roomId = null;
         
+        // At the start of createRoomInDatabase function
+        console.log('🚀 Starting room creation process...');
+        console.log('📋 Input parameters:', { roomConfig });
+        
         try {
             const user = supabaseAuthSystem.getCurrentUser();
+            console.log('👤 Current user:', { 
+                id: user?.id, 
+                email: user?.email, 
+                profile: user?.profile 
+            });
+            
             if (!user) {
                 this.showNotification('Please login to create a room!', 'error');
                 return false;
@@ -709,7 +719,28 @@ class SupabaseRoomSystem {
             console.log('✅ Room created successfully with ID:', roomId);
 
             // Add host as first player
-            await this.addPlayerToRoom(room.id, user, true);
+            console.log('🔄 About to add host as first player...');
+            console.log('🔍 Player data being sent:', {
+                room_id: room.id,
+                player_id: user.id,
+                player_name: user.profile?.display_name || user.email,
+                player_avatar: user.profile?.avatar || '👤',
+                is_host: true
+            });
+            
+            try {
+                await this.addPlayerToRoom(room.id, user, true);
+                console.log('✅ Host added successfully');
+            } catch (playerError) {
+                console.error('🚨 HOST ADD ERROR:', {
+                    message: playerError?.message || 'No message',
+                    code: playerError?.code || 'No code',
+                    details: playerError?.details || 'No details',
+                    hint: playerError?.hint || 'No hint',
+                    full_error: playerError
+                });
+                throw playerError;
+            }
 
             // Fetch the complete room data with players
             const { data: completeRoom, error: fetchError } = await this.supabase
@@ -770,6 +801,17 @@ class SupabaseRoomSystem {
 
             return true;
         } catch (error) {
+            // ADD COMPREHENSIVE ERROR LOGGING
+            console.error('🚨 CRITICAL ERROR DETAILS:', {
+                error_message: error?.message || 'No message',
+                error_code: error?.code || 'No code',
+                error_details: error?.details || 'No details',
+                error_hint: error?.hint || 'No hint',
+                error_name: error?.name || 'No name',
+                error_stack: error?.stack || 'No stack',
+                full_error: error
+            });
+            
             console.error('❌ Room creation failed, cleaning up...');
             
             // Clean up any partial data
