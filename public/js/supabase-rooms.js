@@ -5222,15 +5222,15 @@ const initializeRoomsSystem = () => {
     
   } else {
     console.warn('⚠️ supabaseAuthSystem not ready, retrying...');
-    setTimeout(initializeRoomsSystem, 100); // Retry after 100ms
+    setTimeout(enhancedInitializeRoomsSystem, 100); // Retry after 100ms
   }
 };
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeRoomsSystem);
+  document.addEventListener('DOMContentLoaded', enhancedInitializeRoomsSystem);
 } else {
-  initializeRoomsSystem();
+  enhancedInitializeRoomsSystem();
 }
 
 // Expose debugging functions globally (will be set after initialization)
@@ -5275,7 +5275,8 @@ const enhancedInitializeRoomsSystem = () => {
     }, 100);
 };
 
+// Use the enhanced version directly instead of reassigning
 // Replace the original with the enhanced version
-initializeRoomsSystem = enhancedInitializeRoomsSystem;
+const finalInitializeRoomsSystem = enhancedInitializeRoomsSystem;
 
 export default supabaseRoomSystem;
