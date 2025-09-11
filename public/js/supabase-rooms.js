@@ -884,7 +884,7 @@ class SupabaseRoomSystem {
                 .from(TABLES.GAME_ROOMS)
                 .select(`
                     *,
-                    room_players!inner(player_id, player_name, is_host, is_connected)
+                    room_players!inner(player_id, player_name, is_host)
                 `)
                 .in('status', ['waiting', 'playing', 'role_distribution']);
 
@@ -1103,22 +1103,26 @@ class SupabaseRoomSystem {
         console.log('✅ Event listeners setup completed');
     }
 
-    // Update player connection status
+    // Update player connection status (placeholder - columns don't exist yet)
     async updatePlayerConnectionStatus(roomId, isConnected) {
         try {
             const user = supabaseAuthSystem.getCurrentUser();
             if (!user) return;
 
-            await this.supabase
-                .from(TABLES.ROOM_PLAYERS)
-                .update({
-                    is_connected: isConnected,
-                    last_seen: new Date().toISOString()
-                })
-                .eq('room_id', roomId)
-                .eq('player_id', user.id);
+            // TODO: Add is_connected and last_seen columns to room_players table
+            // For now, just log the connection status
+            console.log(`📡 Player connection status: ${isConnected ? 'connected' : 'disconnected'} for room ${roomId}`);
+            
+            // When columns are added, use this:
+            // await this.supabase
+            //     .from(TABLES.ROOM_PLAYERS)
+            //     .update({
+            //         is_connected: isConnected,
+            //         last_seen: new Date().toISOString()
+            //     })
+            //     .eq('room_id', roomId)
+            //     .eq('player_id', user.id);
 
-            console.log(`📡 Updated connection status: ${isConnected ? 'connected' : 'disconnected'}`);
         } catch (error) {
             console.error('❌ Failed to update connection status:', error);
         }
