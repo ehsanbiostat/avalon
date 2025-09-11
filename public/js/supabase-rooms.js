@@ -32,13 +32,16 @@ class SupabaseRoomSystem {
         this.supabase = supabaseAuthSystem.supabase;
         this.currentRoom = null;
         this.isHost = false;
-        this.roomSubscription = null;
         this.lobbyPolling = null; // For compatibility with old room system
         this.showingRoleInformation = false; // Flag to prevent multiple simultaneous calls to showRoleInformation
         
-        // Fast polling system for real-time updates
+        // Real-time subscription system (primary)
+        this.roomSubscription = null;
+        
+        // Polling systems (backup/fallback only)
         this.fastPolling = null;
-        this.pollingInterval = 1000; // 1 second polling
+        this.backupPolling = null;
+        this.pollingInterval = 2000; // 2 seconds polling (fallback mode)
         this.lastStateHash = null;
         this.pollingActive = false;
         
@@ -732,8 +735,8 @@ class SupabaseRoomSystem {
             // Show room interface
             await this.showRoomInterface();
             
-            // Start fast polling for real-time updates
-            this.startFastPolling();
+            // Subscribe to real-time updates (primary method)
+            this.subscribeToRoomUpdates(room.id);
 
             return true;
         } catch (error) {
@@ -804,11 +807,8 @@ class SupabaseRoomSystem {
                 // Show room interface
                 await this.showRoomInterface();
                 
-                // Subscribe to room updates
+                // Subscribe to real-time updates (primary method)
                 this.subscribeToRoomUpdates(room.id);
-                
-                // Start fast polling
-                this.startFastPolling();
                 
                 // Check if room is in role distribution status
                 if (freshRoomData.status === GAME_STATUS.ROLE_DISTRIBUTION) {
@@ -834,8 +834,8 @@ class SupabaseRoomSystem {
             this.showNotification(`Joined room ${roomCode}!`, 'success');
             await this.showRoomInterface();
             
-            // Start fast polling for real-time updates
-            this.startFastPolling();
+            // Subscribe to real-time updates (primary method)
+            this.subscribeToRoomUpdates(room.id);
 
             return true;
         } catch (error) {
@@ -2578,10 +2578,45 @@ class SupabaseRoomSystem {
         return this.isHost;
     }
 
-    // Fast polling system for real-time updates (restored working version)
+    // Backup polling system - only used when real-time subscriptions fail
+    startBackupPolling() {
+        if (this.backupPolling || !this.currentRoom) {
+            console.log('Backup polling already active or no current room');
+            return;
+        }
+        
+        console.log('=== STARTING BACKUP POLLING (30s intervals) ===');
+        console.log('Room ID:', this.currentRoom.id);
+        console.log('User:', supabaseAuthSystem.getCurrentUser()?.email);
+        
+        this.backupPolling = setInterval(async () => {
+            if (!this.currentRoom) {
+                console.log('No current room, stopping backup polling');
+                this.stopBackupPolling();
+                return;
+            }
+            
+            try {
+                console.log('=== BACKUP POLLING CYCLE ===', new Date().toISOString());
+                await this.fastRoomStateCheck();
+            } catch (error) {
+                console.error('Error in backup polling:', error);
+            }
+        }, 30000); // 30 seconds - much less frequent than before
+    }
+
+    stopBackupPolling() {
+        if (this.backupPolling) {
+            console.log('Stopping backup polling');
+            clearInterval(this.backupPolling);
+            this.backupPolling = null;
+        }
+    }
+
+    // Fast polling system - only used as fallback when real-time fails
     startFastPolling() {
         if (this.pollingActive || !this.currentRoom) {
-            console.log('Polling already active or no current room:', {
+            console.log('Fast polling already active or no current room:', {
                 pollingActive: this.pollingActive,
                 hasCurrentRoom: !!this.currentRoom,
                 roomId: this.currentRoom?.id
@@ -2589,22 +2624,22 @@ class SupabaseRoomSystem {
             return;
         }
         
-        console.log('=== STARTING FAST POLLING ===');
+        console.log('=== STARTING FAST POLLING (FALLBACK MODE) ===');
         console.log('Room ID:', this.currentRoom.id);
         console.log('User:', supabaseAuthSystem.getCurrentUser()?.email);
         console.log('Is Host:', this.isHost);
         
         this.pollingActive = true;
-        this.pollingInterval = 1000; // 1 second polling
+        this.pollingInterval = 2000; // 2 seconds polling (less aggressive than before)
         
         const poll = async () => {
             if (!this.pollingActive || !this.currentRoom) {
-                console.log('Polling stopped or no current room');
+                console.log('Fast polling stopped or no current room');
                 return;
             }
             
             try {
-                console.log('=== POLLING CYCLE ===', new Date().toISOString());
+                console.log('=== FAST POLLING CYCLE (FALLBACK) ===', new Date().toISOString());
                 await this.fastRoomStateCheck();
             } catch (error) {
                 console.error('Error in fast polling:', error);
@@ -2621,12 +2656,15 @@ class SupabaseRoomSystem {
     }
 
     stopFastPolling() {
-        console.log('Stopping smart polling');
+        console.log('Stopping fast polling');
         this.pollingActive = false;
         if (this.fastPolling) {
             clearTimeout(this.fastPolling);
             this.fastPolling = null;
         }
+        
+        // Also stop backup polling
+        this.stopBackupPolling();
     }
 
 
@@ -3807,37 +3845,49 @@ class SupabaseRoomSystem {
     }
 
     subscribeToRoomUpdates(roomId) {
-        console.log('=== SUBSCRIBING TO ROOM UPDATES ===');
+        console.log('=== SUBSCRIBING TO COMPREHENSIVE ROOM UPDATES ===');
         console.log('Room ID:', roomId);
         
-        // Subscribe to room_players changes for this room
+        // Create comprehensive real-time subscription for all game state changes
         this.roomSubscription = this.supabase
             .channel(`room_${roomId}`)
+            
+            // Subscribe to room_players changes (player joins/leaves, role updates, etc.)
             .on('postgres_changes', {
-                event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+                event: '*', // INSERT, UPDATE, DELETE
                 schema: 'public',
                 table: 'room_players',
                 filter: `room_id=eq.${roomId}`
             }, (payload) => {
-                console.log('Room players changed:', payload);
+                console.log('=== REAL-TIME: Room players changed ===', payload);
                 this.handleRoomPlayersChange(payload);
             })
+            
+            // Subscribe to game_rooms changes (status, messages, game state, etc.)
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'game_rooms',
                 filter: `id=eq.${roomId}`
             }, async (payload) => {
-                console.log('=== REAL-TIME ROOM STATUS CHANGE RECEIVED ===');
-                console.log('Room status changed:', payload);
-                console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
-                console.log('Payload new status:', payload.new.status);
-                console.log('Payload new status_message:', payload.new.status_message);
-                await this.handleRoomStatusChange(payload);
+                console.log('=== REAL-TIME: Game room updated ===', payload);
+                await this.handleGameRoomChange(payload);
             })
-            .subscribe();
-
-        // Note: Using smart polling instead of backup polling for better performance
+            
+            // Subscribe to any other game-related tables if they exist
+            // (missions, votes, team_proposals, etc.)
+            
+            .subscribe((status) => {
+                console.log('Real-time subscription status:', status);
+                if (status === 'SUBSCRIBED') {
+                    console.log('✅ Successfully subscribed to real-time updates');
+                    // Start minimal backup polling (every 30 seconds) only as fallback
+                    this.startBackupPolling();
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('❌ Real-time subscription failed, falling back to polling');
+                    this.startFastPolling(); // Fallback to fast polling
+                }
+            });
     }
 
     handleRoomPlayersChange(payload) {
@@ -3848,28 +3898,48 @@ class SupabaseRoomSystem {
         this.refreshRoomData();
     }
 
-    async handleRoomStatusChange(payload) {
-        console.log('=== HANDLING ROOM STATUS CHANGE ===');
+    async handleGameRoomChange(payload) {
+        console.log('=== HANDLING COMPREHENSIVE GAME ROOM CHANGE ===');
         console.log('Payload:', payload);
         console.log('New status:', payload.new.status);
         console.log('New status_message:', payload.new.status_message);
         console.log('New status_message_type:', payload.new.status_message_type);
-        console.log('GAME_STATUS.ROLE_DISTRIBUTION:', GAME_STATUS.ROLE_DISTRIBUTION);
+        console.log('New rejection_count:', payload.new.rejection_count);
+        console.log('New team_proposal_state:', payload.new.team_proposal_state);
+        console.log('New mission_leader:', payload.new.mission_leader);
+        console.log('New current_mission:', payload.new.current_mission);
         
-        // Update local room data
-        this.currentRoom = payload.new;
+        // Update local room data with all new information
+        this.currentRoom = { ...this.currentRoom, ...payload.new };
         
-        // Always update status message display when room data changes
+        // Update UI components based on what changed
+        await this.updateUIFromRealTimeChange(payload);
+    }
+
+    async updateUIFromRealTimeChange(payload) {
+        console.log('=== UPDATING UI FROM REAL-TIME CHANGE ===');
+        
+        // Always update status message if it changed
         if (payload.new.status_message) {
-            console.log('Updating status message from real-time update:', payload.new.status_message);
+            console.log('Updating status message from real-time:', payload.new.status_message);
             this.displayStatusMessage(payload.new.status_message, payload.new.status_message_type || 'waiting');
         }
         
-        // Check if game started (role distribution)
+        // Update rejection counter if it changed
+        if (payload.new.rejection_count !== undefined) {
+            console.log('Updating rejection counter from real-time:', payload.new.rejection_count);
+            this.updateRejectionCounter(payload.new.rejection_count);
+        }
+        
+        // Update team building UI if team proposal state changed
+        if (payload.new.team_proposal_state && payload.new.team_proposal_state !== TEAM_PROPOSAL_STATE.NONE) {
+            console.log('Updating team building UI from real-time:', payload.new.team_proposal_state);
+            this.updateTeamBuildingUI();
+        }
+        
+        // Handle role distribution status change
         if (payload.new.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-            console.log('Game started! Role distribution beginning...');
-            
-            // Button overlay no longer created, so no need to remove it
+            console.log('=== REAL-TIME: Role distribution detected ===');
             
             // Hide start game button for non-host players
             const startGameBtn = document.getElementById('startGameBtn');
@@ -3877,14 +3947,20 @@ class SupabaseRoomSystem {
                 startGameBtn.style.display = 'none';
             }
             
-            // Trigger immediate state update for all players
-            await this.immediateRoomStateUpdate();
-            
-            // Show role information to current player
-            this.showRoleInformation();
-        } else {
-            console.log('Room status is not ROLE_DISTRIBUTION, current status:', payload.new.status);
+            // Check and show role information from database
+            this.checkAndShowRoleInformationFromDatabase();
         }
+        
+        // Handle playing status change
+        if (payload.new.status === GAME_STATUS.PLAYING) {
+            console.log('=== REAL-TIME: Game playing status detected ===');
+            this.updateTeamBuildingUI();
+        }
+        
+        // Update room display with fresh data
+        this.setupRoomInterface();
+        this.positionPlayersOnCircle();
+        this.updateRoomStatus();
     }
 
     async refreshRoomData() {
@@ -4073,11 +4149,8 @@ class SupabaseRoomSystem {
                     // Show room interface
                     await this.showRoomInterface();
                     
-                    // Subscribe to room updates
+                    // Subscribe to real-time updates (primary method)
                     this.subscribeToRoomUpdates(this.currentRoom.id);
-                    
-                    // Start fast polling for real-time updates
-                    this.startFastPolling();
                     
                     // Show notification
                     this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
