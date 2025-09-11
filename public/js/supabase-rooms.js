@@ -3921,10 +3921,12 @@ class SupabaseRoomSystem {
         console.log('New team_proposal_state:', payload.new.team_proposal_state);
         console.log('New mission_leader:', payload.new.mission_leader);
         console.log('New current_mission:', payload.new.current_mission);
-
+        console.log('New players:', payload.new.players);
+        console.log('New current_players:', payload.new.current_players);
+        
         // Update local room data with all new information
         this.currentRoom = { ...this.currentRoom, ...payload.new };
-
+        
         // Update UI components based on what changed
         await this.updateUIFromRealTimeChange(payload);
     }
@@ -3942,6 +3944,21 @@ class SupabaseRoomSystem {
         if (payload.new.rejection_count !== undefined) {
             console.log('Updating rejection counter from real-time:', payload.new.rejection_count);
             this.updateRejectionCounter(payload.new.rejection_count);
+        }
+        
+        // Update players if the players array changed
+        if (payload.new.players && Array.isArray(payload.new.players)) {
+            console.log('=== REAL-TIME: Players array updated ===');
+            console.log('New players:', payload.new.players);
+            console.log('Current players:', this.currentRoom.players);
+            
+            // Update local room data with new players
+            this.currentRoom.players = payload.new.players;
+            
+            // Force UI update to show new players
+            this.setupRoomInterface();
+            this.positionPlayersOnCircle();
+            this.updateRoomStatus();
         }
 
         // Update team building UI if team proposal state changed
