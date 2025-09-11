@@ -185,7 +185,10 @@
             <button class="btn btn-primary" id="joinRoomSubmitBtn">Join Room</button>
             <div class="active-rooms">
                 <h3>Active Rooms</h3>
-                <div id="activeRoomsList"></div>
+                <div id="activeRoomsContainer"></div>
+                <div class="room-actions">
+                    <button onclick="supabaseRoomsSystem.loadActiveRooms().then(({myRooms, joinableRooms}) => supabaseRoomsSystem.displayActiveRoomsList(myRooms, joinableRooms))" class="btn btn-outline">🔄 Refresh Rooms</button>
+                </div>
             </div>
         </div>
     </div>

@@ -736,6 +736,10 @@ class SupabaseRoomSystem {
             
             try {
                 await this.addPlayerToRoom(room.id, user, true, room);
+                
+                // Update connection status for host
+                await this.updatePlayerConnectionStatus(room.id, true);
+                
                 console.log('✅ Host added successfully');
             } catch (playerError) {
                 console.error('🚨 HOST ADD ERROR:', {
@@ -840,6 +844,190 @@ class SupabaseRoomSystem {
         }
     }
 
+    // Load active rooms for the current user
+    async loadActiveRooms() {
+        try {
+            const user = supabaseAuthSystem.getCurrentUser();
+            if (!user) {
+                console.log('No user logged in, cannot load active rooms');
+                return { myRooms: [], joinableRooms: [] };
+            }
+
+            console.log('📋 Loading active rooms...');
+
+            // Get all rooms player can access
+            const { data: accessibleRooms, error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select(`
+                    *,
+                    room_players!inner(player_id, player_name, is_host, is_connected)
+                `)
+                .in('status', ['waiting', 'playing', 'role_distribution']);
+
+            if (error) {
+                console.error('❌ Failed to load rooms:', error);
+                return { myRooms: [], joinableRooms: [] };
+            }
+
+            // Separate rooms by player's relationship to them
+            const myRooms = [];
+            const joinableRooms = [];
+
+            accessibleRooms.forEach(room => {
+                const isPlayerInRoom = room.room_players.some(p => p.player_id === user.id);
+
+                if (isPlayerInRoom) {
+                    myRooms.push({...room, canRejoin: true});
+                } else if (room.status === 'waiting' && room.current_players < room.max_players) {
+                    joinableRooms.push({...room, canJoin: true});
+                }
+            });
+
+            console.log('📊 Active rooms loaded:', { myRooms: myRooms.length, joinableRooms: joinableRooms.length });
+            return { myRooms, joinableRooms };
+
+        } catch (error) {
+            console.error('❌ Error loading active rooms:', error);
+            return { myRooms: [], joinableRooms: [] };
+        }
+    }
+
+    // Display active rooms in UI
+    displayActiveRoomsList(myRooms, joinableRooms) {
+        const container = document.getElementById('activeRoomsContainer');
+        if (!container) {
+            console.log('Active rooms container not found');
+            return;
+        }
+
+        let html = '<div class="active-rooms">';
+
+        // My Rooms (can rejoin)
+        if (myRooms.length > 0) {
+            html += '<h3>🔄 My Rooms (Rejoin)</h3>';
+            html += '<div class="rooms-grid">';
+
+            myRooms.forEach(room => {
+                const statusBadge = room.status === 'playing' ? 
+                    '<span class="badge badge-success">In Progress</span>' : 
+                    room.status === 'role_distribution' ?
+                    '<span class="badge badge-warning">Role Distribution</span>' :
+                    '<span class="badge badge-info">Waiting</span>';
+
+                html += `
+                    <div class="room-card rejoin-room" onclick="supabaseRoomsSystem.rejoinRoom('${room.code}')">
+                        <div class="room-header">
+                            <h4>Room ${room.code}</h4>
+                            ${statusBadge}
+                        </div>
+                        <div class="room-info">
+                            <p>Host: ${room.host_name}</p>
+                            <p>Players: ${room.current_players}/${room.max_players}</p>
+                            <p>Status: ${room.status}</p>
+                        </div>
+                        <button class="btn btn-primary">Rejoin Game</button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        // Joinable Rooms (new)
+        if (joinableRooms.length > 0) {
+            html += '<h3>🎮 Available Rooms</h3>';
+            html += '<div class="rooms-grid">';
+
+            joinableRooms.forEach(room => {
+                html += `
+                    <div class="room-card join-room" onclick="supabaseRoomsSystem.joinRoomByCode('${room.code}')">
+                        <div class="room-header">
+                            <h4>Room ${room.code}</h4>
+                            <span class="badge badge-info">Open</span>
+                        </div>
+                        <div class="room-info">
+                            <p>Host: ${room.host_name}</p>
+                            <p>Players: ${room.current_players}/${room.max_players}</p>
+                        </div>
+                        <button class="btn btn-secondary">Join Room</button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        if (myRooms.length === 0 && joinableRooms.length === 0) {
+            html += '<p class="no-rooms">No active rooms available</p>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // Rejoin room function
+    async rejoinRoom(roomCode) {
+        console.log('🔄 Rejoining room:', roomCode);
+        return await this.joinRoomByCode(roomCode);
+    }
+
+    // Room refresh functionality
+    roomsRefreshInterval = null;
+
+    startRoomListRefresh() {
+        // Refresh every 10 seconds
+        this.roomsRefreshInterval = setInterval(async () => {
+            const { myRooms, joinableRooms } = await this.loadActiveRooms();
+            this.displayActiveRoomsList(myRooms, joinableRooms);
+        }, 10000);
+        console.log('🔄 Started room list refresh');
+    }
+
+    stopRoomListRefresh() {
+        if (this.roomsRefreshInterval) {
+            clearInterval(this.roomsRefreshInterval);
+            this.roomsRefreshInterval = null;
+            console.log('⏹️ Stopped room list refresh');
+        }
+    }
+
+    // Show lobby with active rooms
+    async showLobby() {
+        console.log('🏠 Showing lobby with active rooms');
+        
+        // Load and display active rooms
+        const { myRooms, joinableRooms } = await this.loadActiveRooms();
+        this.displayActiveRoomsList(myRooms, joinableRooms);
+        
+        // Start auto-refresh
+        this.startRoomListRefresh();
+    }
+
+    // Leave lobby
+    leaveLobby() {
+        this.stopRoomListRefresh();
+        console.log('🚪 Left lobby');
+    }
+
+    // Update player connection status
+    async updatePlayerConnectionStatus(roomId, isConnected) {
+        try {
+            const user = supabaseAuthSystem.getCurrentUser();
+            if (!user) return;
+
+            await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .update({
+                    is_connected: isConnected,
+                    last_seen: new Date().toISOString()
+                })
+                .eq('room_id', roomId)
+                .eq('player_id', user.id);
+
+            console.log(`📡 Updated connection status: ${isConnected ? 'connected' : 'disconnected'}`);
+        } catch (error) {
+            console.error('❌ Failed to update connection status:', error);
+        }
+    }
+
     async joinRoomByCode(roomCode) {
         try {
             const user = supabaseAuthSystem.getCurrentUser();
@@ -869,6 +1057,7 @@ class SupabaseRoomSystem {
                 .from(TABLES.GAME_ROOMS)
                 .select('*')
                 .eq('code', cleanCode)
+                .in('status', ['waiting', 'playing', 'role_distribution']) // Allow joining active games
                 .single();
 
             console.log('📊 Room lookup result:', { room, roomError });
@@ -909,8 +1098,11 @@ class SupabaseRoomSystem {
             const existingPlayer = existingPlayers && existingPlayers.length > 0 ? existingPlayers[0] : null;
 
             if (existingPlayer) {
-                console.log('Player already in room, rejoining with fresh data...');
+                console.log('🔄 Player already in room, rejoining with fresh data...');
                 this.showNotification('Rejoining your room...', 'info');
+
+                // Update player connection status
+                await this.updatePlayerConnectionStatus(room.id, true);
 
                 // ALWAYS fetch complete fresh data from database
                 const freshRoomData = await this.fetchCompleteRoomState(room.id);
@@ -950,6 +1142,9 @@ class SupabaseRoomSystem {
 
             // Add player to room with room object
             await this.addPlayerToRoom(room.id, user, false, room);
+
+            // Update connection status
+            await this.updatePlayerConnectionStatus(room.id, true);
 
             // Set host status
             this.isHost = room.host_id === user.id;
@@ -1296,6 +1491,9 @@ class SupabaseRoomSystem {
 
         try {
             const user = supabaseAuthSystem.getCurrentUser();
+            
+            // Update connection status before leaving
+            await this.updatePlayerConnectionStatus(this.currentRoom.id, false);
             
             // Remove player from room
             const { error } = await this.supabase

@@ -76,6 +76,74 @@ class AvalonApp {
                 }
             });
         }
+
+        // Handle page visibility changes for connection tracking
+        document.addEventListener('visibilitychange', () => {
+            if (supabaseRoomsSystem && supabaseRoomsSystem.currentRoom) {
+                const isConnected = !document.hidden;
+                supabaseRoomsSystem.updatePlayerConnectionStatus(supabaseRoomsSystem.currentRoom.id, isConnected);
+            }
+        });
+
+        // Handle beforeunload for connection tracking
+        window.addEventListener('beforeunload', () => {
+            if (supabaseRoomsSystem && supabaseRoomsSystem.currentRoom) {
+                supabaseRoomsSystem.updatePlayerConnectionStatus(supabaseRoomsSystem.currentRoom.id, false);
+            }
+        });
+
+        // Handle join room button click
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        if (joinRoomBtn) {
+            joinRoomBtn.addEventListener('click', () => {
+                this.showJoinModal();
+            });
+        }
+
+        // Handle join room submit
+        const joinRoomSubmitBtn = document.getElementById('joinRoomSubmitBtn');
+        if (joinRoomSubmitBtn) {
+            joinRoomSubmitBtn.addEventListener('click', () => {
+                this.handleJoinRoom();
+            });
+        }
+    }
+
+    // Show join room modal and load active rooms
+    showJoinModal() {
+        const joinModal = document.getElementById('joinModal');
+        if (joinModal) {
+            joinModal.style.display = 'block';
+            
+            // Load active rooms when modal opens
+            if (supabaseRoomsSystem) {
+                supabaseRoomsSystem.loadActiveRooms().then(({myRooms, joinableRooms}) => {
+                    supabaseRoomsSystem.displayActiveRoomsList(myRooms, joinableRooms);
+                });
+            }
+        }
+    }
+
+    // Handle join room form submission
+    async handleJoinRoom() {
+        const roomCodeInput = document.getElementById('roomCode');
+        if (!roomCodeInput) return;
+
+        const roomCode = roomCodeInput.value.trim();
+        if (!roomCode) {
+            alert('Please enter a room code');
+            return;
+        }
+
+        try {
+            const success = await supabaseRoomsSystem.joinRoomByCode(roomCode);
+            if (success) {
+                this.closeAllModals();
+                roomCodeInput.value = '';
+            }
+        } catch (error) {
+            console.error('Failed to join room:', error);
+        }
     }
 
     initializeSystems() {
