@@ -85,10 +85,14 @@ class AvalonApp {
             }
         });
 
-        // Handle beforeunload for connection tracking
+        // Handle beforeunload for connection tracking and cleanup
         window.addEventListener('beforeunload', () => {
-            if (supabaseRoomsSystem && supabaseRoomsSystem.currentRoom) {
-                supabaseRoomsSystem.updatePlayerConnectionStatus(supabaseRoomsSystem.currentRoom.id, false);
+            if (supabaseRoomsSystem) {
+                if (supabaseRoomsSystem.currentRoom) {
+                    supabaseRoomsSystem.updatePlayerConnectionStatus(supabaseRoomsSystem.currentRoom.id, false);
+                }
+                // Cleanup all connections
+                supabaseRoomsSystem.cleanup();
             }
         });
 

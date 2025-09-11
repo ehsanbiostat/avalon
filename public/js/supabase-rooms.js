@@ -809,8 +809,8 @@ class SupabaseRoomSystem {
                 this.updateRoomStatus();
             }
             
-            // Subscribe to real-time updates
-            this.subscribeToRoomUpdates(room.id);
+            // Subscribe to real-time updates with new connection manager
+            this.initializeRoomConnection(room.id);
 
             return true;
         } catch (error) {
@@ -1007,6 +1007,30 @@ class SupabaseRoomSystem {
         console.log('🚪 Left lobby');
     }
 
+    // Cleanup all connections when leaving
+    cleanup() {
+        console.log('🧹 Cleaning up room system...');
+        
+        // Stop room list refresh
+        this.stopRoomListRefresh();
+        
+        // Clean up connection manager
+        if (window.subscriptionManager) {
+            window.subscriptionManager.unsubscribeAll();
+        }
+        
+        // Clean up connection manager
+        if (window.connectionManager) {
+            window.connectionManager.cleanup();
+        }
+        
+        // Clear current room
+        this.currentRoom = null;
+        this.isHost = false;
+        
+        console.log('✅ Room system cleanup completed');
+    }
+
     // Update player connection status
     async updatePlayerConnectionStatus(roomId, isConnected) {
         try {
@@ -1122,8 +1146,8 @@ class SupabaseRoomSystem {
                 // Show room interface
                 await this.showRoomInterface();
 
-                // Subscribe to real-time updates (primary method)
-                this.subscribeToRoomUpdates(room.id);
+                // Subscribe to real-time updates with new connection manager
+                this.initializeRoomConnection(room.id);
 
                 // Check if room is in role distribution status
                 if (freshRoomData.status === GAME_STATUS.ROLE_DISTRIBUTION) {
@@ -1152,8 +1176,8 @@ class SupabaseRoomSystem {
             this.showNotification(`Joined room ${roomCode}!`, 'success');
             await this.showRoomInterface();
             
-            // Subscribe to real-time updates (primary method)
-            this.subscribeToRoomUpdates(room.id);
+            // Subscribe to real-time updates with new connection manager
+            this.initializeRoomConnection(room.id);
 
             return true;
         } catch (error) {
@@ -1535,11 +1559,16 @@ class SupabaseRoomSystem {
                 await this.handleHostLeaving();
             }
 
-            // Unsubscribe from real-time updates
-            if (this.roomSubscription) {
-                this.roomSubscription.unsubscribe();
-                this.roomSubscription = null;
-                this.subscriptionStatus = 'disconnected';
+            // Unsubscribe from real-time updates with new connection manager
+            if (window.subscriptionManager) {
+                window.subscriptionManager.unsubscribeFromRoom(this.currentRoom.id);
+            } else {
+                // Fallback to old cleanup method
+                if (this.roomSubscription) {
+                    this.roomSubscription.unsubscribe();
+                    this.roomSubscription = null;
+                    this.subscriptionStatus = 'disconnected';
+                }
             }
 
             // Clear all timers
@@ -4613,7 +4642,35 @@ class SupabaseRoomSystem {
         }
     }
 
-    // Centralized subscription manager with deduplication and debouncing
+    // Initialize room connection with new robust connection manager
+    initializeRoomConnection(roomId) {
+        try {
+            console.log('🎮 Initializing room connection:', roomId);
+            
+            // Add connection status indicator
+            if (typeof addConnectionStatusIndicator === 'function') {
+                addConnectionStatusIndicator();
+            }
+            if (typeof addConnectionStatusCSS === 'function') {
+                addConnectionStatusCSS();
+            }
+            
+            // Use new subscription manager
+            if (window.subscriptionManager) {
+                window.subscriptionManager.subscribeToRoom(roomId);
+            } else {
+                console.warn('⚠️ Subscription manager not available, falling back to old method');
+                this.subscribeToRoomUpdates(roomId);
+            }
+            
+        } catch (error) {
+            console.error('❌ Room connection initialization failed:', error);
+            // Fallback to old method
+            this.subscribeToRoomUpdates(roomId);
+        }
+    }
+
+    // Centralized subscription manager with deduplication and debouncing (LEGACY - kept for fallback)
     subscribeToRoomUpdates(roomId) {
         // Prevent duplicate subscription calls
         if (this.isSubscribing) {
@@ -5055,8 +5112,8 @@ class SupabaseRoomSystem {
                     // Show room interface
                     await this.showRoomInterface();
 
-                    // Subscribe to real-time updates (primary method)
-                    this.subscribeToRoomUpdates(this.currentRoom.id);
+                    // Subscribe to real-time updates with new connection manager
+                    this.initializeRoomConnection(this.currentRoom.id);
 
                     // Show notification
                     this.showNotification(`Welcome back to room ${this.currentRoom.code}!`, 'success');
