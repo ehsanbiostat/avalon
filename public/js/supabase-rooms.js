@@ -34,8 +34,7 @@ class SupabaseRoomSystem {
         this.isHost = false;
         this.roomSubscription = null;
         this.lobbyPolling = null; // For compatibility with old room system
-        this.roleInformationShown = false; // Flag to prevent multiple role popups
-        this.showingRoleInformation = false; // Flag to prevent multiple calls to showRoleInformation
+        this.showingRoleInformation = false; // Flag to prevent multiple simultaneous calls to showRoleInformation
         
         // Fast polling system for real-time updates
         this.fastPolling = null;
@@ -1079,7 +1078,7 @@ class SupabaseRoomSystem {
             this.currentRoom = room;
             this.currentRoom.players = players;
             this.currentRoom.current_players = players.length; // Update player count
-            
+
             console.log('Using fresh database data - no local preservation');
 
             // Update UI in correct sequence
@@ -1223,7 +1222,7 @@ class SupabaseRoomSystem {
         const rejectionTrackerHTML = rejectionTracker ? rejectionTracker.outerHTML : '';
         
         // Clear the game table
-        gameTable.innerHTML = '';
+            gameTable.innerHTML = '';
         
         // Restore the status message element if it existed
         if (statusMessageHTML) {
@@ -2138,16 +2137,15 @@ class SupabaseRoomSystem {
             return;
         }
         
-        // Check if role information has already been shown (in memory or database)
+        // Always check database to determine if role information should be shown
         const hasSeenInDB = await this.hasSeenRoleInformation();
-        console.log('Role information check:', {
-            roleInformationShown: this.roleInformationShown,
+        console.log('Database role information check:', {
             hasSeenInDB: hasSeenInDB,
             currentUser: supabaseAuthSystem.getCurrentUser()?.email
         });
         
-        if (this.roleInformationShown || hasSeenInDB) {
-            console.log('Role information already shown, skipping');
+        if (hasSeenInDB) {
+            console.log('Database shows role information already seen, skipping');
             return;
         }
         
@@ -2364,6 +2362,50 @@ class SupabaseRoomSystem {
             console.error('Exception in showRoleInformation:', error);
             // Reset flag in case of error
             this.showingRoleInformation = false;
+        }
+    }
+
+    // Database-only role information check - always checks database, never uses local state
+    async checkAndShowRoleInformationFromDatabase() {
+        const currentUser = supabaseAuthSystem.getCurrentUser();
+        if (!currentUser || !this.currentRoom) {
+            console.log('No current user or room for role information check');
+            return;
+        }
+        
+        try {
+            console.log('=== CHECKING ROLE INFORMATION FROM DATABASE ===');
+            
+            // Always fetch fresh data from database
+            const { data: playerData, error } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('has_role_seen, role, alignment')
+                .eq('room_id', this.currentRoom.id)
+                .eq('player_id', currentUser.id)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching player role data:', error);
+                return;
+            }
+            
+            console.log('Database role data:', {
+                has_role_seen: playerData.has_role_seen,
+                role: playerData.role,
+                alignment: playerData.alignment,
+                user: currentUser.email
+            });
+            
+            // Only show role information if database says it hasn't been seen
+            if (!playerData.has_role_seen) {
+                console.log('Database shows role not seen, showing role information');
+                this.showRoleInformation();
+            } else {
+                console.log('Database shows role already seen, not showing role information');
+            }
+            
+        } catch (error) {
+            console.error('Exception checking role information from database:', error);
         }
     }
 
@@ -2672,11 +2714,7 @@ class SupabaseRoomSystem {
                 this.isHost = playerData ? playerData.is_host : false;
             }
             
-            // Reset role information shown flag when room status changes to role distribution
-            if (freshRoomData.status === GAME_STATUS.ROLE_DISTRIBUTION) {
-                console.log('Room status changed to role distribution, resetting role information flag');
-                this.roleInformationShown = false;
-            }
+            // No local flag management - always check database for role information state
             
             // Always update UI with fresh data
             this.updateRejectionCounter(this.currentRoom.rejection_count || 0);
@@ -2690,17 +2728,11 @@ class SupabaseRoomSystem {
             if (this.currentRoom.status === GAME_STATUS.ROLE_DISTRIBUTION) {
                 console.log('=== ROLE DISTRIBUTION DETECTED IN POLLING ===');
                 console.log('Room status:', this.currentRoom.status);
-                console.log('Role information shown flag:', this.roleInformationShown);
                 console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
                 console.log('Is host:', this.isHost);
                 
-                // Always try to show role information if not already shown
-                if (!this.roleInformationShown) {
-                    console.log('Showing role information for player');
-                    this.showRoleInformation();
-                } else {
-                    console.log('Role information already shown, skipping');
-                }
+                // Always check database to determine if role information should be shown
+                this.checkAndShowRoleInformationFromDatabase();
             }
             
             // Update room display UI directly (no additional DB call needed)
