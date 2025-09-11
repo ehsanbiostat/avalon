@@ -49,6 +49,10 @@ class SupabaseRoomSystem {
             updateCount: 0,
             lastPerformanceCheck: Date.now()
         };
+        
+        // State tracking for debugging
+        this.stateUpdateLog = [];
+        this.maxStateLogEntries = 50;
 
         // Add a small delay to ensure DOM is fully ready
         console.log('Setting up setTimeout for event listeners...');
@@ -866,8 +870,48 @@ class SupabaseRoomSystem {
     }
 
     async addPlayerToRoom(roomId, user, isHost = false) {
+        // Log state update
+        this.logStateUpdate('api-call', 'join', {
+            playerId: user.id,
+            playerName: user.profile?.display_name || user.email,
+            isHost,
+            roomId
+        });
+        
         // Ensure user profile exists before adding to room
         await this.ensureUserProfile(user);
+        
+        // Check if player already exists in room to prevent duplicates
+        const { data: existingPlayer } = await this.supabase
+            .from(TABLES.ROOM_PLAYERS)
+            .select('*')
+            .eq('room_id', roomId)
+            .eq('player_id', user.id)
+            .single();
+            
+        if (existingPlayer) {
+            console.log('Player already exists in room, updating existing record');
+            // Update existing player record instead of creating duplicate
+            const { error: updateError } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .update({
+                    player_name: user.profile?.display_name || user.email,
+                    player_avatar: user.profile?.avatar || '👤',
+                    is_host: isHost,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('room_id', roomId)
+                .eq('player_id', user.id);
+                
+            if (updateError) {
+                console.error('Error updating existing player:', updateError);
+                throw updateError;
+            }
+            
+            // Update game_rooms table to trigger real-time
+            await this.updateGameRoomsPlayersArray(roomId);
+            return;
+        }
 
         // Check if room has no host (host_id is null) and get original host info
         const { data: room } = await this.supabase
@@ -895,6 +939,27 @@ class SupabaseRoomSystem {
             console.log('Original host rejoining, transferring host status back to them');
         }
 
+        // Optimistic UI update - show player immediately
+        const optimisticPlayer = {
+            id: user.id,
+            name: user.profile?.display_name || user.email,
+            avatar: user.profile?.avatar || '👤',
+            is_host: isHost
+        };
+        
+        // Add to local state immediately for responsive UI
+        if (!this.currentRoom.players) {
+            this.currentRoom.players = [];
+        }
+        this.currentRoom.players.push(optimisticPlayer);
+        this.currentRoom.current_players = this.currentRoom.players.length;
+        
+        // Update UI immediately
+        this.setupRoomInterface();
+        this.positionPlayersOnCircle();
+        this.updateRoomStatus();
+        
+        // Then perform database operation
         const { error } = await this.supabase
             .from(TABLES.ROOM_PLAYERS)
             .insert({
@@ -907,45 +972,22 @@ class SupabaseRoomSystem {
 
         if (error) {
             console.error('Error adding player to room:', error);
+            
+            // Rollback optimistic update
+            this.currentRoom.players = this.currentRoom.players.filter(p => p.id !== user.id);
+            this.currentRoom.current_players = this.currentRoom.players.length;
+            this.setupRoomInterface();
+            this.positionPlayersOnCircle();
+            this.updateRoomStatus();
+            
             throw error;
         }
 
         // CRITICAL: Update game_rooms table to trigger real-time subscriptions
         // This ensures all players receive real-time updates when someone joins
         // First, get all current players to update the players column
-        const { data: allPlayers, error: playersError } = await this.supabase
-            .from(TABLES.ROOM_PLAYERS)
-            .select('*')
-            .eq('room_id', roomId);
-
-        if (playersError) {
-            console.error('Error fetching players for room update:', playersError);
-        }
-
-        // Rate limiting: Only update if enough time has passed since last update
-        const now = Date.now();
-        if (now - this.lastUpdateTime < 500) { // 500ms rate limit for DB updates
-            return;
-        }
-        this.lastUpdateTime = now;
-        
-        console.log('=== UPDATING GAME_ROOMS TABLE ===');
-        console.log('Players count:', allPlayers?.length || 0);
-        
-        const { error: roomUpdateError } = await this.supabase
-            .from(TABLES.GAME_ROOMS)
-            .update({
-                players: allPlayers || [],
-                updated_at: new Date().toISOString(),
-                version: room?.version ? room.version + 1 : 1
-            })
-            .eq('id', roomId);
-
-        if (roomUpdateError) {
-            console.error('❌ Error updating game_rooms:', roomUpdateError);
-        } else {
-            console.log('✅ Updated game_rooms table');
-        }
+        // Update game_rooms table with current players
+        await this.updateGameRoomsPlayersArray(roomId);
 
         // If this player became the new host, update the room's host_id
         if (isHost) {
@@ -1054,12 +1096,15 @@ class SupabaseRoomSystem {
             this.isSubscribing = false;
             this.lastUpdateTime = 0;
             
-            // Reset performance metrics
-            this.performanceMetrics = {
-                subscriptionCount: 0,
-                updateCount: 0,
-                lastPerformanceCheck: Date.now()
-            };
+        // Reset performance metrics
+        this.performanceMetrics = {
+            subscriptionCount: 0,
+            updateCount: 0,
+            lastPerformanceCheck: Date.now()
+        };
+        
+        // Reset state tracking
+        this.stateUpdateLog = [];
 
             this.currentRoom = null;
             this.isHost = false;
@@ -3909,6 +3954,203 @@ class SupabaseRoomSystem {
         };
     }
 
+    // Comprehensive state logging for debugging
+    logStateUpdate(source, operation, details = {}) {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            source, // 'real-time-game-rooms', 'real-time-room-players', 'api-call', 'local-update'
+            operation, // 'join', 'leave', 'room-update', 'status-change'
+            playersBefore: this.currentRoom?.players?.length || 0,
+            playersAfter: details.playersAfter || this.currentRoom?.players?.length || 0,
+            currentPlayers: this.currentRoom?.current_players || 0,
+            roomStatus: this.currentRoom?.status || 'unknown',
+            details
+        };
+        
+        this.stateUpdateLog.push(logEntry);
+        
+        // Keep only recent entries
+        if (this.stateUpdateLog.length > this.maxStateLogEntries) {
+            this.stateUpdateLog = this.stateUpdateLog.slice(-this.maxStateLogEntries);
+        }
+        
+        console.log('🔍 STATE UPDATE:', logEntry);
+        
+        // Warn about potential conflicts
+        if (this.stateUpdateLog.length > 1) {
+            const lastEntry = this.stateUpdateLog[this.stateUpdateLog.length - 2];
+            const timeDiff = new Date(logEntry.timestamp) - new Date(lastEntry.timestamp);
+            
+            if (timeDiff < 100 && lastEntry.source !== source) {
+                console.warn('⚠️ RAPID STATE CONFLICT DETECTED:', {
+                    source1: lastEntry.source,
+                    source2: source,
+                    timeDiff: timeDiff + 'ms'
+                });
+            }
+        }
+    }
+
+    // Get state update history for debugging
+    getStateUpdateHistory() {
+        return this.stateUpdateLog;
+    }
+
+    // State validation and consistency checks
+    async validateRoomState(roomId) {
+        try {
+            // Get room data from both tables
+            const { data: roomData } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select('*')
+                .eq('id', roomId)
+                .single();
+                
+            const { data: playersData } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', roomId);
+            
+            if (!roomData || !playersData) {
+                console.warn('⚠️ Room state validation failed: Missing data');
+                return false;
+            }
+            
+            // Check consistency
+            const roomPlayersCount = roomData.current_players || 0;
+            const actualPlayersCount = playersData.length;
+            const roomPlayersArray = roomData.players || [];
+            
+            const inconsistencies = [];
+            
+            if (roomPlayersCount !== actualPlayersCount) {
+                inconsistencies.push(`Player count mismatch: room.current_players=${roomPlayersCount}, actual=${actualPlayersCount}`);
+            }
+            
+            if (roomPlayersArray.length !== actualPlayersCount) {
+                inconsistencies.push(`Players array length mismatch: room.players.length=${roomPlayersArray.length}, actual=${actualPlayersCount}`);
+            }
+            
+            if (inconsistencies.length > 0) {
+                console.warn('⚠️ Room state inconsistencies detected:', inconsistencies);
+                
+                // Auto-correct the inconsistencies
+                await this.correctRoomStateInconsistencies(roomId, roomData, playersData);
+                return false;
+            }
+            
+            console.log('✅ Room state validation passed');
+            return true;
+            
+        } catch (error) {
+            console.error('Error validating room state:', error);
+            return false;
+        }
+    }
+    
+    // Auto-correct room state inconsistencies
+    async correctRoomStateInconsistencies(roomId, roomData, playersData) {
+        console.log('🔧 Auto-correcting room state inconsistencies...');
+        
+        try {
+            const { error } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    current_players: playersData.length,
+                    players: playersData,
+                    updated_at: new Date().toISOString(),
+                    version: (roomData.version || 0) + 1
+                })
+                .eq('id', roomId);
+                
+            if (error) {
+                console.error('Failed to correct room state:', error);
+            } else {
+                console.log('✅ Room state corrected successfully');
+            }
+        } catch (error) {
+            console.error('Exception correcting room state:', error);
+        }
+    }
+
+    // Centralized function to update game_rooms players array
+    async updateGameRoomsPlayersArray(roomId) {
+        try {
+            // Fetch all current players from room_players table
+            const { data: allPlayers, error: playersError } = await this.supabase
+                .from(TABLES.ROOM_PLAYERS)
+                .select('*')
+                .eq('room_id', roomId);
+
+            if (playersError) {
+                console.error('Error fetching players for room update:', playersError);
+                return;
+            }
+
+            // Rate limiting: Only update if enough time has passed since last update
+            const now = Date.now();
+            if (now - this.lastUpdateTime < 500) { // 500ms rate limit for DB updates
+                return;
+            }
+            this.lastUpdateTime = now;
+            
+            console.log('=== UPDATING GAME_ROOMS TABLE ===');
+            console.log('Players count:', allPlayers?.length || 0);
+            
+            // Log database update
+            this.logStateUpdate('api-call', 'room-update', {
+                playersCount: allPlayers?.length || 0,
+                operation: 'update-game-rooms-table'
+            });
+            
+            // Get current room version for optimistic locking
+            const { data: room } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .select('version')
+                .eq('id', roomId)
+                .single();
+            
+            const { error: roomUpdateError } = await this.supabase
+                .from(TABLES.GAME_ROOMS)
+                .update({
+                    players: allPlayers || [],
+                    current_players: allPlayers?.length || 0,
+                    updated_at: new Date().toISOString(),
+                    version: room?.version ? room.version + 1 : 1
+                })
+                .eq('id', roomId);
+
+            if (roomUpdateError) {
+                console.error('❌ Error updating game_rooms:', roomUpdateError);
+            } else {
+                console.log('✅ Updated game_rooms table');
+            }
+        } catch (error) {
+            console.error('Exception in updateGameRoomsPlayersArray:', error);
+        }
+    }
+
+    // Global debugging functions
+    debugRoomState() {
+        console.log('=== ROOM STATE DEBUG INFO ===');
+        console.log('Current room:', this.currentRoom);
+        console.log('Is host:', this.isHost);
+        console.log('Subscription status:', this.subscriptionStatus);
+        console.log('Performance metrics:', this.getPerformanceMetrics());
+        console.log('State update history:', this.getStateUpdateHistory());
+        console.log('================================');
+    }
+    
+    // Force state validation
+    async debugValidateState() {
+        if (this.currentRoom) {
+            console.log('=== FORCING STATE VALIDATION ===');
+            await this.validateRoomState(this.currentRoom.id);
+        } else {
+            console.log('No current room to validate');
+        }
+    }
+
     // Centralized subscription manager with deduplication and debouncing
     subscribeToRoomUpdates(roomId) {
         // Prevent duplicate subscription calls
@@ -3972,7 +4214,18 @@ class SupabaseRoomSystem {
                 }
                 
                 console.log('=== REAL-TIME: Game room updated ===');
+                
+                // Log real-time update
+                this.logStateUpdate('real-time-game-rooms', 'room-update', {
+                    playersCount: payload.new?.current_players || 0,
+                    status: payload.new?.status,
+                    eventType: 'UPDATE'
+                });
+                
                 await this.handleGameRoomChange(payload);
+                
+                // Validate state after real-time update
+                await this.validateRoomState(roomId);
             })
             
             // Subscribe to room_players changes (player joins/leaves, role updates, etc.)
@@ -3991,6 +4244,14 @@ class SupabaseRoomSystem {
                 this.lastUpdateTime = now;
                 
                 console.log('=== REAL-TIME: Room players changed ===');
+                
+                // Log real-time update
+                this.logStateUpdate('real-time-room-players', payload.eventType.toLowerCase(), {
+                    playerId: payload.new?.player_id || payload.old?.player_id,
+                    playerName: payload.new?.player_name || payload.old?.player_name,
+                    eventType: payload.eventType
+                });
+                
                 this.handleRoomPlayersChange(payload);
             })
             
@@ -4055,8 +4316,11 @@ class SupabaseRoomSystem {
         // Handle different types of player changes
         if (payload.eventType === 'INSERT') {
             console.log('Player joined:', payload.new.player_name);
-            // Player joined - refresh room data
-            await this.refreshRoomData();
+            // Player joined - update UI directly without refreshing room data
+            // This prevents conflicts with the game_rooms subscription
+            this.setupRoomInterface();
+            this.positionPlayersOnCircle();
+            this.updateRoomStatus();
         } else if (payload.eventType === 'DELETE') {
             console.log('Player left:', payload.old.player_name);
             // Player left - refresh room data
@@ -4113,6 +4377,12 @@ class SupabaseRoomSystem {
             console.log('=== REAL-TIME: Players array updated ===');
             console.log('New players:', payload.new.players);
             console.log('Current players:', this.currentRoom.players);
+            
+            // Log the state change
+            this.logStateUpdate('real-time-game-rooms', 'players-update', {
+                playersAfter: payload.new.players.length,
+                playersArray: payload.new.players
+            });
             
             // Update local room data with new players
             this.currentRoom.players = payload.new.players;
@@ -4358,6 +4628,12 @@ class SupabaseRoomSystem {
 
 // Initialize the room system
 const supabaseRoomSystem = new SupabaseRoomSystem();
+
+// Expose debugging functions globally
+window.debugRoomState = () => supabaseRoomSystem.debugRoomState();
+window.debugValidateState = () => supabaseRoomSystem.debugValidateState();
+window.getStateHistory = () => supabaseRoomSystem.getStateUpdateHistory();
+window.getPerformanceMetrics = () => supabaseRoomSystem.getPerformanceMetrics();
 
 // Make it globally available
 window.supabaseRoomSystem = supabaseRoomSystem;
