@@ -610,10 +610,10 @@ class SupabaseRoomSystem {
             return false;
         }
 
-        // Read form data
-        const roomConfig = this.getRoomConfigFromForm();
+        // Use default room configuration for now
+        const roomConfig = this.getDefaultRoomConfig();
         if (!roomConfig) {
-            this.showNotification('Please fill in all required fields!', 'error');
+            this.showNotification('Failed to create room configuration!', 'error');
             return false;
         }
 
@@ -624,6 +624,30 @@ class SupabaseRoomSystem {
 
         // Create room in database
         return await this.createRoomInDatabase(roomConfig);
+    }
+
+    getDefaultRoomConfig() {
+        console.log('=== GETTING DEFAULT ROOM CONFIG ===');
+
+        // Use default configuration for 5 players
+        const config = {
+            maxPlayers: 5,
+            roles: {
+                merlin: true, // Always required
+                percival: true,
+                assassin: true, // Always required
+                morgana: true,
+                mordred: false,
+                oberon: false,
+                loyalServants: 0,
+                minions: 0
+            },
+            ladyOfLake: true,
+            chaosForMerlin: false
+        };
+
+        console.log('Default room config:', config);
+        return config;
     }
 
     getRoomConfigFromForm() {
