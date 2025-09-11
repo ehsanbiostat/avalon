@@ -50,6 +50,10 @@ class SupabaseRoomSystem {
                 console.log('Calling setupEventListeners method...');
         this.setupEventListeners();
                 console.log('setupEventListeners completed successfully');
+                
+                // Expose debug functions globally
+                window.testRealTimeUpdates = () => this.testRealTimeUpdates();
+                console.log('Debug function exposed: window.testRealTimeUpdates()');
 
                 // Add window resize listener for responsive positioning
                 this.setupResponsiveListeners();
@@ -731,7 +735,28 @@ class SupabaseRoomSystem {
             // Show room interface
             await this.showRoomInterface();
 
-            // Subscribe to real-time updates (primary method)
+            // CRITICAL: Fetch initial state BEFORE subscribing to real-time updates
+            console.log('=== FETCHING INITIAL ROOM STATE BEFORE SUBSCRIBING ===');
+            console.log('Timestamp:', new Date().toISOString());
+            console.log('Room ID:', room.id);
+            
+            const initialRoomState = await this.fetchCompleteRoomState(room.id);
+            if (initialRoomState) {
+                console.log('✅ Initial room state fetched successfully');
+                console.log('Initial players:', initialRoomState.room_players);
+                console.log('Initial players count:', initialRoomState.room_players?.length || 0);
+                this.currentRoom = initialRoomState;
+                
+                // Update UI with initial state
+                this.setupRoomInterface();
+                this.positionPlayersOnCircle();
+                this.updateRoomStatus();
+            } else {
+                console.error('❌ Failed to fetch initial room state');
+            }
+            
+            // Now subscribe to real-time updates for future changes
+            console.log('=== SUBSCRIBING TO REAL-TIME UPDATES ===');
             this.subscribeToRoomUpdates(room.id);
 
             return true;
@@ -897,6 +922,14 @@ class SupabaseRoomSystem {
             console.error('Error fetching players for room update:', playersError);
         }
 
+        console.log('=== UPDATING GAME_ROOMS TABLE FOR REAL-TIME TRIGGER ===');
+        console.log('Timestamp:', new Date().toISOString());
+        console.log('Room ID:', roomId);
+        console.log('Players to update:', allPlayers);
+        console.log('Players count:', allPlayers?.length || 0);
+        console.log('Current room version:', room?.version);
+        console.log('New version:', room?.version ? room.version + 1 : 1);
+        
         const { error: roomUpdateError } = await this.supabase
             .from(TABLES.GAME_ROOMS)
             .update({
@@ -907,10 +940,12 @@ class SupabaseRoomSystem {
             .eq('id', roomId);
 
         if (roomUpdateError) {
-            console.error('Error updating game_rooms for real-time trigger:', roomUpdateError);
+            console.error('❌ Error updating game_rooms for real-time trigger:', roomUpdateError);
+            console.error('Error details:', roomUpdateError.message, roomUpdateError.code);
             // Don't throw error - player was added successfully, just real-time update failed
         } else {
-            console.log('✅ Updated game_rooms table to trigger real-time subscriptions');
+            console.log('✅ Successfully updated game_rooms table to trigger real-time subscriptions');
+            console.log('This should trigger real-time events for all connected clients');
         }
 
         // If this player became the new host, update the room's host_id
@@ -2620,6 +2655,47 @@ class SupabaseRoomSystem {
     // REAL-TIME ONLY: No polling systems - all updates via Supabase subscriptions
     // Removed all polling mechanisms to enforce real-time-first approach
 
+    // DEBUG: Manual test function to trigger database updates
+    async testRealTimeUpdates() {
+        if (!this.currentRoom) {
+            console.error('No current room for testing');
+            return;
+        }
+        
+        console.log('=== TESTING REAL-TIME UPDATES ===');
+        console.log('Timestamp:', new Date().toISOString());
+        console.log('Current room ID:', this.currentRoom.id);
+        
+        // Get current players
+        const { data: allPlayers, error } = await this.supabase
+            .from(TABLES.ROOM_PLAYERS)
+            .select('*')
+            .eq('room_id', this.currentRoom.id);
+        
+        if (error) {
+            console.error('Error fetching players for test:', error);
+            return;
+        }
+        
+        console.log('Current players:', allPlayers);
+        
+        // Update game_rooms table to trigger real-time
+        const { error: updateError } = await this.supabase
+            .from(TABLES.GAME_ROOMS)
+            .update({
+                players: allPlayers || [],
+                updated_at: new Date().toISOString(),
+                version: this.currentRoom.version ? this.currentRoom.version + 1 : 1
+            })
+            .eq('id', this.currentRoom.id);
+        
+        if (updateError) {
+            console.error('Error updating game_rooms for test:', updateError);
+        } else {
+            console.log('✅ Test update sent - should trigger real-time events');
+        }
+    }
+
 
     // COMPREHENSIVE fresh data fetch - always gets latest state from database
     async fetchCompleteRoomState(roomId) {
@@ -3803,12 +3879,23 @@ class SupabaseRoomSystem {
 
     subscribeToRoomUpdates(roomId) {
         console.log('=== SUBSCRIBING TO COMPREHENSIVE ROOM UPDATES ===');
+        console.log('Timestamp:', new Date().toISOString());
         console.log('Room ID:', roomId);
-
+        console.log('Room ID type:', typeof roomId);
+        console.log('Current user:', supabaseAuthSystem.getCurrentUser()?.email);
+        console.log('Current room exists:', !!this.currentRoom);
+        
+        // Clean up any existing subscription first
+        if (this.roomSubscription) {
+            console.log('Cleaning up existing subscription...');
+            this.roomSubscription.unsubscribe();
+            this.roomSubscription = null;
+        }
+        
         // Create comprehensive real-time subscription for all game state changes
         this.roomSubscription = this.supabase
-            .channel(`room_${roomId}`)
-
+            .channel(`room_${roomId}_${Date.now()}`) // Add timestamp to avoid conflicts
+            
             // Subscribe to room_players changes (player joins/leaves, role updates, etc.)
             .on('postgres_changes', {
                 event: '*', // INSERT, UPDATE, DELETE
@@ -3816,10 +3903,18 @@ class SupabaseRoomSystem {
                 table: 'room_players',
                 filter: `room_id=eq.${roomId}`
             }, (payload) => {
-                console.log('=== REAL-TIME: Room players changed ===', payload);
+                console.log('=== REAL-TIME: Room players changed ===');
+                console.log('Timestamp:', new Date().toISOString());
+                console.log('Event type:', payload.eventType);
+                console.log('Table:', payload.table);
+                console.log('Schema:', payload.schema);
+                console.log('Filter:', `room_id=eq.${roomId}`);
+                console.log('New data:', payload.new);
+                console.log('Old data:', payload.old);
+                console.log('Full payload:', payload);
                 this.handleRoomPlayersChange(payload);
             })
-
+            
             // Subscribe to game_rooms changes (status, messages, game state, etc.)
             .on('postgres_changes', {
                 event: 'UPDATE',
@@ -3827,30 +3922,53 @@ class SupabaseRoomSystem {
                 table: 'game_rooms',
                 filter: `id=eq.${roomId}`
             }, async (payload) => {
-                console.log('=== REAL-TIME: Game room updated ===', payload);
+                console.log('=== REAL-TIME: Game room updated ===');
+                console.log('Timestamp:', new Date().toISOString());
+                console.log('Event type:', payload.eventType);
+                console.log('Table:', payload.table);
+                console.log('Schema:', payload.schema);
+                console.log('Filter:', `id=eq.${roomId}`);
+                console.log('New data:', payload.new);
+                console.log('Old data:', payload.old);
+                console.log('Players in new data:', payload.new?.players);
+                console.log('Current players count:', payload.new?.current_players);
+                console.log('Full payload:', payload);
                 await this.handleGameRoomChange(payload);
             })
-
-            // Subscribe to any other game-related tables if they exist
-            // (missions, votes, team_proposals, etc.)
-
+            
+            // Monitor system events for connection health
+            .on('system', {}, (status) => {
+                console.log('=== REAL-TIME SYSTEM EVENT ===');
+                console.log('Timestamp:', new Date().toISOString());
+                console.log('System status:', status);
+            })
+            
             .subscribe((status) => {
-                console.log('Real-time subscription status:', status);
+                console.log('=== REAL-TIME SUBSCRIPTION STATUS ===');
+                console.log('Timestamp:', new Date().toISOString());
+                console.log('Status:', status);
+                console.log('Channel name:', `room_${roomId}_${Date.now()}`);
                 this.subscriptionStatus = status;
-
+                
                 if (status === 'SUBSCRIBED') {
                     console.log('✅ Successfully subscribed to real-time updates');
+                    console.log('Subscribed to tables: room_players, game_rooms');
+                    console.log('Filters: room_id=eq.' + roomId + ', id=eq.' + roomId);
                     this.reconnectAttempts = 0;
                     this.showNotification('Connected to real-time updates', 'success');
                 } else if (status === 'CHANNEL_ERROR') {
                     console.error('❌ Real-time subscription failed');
+                    console.error('Error details: Channel error occurred');
                     this.handleSubscriptionError();
                 } else if (status === 'TIMED_OUT') {
                     console.error('❌ Real-time subscription timed out');
+                    console.error('Error details: Connection timed out');
                     this.handleSubscriptionError();
                 } else if (status === 'CLOSED') {
                     console.log('Real-time subscription closed');
                     this.subscriptionStatus = 'disconnected';
+                } else {
+                    console.log('Unknown subscription status:', status);
                 }
             });
     }
